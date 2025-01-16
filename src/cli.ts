@@ -5,8 +5,11 @@ import { CliToolExecutor } from './lib/tools/CliToolExecutor';
 import { CliMessageParser } from './lib/parser/CliMessageParser';
 import { McpClient } from './lib/mcp/McpClient';
 import { TaskLoop } from './core/task-loop';
+import { TaskHistory } from './core/TaskHistory';
 import chalk from 'chalk';
 import { Command } from 'commander';
+import * as os from 'os';
+import * as path from 'path';
 
 const program = new Command();
 
@@ -17,6 +20,7 @@ program
     .option('-m, --model <model>', 'Model ID for the provider (e.g., anthropic/claude-3.5-sonnet:beta, deepseek/deepseek-chat)', 'anthropic/claude-3.5-sonnet:beta')
     .option('-k, --api-key <key>', 'API key for the provider (can also use PROVIDER_API_KEY env var)')
     .option('-a, --max-attempts <number>', 'Maximum number of consecutive mistakes before exiting (default: 3)')
+    .option('-l, --list-history', 'List recent tasks from history')
     .argument('[task]', 'Task or question for the AI assistant')
     .version('1.0.0')
     .addHelpText('after', `
@@ -34,7 +38,16 @@ Environment Variables:
 Output:
   - Results are shown in green
   - Usage information in yellow
-  - "thinking..." indicator shows when processing`);
+  - "thinking..." indicator shows when processing
+
+Task History:
+  - Tasks are saved in ~/.config/cline/tasks/
+  - Use --list-history to view recent tasks
+  - Each task includes:
+    * Task ID and timestamp
+    * Input/output tokens
+    * Cost information
+    * Full conversation history`);
 
 async function main() {
     try {
@@ -59,6 +72,26 @@ async function main() {
         const toolExecutor = new CliToolExecutor(process.cwd());
         const messageParser = new CliMessageParser();
         const mcpClient = new McpClient();
+
+        // Initialize TaskHistory
+        const taskHistory = new TaskHistory();
+
+        // Handle history listing
+        if (options.listHistory) {
+            const tasks = await taskHistory.listTasks();
+            console.log(chalk.yellow(`Task history location: ${path.join(os.homedir(), '.config', 'cline', 'tasks')}\n`));
+            if (tasks.length === 0) {
+                console.log('No task history found.');
+            } else {
+                console.log('Recent tasks:');
+                for (const task of tasks) {
+                    const date = new Date(task.timestamp).toLocaleString();
+                    console.log(chalk.green(`${task.taskId} (${date}):`));
+                    console.log(`  ${task.task}\n`);
+                }
+            }
+            process.exit(0);
+        }
 
         // Check for task
         if (!task) {

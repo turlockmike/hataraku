@@ -8,6 +8,7 @@ import { ApiHandler } from '../api';
 import { Anthropic } from '@anthropic-ai/sdk';
 import * as os from 'os';
 import * as path from 'path';
+import * as fs from 'fs/promises';
 import { listFiles } from '../services/glob/list-files';
 import { TaskHistory, HistoryEntry } from './TaskHistory';
 
