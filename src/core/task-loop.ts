@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { MessageParser, ToolResponse, Tool } from '../lib/types';
 import { AVAILABLE_TOOLS } from '../lib/tools';
+import type { ModelInfo } from '../shared/api';
 import { CliToolExecutor } from '../lib/tools/CliToolExecutor';
 import { McpClient } from '../lib/mcp/McpClient';
 import { formatToolResponse } from '../utils/format';
@@ -47,6 +48,10 @@ export class TaskLoop {
                 tokensIn: number;
                 tokensOut: number;
                 cost: number;
+            };
+            model?: {
+                id: string;
+                info: ModelInfo;
             };
         }>;
         toolUsage: Array<{
@@ -142,7 +147,9 @@ export class TaskLoop {
                     '',
                     'TASK',
                     '',
-                    initialPrompt || ''
+                    initialPrompt || '',
+                    '',
+                    environmentDetails
                 ];
 
                 const systemPrompt = systemPromptParts.join('\n');
@@ -155,12 +162,13 @@ export class TaskLoop {
                 // requiring multiple API calls to complete a task
                 console.log(chalk.yellow('thinking...'));
 
-                // Log request debug info
+                // Log and save request debug info
                 this.debugInfo.requests.push({
                     timestamp: Date.now(),
                     systemPrompt,
                     messages
                 });
+                await this.saveTaskHistory(initialPrompt || '');
 
                 const stream = this.apiHandler.createMessage(systemPrompt, messages);
                 let response = '';
@@ -188,12 +196,20 @@ export class TaskLoop {
                     }
                 }
 
-                // Log response debug info
+                // Get model info from API handler
+                const model = this.apiHandler.getModel();
+
+                // Log and save response debug info
                 this.debugInfo.responses.push({
                     timestamp: Date.now(),
                     content: response,
-                    usage: currentUsage
+                    usage: currentUsage,
+                    model: {
+                        id: model.id,
+                        info: model.info
+                    }
                 });
+                await this.saveTaskHistory(initialPrompt || '');
 
                 // Helper function to strip tool usage XML
                 const stripToolUsage = (text: string): string => {
@@ -330,7 +346,7 @@ export class TaskLoop {
                     }
                 }
 
-                // Log tool usage
+                // Log and save tool usage
                 this.debugInfo.toolUsage.push({
                     timestamp: Date.now(),
                     tool: toolUse.name,
@@ -338,6 +354,7 @@ export class TaskLoop {
                     result: formatToolResponse(result),
                     error
                 });
+                await this.saveTaskHistory(initialPrompt || '');
 
                 // Reset mistake count on successful tool use
                 if (!error) {
@@ -381,8 +398,6 @@ export class TaskLoop {
     }
 
     private async getEnvironmentDetails(): Promise<string> {
-        let details = '';
-
         // Add current time information with timezone
         const now = new Date();
         const formatter = new Intl.DateTimeFormat(undefined, {
@@ -397,23 +412,15 @@ export class TaskLoop {
         const timeZone = formatter.resolvedOptions().timeZone;
         const timeZoneOffset = -now.getTimezoneOffset() / 60;
         const timeZoneOffsetStr = `${timeZoneOffset >= 0 ? '+' : ''}${timeZoneOffset}:00`;
-        details += `\n\n# Current Time\n${formatter.format(now)} (${timeZone}, UTC${timeZoneOffsetStr})`;
 
-        // Add current working directory files
-        const cwd = process.cwd();
-        details += `\n\n# Current Working Directory (${cwd}) Files\n`;
-        const isDesktop = path.resolve(cwd) === path.join(os.homedir(), 'Desktop');
-        
-        if (isDesktop) {
-            details += '(Desktop files not shown automatically. Use list_files to explore if needed.)';
-        } else {
-            const [files, didHitLimit] = await listFiles(cwd, true, 200);
-            details += files.join('\n');
-            if (didHitLimit) {
-                details += '\n(File list truncated due to size limit)';
-            }
-        }
+        const details = [
+            '# Current Time',
+            `${formatter.format(now)} (${timeZone}, UTC${timeZoneOffsetStr})`,
+            '',
+            '# Current Working Directory',
+            process.cwd()
+        ].join('\n');
 
-        return `<environment_details>${details.trim()}</environment_details>`;
+        return `<environment_details>${details}</environment_details>`;
     }
 }
