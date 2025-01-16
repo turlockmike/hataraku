@@ -213,7 +213,27 @@ export class TaskLoop {
                                 JSON.parse(toolUse.params.arguments || '{}')
                             );
                             error = mcpResult.isError === true;
-                            result = mcpResult.content.map(item => item.text).join('\n');
+                            
+                            // Handle different content types from MCP tools
+                            const textContent = mcpResult.content
+                                .filter((item): item is { type: 'text'; text: string } => item.type === 'text')
+                                .map(item => item.text)
+                                .join('\n');
+
+                            // Handle image content by saving to file
+                            const imageResults = await Promise.all(
+                                mcpResult.content
+                                    .filter((item): item is { type: 'image'; data: string; mimeType: string } => item.type === 'image')
+                                    .map(async (item, index) => {
+                                        const ext = item.mimeType.split('/')[1] || 'png';
+                                        const fileName = `mcp-image-${Date.now()}-${index}.${ext}`;
+                                        const filePath = path.join(process.cwd(), fileName);
+                                        await fs.writeFile(filePath, Buffer.from(item.data, 'base64'));
+                                        return `Image saved to: ${filePath}`;
+                                    })
+                            );
+
+                            result = [textContent, ...imageResults].filter(Boolean).join('\n');
                         } catch (err) {
                             error = true;
                             result = `Error executing MCP tool: ${err.message}`;
