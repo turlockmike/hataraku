@@ -2,8 +2,30 @@ import { Tool, ToolExecutor, ToolResponse } from '../types';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { searchFiles } from '../services/search';
-
+import { parseSourceCodeForDefinitionsTopLevel } from '../../services/tree-sitter';
 export const AVAILABLE_TOOLS: Tool[] = [
+    {
+        name: 'browser_action',
+        description: 'Interact with a Puppeteer-controlled browser',
+        parameters: {
+            action: {
+                required: true,
+                description: 'The action to perform (launch, click, type, scroll_down, scroll_up, close)'
+            },
+            url: {
+                required: false,
+                description: 'The URL to navigate to (required for launch action)'
+            },
+            coordinate: {
+                required: false,
+                description: 'The x,y coordinates for click action'
+            },
+            text: {
+                required: false,
+                description: 'The text to type for type action'
+            }
+        }
+    },
     {
         name: 'write_to_file',
         description: 'Write content to a file at the specified path',
@@ -217,13 +239,14 @@ export class BaseToolExecutor implements ToolExecutor {
     async listCodeDefinitions(dirPath: string): Promise<[boolean, ToolResponse]> {
         try {
             const absolutePath = this.resolvePath(dirPath);
-            // This is a placeholder implementation. The actual implementation would need to:
-            // 1. Parse the source code files
-            // 2. Extract class, function, and method definitions
-            // 3. Return them in a structured format
-            return [false, 'Code definitions listing not implemented in base executor'];
+            const result = await parseSourceCodeForDefinitionsTopLevel(absolutePath);
+            return [false, result];
         } catch (error) {
             return [true, `Error listing code definitions: ${error.message}`];
         }
+    }
+
+    async browserAction(action: string, url?: string, coordinate?: string, text?: string): Promise<[boolean, ToolResponse]> {
+        throw new Error('browserAction must be implemented by platform');
     }
 }

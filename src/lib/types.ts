@@ -1,9 +1,47 @@
-import { Anthropic } from "@anthropic-ai/sdk";
+export interface TextBlock {
+    type: 'text';
+    text: string;
+}
 
-export type ToolResponse = string | Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam>;
-export type UserContent = Array<
-    Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.ToolUseBlockParam | Anthropic.ToolResultBlockParam
->;
+export interface ImageBlock {
+    type: 'image';
+    image_url: {
+        url: string;
+    };
+}
+
+export interface ToolUseBlock {
+    type: 'tool_use';
+    tool_name: string;
+    parameters: Record<string, string>;
+}
+
+export interface ToolResultBlock {
+    type: 'tool_result';
+    result: string;
+}
+
+export type MessageBlock = TextBlock | ImageBlock | ToolUseBlock | ToolResultBlock;
+
+export type ToolResponse = string | MessageBlock[];
+
+export interface MessageParser {
+    parseToolUse(message: string): {
+        name: string;
+        params: Record<string, string>;
+    } | null;
+}
+
+export type MessageRole = 'user' | 'assistant';
+
+export interface Message {
+    role: MessageRole;
+    content: string;
+}
+
+export interface ApiClient {
+    sendMessage(history: Message[]): Promise<string>;
+}
 
 export interface Tool {
     name: string;
@@ -23,50 +61,15 @@ export interface ToolExecutor {
     listFiles(path: string, recursive?: boolean): Promise<[boolean, ToolResponse]>;
     searchFiles(path: string, regex: string, filePattern?: string): Promise<[boolean, ToolResponse]>;
     listCodeDefinitions(path: string): Promise<[boolean, ToolResponse]>;
+    browserAction(action: string, url?: string, coordinate?: string, text?: string): Promise<[boolean, ToolResponse]>;
 }
 
-export interface ApiClient {
-    createMessage(systemPrompt: string, history: Anthropic.MessageParam[]): AsyncIterableIterator<{
-        type: "text" | "usage";
-        text?: string;
-        inputTokens?: number;
-        outputTokens?: number;
-        cacheWriteTokens?: number;
-        cacheReadTokens?: number;
-        totalCost?: number;
-    }>;
-    getModel(): {
-        id: string;
-        info: {
-            supportsImages?: boolean;
-            supportsComputerUse?: boolean;
-            contextWindow?: number;
-        };
-    };
-}
-
-export interface ContextProvider {
-    getEnvironmentDetails(includeFileDetails?: boolean): Promise<string>;
-    getCurrentWorkingDirectory(): string;
-    getState(): Promise<{
-        mode?: string;
-        mcpEnabled?: boolean;
-        alwaysApproveResubmit?: boolean;
-        requestDelaySeconds?: number;
-        browserViewportSize?: { width: number; height: number };
-        preferredLanguage?: string;
-        customPrompts?: Record<string, string>;
-    }>;
-}
-
-export interface TaskExecutor {
-    startTask(task: string, images?: string[]): Promise<void>;
-    abortTask(): void;
-    onMessage?(message: string): void;
-    onError?(error: Error): void;
-    onComplete?(result: string): void;
-}
-
-export interface GlobalStorageUri {
-    fsPath: string;
+export interface CliConfig {
+    mode?: string;
+    mcpEnabled?: boolean;
+    alwaysApproveResubmit?: boolean;
+    requestDelaySeconds?: number;
+    browserViewportSize?: { width: number; height: number };
+    preferredLanguage?: string;
+    customPrompts?: Record<string, string>;
 }

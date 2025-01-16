@@ -32,7 +32,7 @@ export class MessageParser {
             toolMatch = text.match(/<([a-z_]+)(?:\s+([^>]*))?>([\s\S]*?)<\/\1>/);
         }
 
-        if (!toolMatch) return null;
+        if (!toolMatch) {return null;}
 
         const toolName = toolMatch[1];
         const inlineParams = toolMatch[2];
@@ -40,7 +40,7 @@ export class MessageParser {
 
         // Verify this is a valid tool
         const tool = this.tools.find(t => t.name === toolName);
-        if (!tool) return null;
+        if (!tool) {return null;}
 
         const params: Record<string, string> = {};
 
@@ -77,7 +77,7 @@ export class MessageParser {
 
     validateToolParams(toolName: string, params: Record<string, string>): string | null {
         const tool = this.tools.find(t => t.name === toolName);
-        if (!tool) return `Unknown tool: ${toolName}`;
+        if (!tool) {return `Unknown tool: ${toolName}`;}
 
         // Check required parameters
         for (const [paramName, paramInfo] of Object.entries(tool.parameters)) {

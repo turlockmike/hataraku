@@ -1,0 +1,104 @@
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as os from 'os';
+
+export interface HistoryEntry {
+    taskId: string;
+    timestamp: number;
+    task: string;
+    tokensIn: number;
+    tokensOut: number;
+    cacheWrites: number;
+    cacheReads: number;
+    totalCost: number;
+    messages: Array<{
+        role: 'assistant' | 'user';
+        content: string;
+    }>;
+}
+
+export class TaskHistory {
+    private historyDir: string = path.join(os.homedir(), '.config', 'cline', 'tasks');
+
+    private async ensureHistoryDir(): Promise<void> {
+        await fs.mkdir(this.historyDir, { recursive: true });
+    }
+
+    async saveTask(entry: HistoryEntry): Promise<void> {
+        await this.ensureHistoryDir();
+        const taskDir = path.join(this.historyDir, entry.taskId);
+        await fs.mkdir(taskDir, { recursive: true });
+
+        // Save task metadata
+        const metadataPath = path.join(taskDir, 'metadata.json');
+        const metadata = {
+            taskId: entry.taskId,
+            timestamp: entry.timestamp,
+            task: entry.task,
+            tokensIn: entry.tokensIn,
+            tokensOut: entry.tokensOut,
+            cacheWrites: entry.cacheWrites,
+            cacheReads: entry.cacheReads,
+            totalCost: entry.totalCost,
+        };
+        await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+
+        // Save conversation history
+        const historyPath = path.join(taskDir, 'conversation.json');
+        await fs.writeFile(historyPath, JSON.stringify(entry.messages, null, 2));
+    }
+
+    async getTask(taskId: string): Promise<HistoryEntry | null> {
+        try {
+            const taskDir = path.join(this.historyDir, taskId);
+            const metadataPath = path.join(taskDir, 'metadata.json');
+            const historyPath = path.join(taskDir, 'conversation.json');
+
+            const [metadataContent, historyContent] = await Promise.all([
+                fs.readFile(metadataPath, 'utf-8'),
+                fs.readFile(historyPath, 'utf-8'),
+            ]);
+
+            const metadata = JSON.parse(metadataContent);
+            const messages = JSON.parse(historyContent);
+
+            return {
+                ...metadata,
+                messages,
+            };
+        } catch (error) {
+            return null;
+        }
+    }
+
+    async listTasks(): Promise<Array<{ taskId: string; timestamp: number; task: string }>> {
+        await this.ensureHistoryDir();
+        const tasks: Array<{ taskId: string; timestamp: number; task: string }> = [];
+
+        try {
+            const taskDirs = await fs.readdir(this.historyDir);
+            
+            for (const taskId of taskDirs) {
+                try {
+                    const metadataPath = path.join(this.historyDir, taskId, 'metadata.json');
+                    const metadataContent = await fs.readFile(metadataPath, 'utf-8');
+                    const metadata = JSON.parse(metadataContent);
+                    tasks.push({
+                        taskId: metadata.taskId,
+                        timestamp: metadata.timestamp,
+                        task: metadata.task,
+                    });
+                } catch (error) {
+                    // Skip invalid task directories
+                    continue;
+                }
+            }
+        } catch (error) {
+            // Return empty array if history directory doesn't exist
+            return [];
+        }
+
+        // Sort by timestamp, most recent first
+        return tasks.sort((a, b) => b.timestamp - a.timestamp);
+    }
+}

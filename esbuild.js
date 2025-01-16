@@ -4,7 +4,6 @@ const path = require("path")
 
 const production = process.argv.includes("--production")
 const watch = process.argv.includes("--watch")
-const cli = process.argv.includes("--cli")
 
 /**
  * @type {import('esbuild').Plugin}
@@ -26,61 +25,7 @@ const esbuildProblemMatcherPlugin = {
 	},
 }
 
-const copyWasmFiles = {
-	name: "copy-wasm-files",
-	setup(build) {
-		build.onEnd(() => {
-			// tree sitter
-			const sourceDir = path.join(__dirname, "node_modules", "web-tree-sitter")
-			const targetDir = path.join(__dirname, "dist")
-
-			// Copy tree-sitter.wasm
-			fs.copyFileSync(path.join(sourceDir, "tree-sitter.wasm"), path.join(targetDir, "tree-sitter.wasm"))
-
-			// Copy language-specific WASM files
-			const languageWasmDir = path.join(__dirname, "node_modules", "tree-sitter-wasms", "out")
-			const languages = [
-				"typescript",
-				"tsx",
-				"python",
-				"rust",
-				"javascript",
-				"go",
-				"cpp",
-				"c",
-				"c_sharp",
-				"ruby",
-				"java",
-				"php",
-				"swift",
-			]
-
-			languages.forEach((lang) => {
-				const filename = `tree-sitter-${lang}.wasm`
-				fs.copyFileSync(path.join(languageWasmDir, filename), path.join(targetDir, filename))
-			})
-		})
-	},
-}
-
-const extensionConfig = {
-	bundle: true,
-	minify: production,
-	sourcemap: !production,
-	logLevel: "silent",
-	plugins: [
-		copyWasmFiles,
-		esbuildProblemMatcherPlugin,
-	],
-	entryPoints: ["src/extension.ts"],
-	format: "cjs",
-	sourcesContent: false,
-	platform: "node",
-	outfile: "dist/extension.js",
-	external: ["vscode"],
-}
-
-const cliConfig = {
+const buildConfig = {
 	bundle: true,
 	minify: production,
 	sourcemap: !production,
@@ -91,36 +36,26 @@ const cliConfig = {
 	sourcesContent: false,
 	platform: "node",
 	outfile: "dist/cli.js",
-	external: ["vscode"], // Still mark vscode as external to avoid build errors from other files
+	external: ["vscode"], // Mark vscode as external to avoid build errors
 	define: {
 		'process.env.VSCODE': 'undefined' // Define vscode as undefined for CLI build
 	}
 }
 
 async function main() {
-	if (cli) {
-		const cliCtx = await esbuild.context(cliConfig)
-		if (watch) {
-			await cliCtx.watch()
-		} else {
-			await cliCtx.rebuild()
-			await cliCtx.dispose()
-			// Add shebang and make executable after build
-			const cliPath = path.join(__dirname, 'dist/cli.js')
-			const content = fs.readFileSync(cliPath, 'utf8')
-			// Remove any existing shebang line
-			const contentWithoutShebang = content.replace(/^#!.*\n/, '');
-			fs.writeFileSync(cliPath, `#!/usr/bin/env node\n${contentWithoutShebang}`);
-			fs.chmodSync(cliPath, '755')
-		}
+	const ctx = await esbuild.context(buildConfig)
+	if (watch) {
+		await ctx.watch()
 	} else {
-		const extensionCtx = await esbuild.context(extensionConfig)
-		if (watch) {
-			await extensionCtx.watch()
-		} else {
-			await extensionCtx.rebuild()
-			await extensionCtx.dispose()
-		}
+		await ctx.rebuild()
+		await ctx.dispose()
+		// Add shebang and make executable after build
+		const cliPath = path.join(__dirname, 'dist/cli.js')
+		const content = fs.readFileSync(cliPath, 'utf8')
+		// Remove any existing shebang line
+		const contentWithoutShebang = content.replace(/^#!.*\n/, '');
+		fs.writeFileSync(cliPath, `#!/usr/bin/env node\n${contentWithoutShebang}`);
+		fs.chmodSync(cliPath, '755')
 	}
 }
 

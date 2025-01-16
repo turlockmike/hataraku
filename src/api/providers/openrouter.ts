@@ -27,10 +27,10 @@ export class OpenRouterHandler implements ApiHandler, SingleCompletionHandler {
 		this.options = options
 		this.client = new OpenAI({
 			baseURL: "https://openrouter.ai/api/v1",
-			apiKey: this.options.openRouterApiKey,
+			apiKey: process.env.OPENROUTER_API_KEY || this.options.openRouterApiKey,
 			defaultHeaders: {
-				"HTTP-Referer": "https://github.com/RooVetGit/Roo-Cline", // Optional, for including your app on openrouter.ai rankings.
-				"X-Title": "Roo-Cline", // Optional. Shows in rankings on openrouter.ai.
+				"HTTP-Referer": "https://github.com/turlockmike/cline-cli", // Optional, for including your app on openrouter.ai rankings.
+				"X-Title": "Cline CLI", // Optional. Shows in rankings on openrouter.ai.
 			},
 		})
 	}
@@ -155,13 +155,12 @@ export class OpenRouterHandler implements ApiHandler, SingleCompletionHandler {
 		try {
 			const response = await axios.get(`https://openrouter.ai/api/v1/generation?id=${genId}`, {
 				headers: {
-					Authorization: `Bearer ${this.options.openRouterApiKey}`,
+					Authorization: `Bearer ${process.env.OPENROUTER_API_KEY || this.options.openRouterApiKey}`,
 				},
 				timeout: 5_000, // this request hangs sometimes
 			})
 
 			const generation = response.data?.data
-			console.log("OpenRouter generation details:", response.data)
 			yield {
 				type: "usage",
 				// cacheWriteTokens: 0,
@@ -173,8 +172,7 @@ export class OpenRouterHandler implements ApiHandler, SingleCompletionHandler {
 				fullResponseText
 			} as OpenRouterApiStreamUsageChunk;
 		} catch (error) {
-			// ignore if fails
-			console.error("Error fetching OpenRouter generation details:", error)
+			// Silently ignore generation details fetch failures
 		}
 
 	}
