@@ -31,6 +31,36 @@ export class TaskLoop {
     private history: TaskMessage[] = [];
     private taskHistory: TaskHistory;
     private taskId: string;
+    private debugInfo: {
+        requests: Array<{
+            timestamp: number;
+            systemPrompt: string;
+            messages: Array<{
+                role: 'assistant' | 'user';
+                content: string;
+            }>;
+        }>;
+        responses: Array<{
+            timestamp: number;
+            content: string;
+            usage?: {
+                tokensIn: number;
+                tokensOut: number;
+                cost: number;
+            };
+        }>;
+        toolUsage: Array<{
+            timestamp: number;
+            tool: string;
+            params: Record<string, string>;
+            result: string;
+            error: boolean;
+        }>;
+    } = {
+        requests: [],
+        responses: [],
+        toolUsage: []
+    };
     private getToolDocs(): string {
         return AVAILABLE_TOOLS.map(tool => {
             const params = Object.entries(tool.parameters)
@@ -71,7 +101,7 @@ export class TaskLoop {
                 // Get environment details
                 const environmentDetails = await this.getEnvironmentDetails();
 
-                // Get response from API
+                // Get MCP tools and servers
                 const mcpTools = [];
                 const availableServers = this.mcpClient.getAvailableServers();
                 if (availableServers.length > 0) {
@@ -124,8 +154,21 @@ export class TaskLoop {
                 // We may see multiple "thinking..." messages since the AI can only execute one tool at a time,
                 // requiring multiple API calls to complete a task
                 console.log(chalk.yellow('thinking...'));
+
+                // Log request debug info
+                this.debugInfo.requests.push({
+                    timestamp: Date.now(),
+                    systemPrompt,
+                    messages
+                });
+
                 const stream = this.apiHandler.createMessage(systemPrompt, messages);
                 let response = '';
+                let currentUsage = {
+                    tokensIn: 0,
+                    tokensOut: 0,
+                    cost: 0
+                };
                 for await (const chunk of stream) {
                     if (chunk.type === 'text' && chunk.text) {
                         response += chunk.text;
@@ -137,11 +180,37 @@ export class TaskLoop {
                         if (chunk.totalCost) {
                             this.totalCost = chunk.totalCost;
                         }
+                        currentUsage = {
+                            tokensIn: chunk.inputTokens || 0,
+                            tokensOut: chunk.outputTokens || 0,
+                            cost: chunk.totalCost || 0
+                        };
                     }
                 }
 
+                // Log response debug info
+                this.debugInfo.responses.push({
+                    timestamp: Date.now(),
+                    content: response,
+                    usage: currentUsage
+                });
+
+                // Helper function to strip tool usage XML
+                const stripToolUsage = (text: string): string => {
+                    // Remove any XML tags and their content if they match our tool format
+                    const cleanText = text.replace(/<(thinking|[a-z_]+)>[\s\S]*?<\/\1>/g, '');
+                    // Remove any remaining XML-style tags for safety
+                    return cleanText.replace(/<[^>]*>/g, '').trim();
+                };
+
                 // Parse tool use from response
                 const toolUse = this.messageParser.parseToolUse(response);
+
+                // Output assistant's message to console, excluding tool usage
+                const cleanMessage = stripToolUsage(response);
+                if (cleanMessage) {
+                    console.log(chalk.blue(cleanMessage));
+                }
                 if (!toolUse) {
                     this.consecutiveMistakeCount++;
                     if (this.consecutiveMistakeCount >= this.maxAttempts) {
@@ -261,6 +330,15 @@ export class TaskLoop {
                     }
                 }
 
+                // Log tool usage
+                this.debugInfo.toolUsage.push({
+                    timestamp: Date.now(),
+                    tool: toolUse.name,
+                    params: toolUse.params,
+                    result: formatToolResponse(result),
+                    error
+                });
+
                 // Reset mistake count on successful tool use
                 if (!error) {
                     this.consecutiveMistakeCount = 0;
@@ -295,7 +373,8 @@ export class TaskLoop {
             cacheWrites: this.cacheWrites,
             cacheReads: this.cacheReads,
             totalCost: this.totalCost,
-            messages: this.history
+            messages: this.history,
+            debug: this.debugInfo
         };
 
         await this.taskHistory.saveTask(entry);

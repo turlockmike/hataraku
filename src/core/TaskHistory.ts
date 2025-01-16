@@ -15,6 +15,32 @@ export interface HistoryEntry {
         role: 'assistant' | 'user';
         content: string;
     }>;
+    debug?: {
+        requests: Array<{
+            timestamp: number;
+            systemPrompt: string;
+            messages: Array<{
+                role: 'assistant' | 'user';
+                content: string;
+            }>;
+        }>;
+        responses: Array<{
+            timestamp: number;
+            content: string;
+            usage?: {
+                tokensIn: number;
+                tokensOut: number;
+                cost: number;
+            };
+        }>;
+        toolUsage: Array<{
+            timestamp: number;
+            tool: string;
+            params: Record<string, string>;
+            result: string;
+            error: boolean;
+        }>;
+    };
 }
 
 export class TaskHistory {
@@ -46,6 +72,12 @@ export class TaskHistory {
         // Save conversation history
         const historyPath = path.join(taskDir, 'conversation.json');
         await fs.writeFile(historyPath, JSON.stringify(entry.messages, null, 2));
+
+        // Save debug information if present
+        if (entry.debug) {
+            const debugPath = path.join(taskDir, 'debug.json');
+            await fs.writeFile(debugPath, JSON.stringify(entry.debug, null, 2));
+        }
     }
 
     async getTask(taskId: string): Promise<HistoryEntry | null> {
