@@ -373,7 +373,10 @@ export class TaskLoop {
                 }
 
             } catch (error) {
+                const model = this.apiHandler.getModel();
                 console.error(chalk.red('Error in task loop:'), error);
+                console.error(chalk.yellow('\nDebug Information:'));
+                console.error(chalk.yellow(`Model: ${model.id}`));
                 await this.saveTaskHistory(initialPrompt || '');
                 process.exit(1);
             }
@@ -391,7 +394,8 @@ export class TaskLoop {
             cacheReads: this.cacheReads,
             totalCost: this.totalCost,
             messages: this.history,
-            debug: this.debugInfo
+            debug: this.debugInfo,
+            model: this.apiHandler.getModel().id
         };
 
         await this.taskHistory.saveTask(entry);

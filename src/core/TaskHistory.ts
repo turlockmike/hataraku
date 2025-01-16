@@ -11,6 +11,7 @@ export interface HistoryEntry {
     cacheWrites: number;
     cacheReads: number;
     totalCost: number;
+    model: string;
     messages: Array<{
         role: 'assistant' | 'user';
         content: string;

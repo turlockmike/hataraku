@@ -3,6 +3,7 @@
 import { buildApiHandler } from './api';
 import { CliToolExecutor } from './lib/tools/CliToolExecutor';
 import { CliMessageParser } from './lib/parser/CliMessageParser';
+import { openRouterDefaultModelInfo, deepSeekModels } from './shared/api';
 import { McpClient } from './lib/mcp/McpClient';
 import { TaskLoop } from './core/task-loop';
 import { TaskHistory } from './core/TaskHistory';
@@ -16,7 +17,7 @@ const program = new Command();
 program
     .name('cline')
     .description('CLI version of Cline AI assistant - An autonomous coding agent')
-    .option('-p, --provider <provider>', 'API provider to use (openrouter, anthropic, openai)', 'openrouter')
+    .option('-p, --provider <provider>', 'API provider to use (openrouter, anthropic, openai)', 'openRouter')
     .option('-m, --model <model>', 'Model ID for the provider (e.g., anthropic/claude-3.5-sonnet:beta, deepseek/deepseek-chat)', 'anthropic/claude-3.5-sonnet:beta')
     .option('-k, --api-key <key>', 'API key for the provider (can also use PROVIDER_API_KEY env var)')
     .option('-a, --max-attempts <number>', 'Maximum number of consecutive mistakes before exiting (default: 3)')
@@ -64,9 +65,14 @@ async function main() {
 
         // Initialize components
         const apiHandler = buildApiHandler({
-            apiProvider: options.provider,
+            apiProvider: options.provider.toLowerCase(),
             [`${options.provider}ApiKey`]: apiKey,
-            ...(options.model && { [`${options.provider}ModelId`]: options.model })
+            ...(options.model && {
+                [`${options.provider}ModelId`]: options.model,
+                [`${options.provider}ModelInfo`]: options.model === 'deepseek/deepseek-chat'
+                    ? deepSeekModels['deepseek-chat']
+                    : openRouterDefaultModelInfo
+            })
         });
 
         const toolExecutor = new CliToolExecutor(process.cwd());
@@ -111,6 +117,9 @@ async function main() {
 
     } catch (error) {
         console.error(chalk.red('Error:'), error);
+        console.error(chalk.yellow('\nDebug Information:'));
+        console.error(chalk.yellow(`Provider: ${program.opts().provider}`));
+        console.error(chalk.yellow(`Model: ${program.opts().model}`));
         process.exit(1);
     }
 }

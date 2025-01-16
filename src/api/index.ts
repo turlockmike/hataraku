@@ -49,6 +49,6 @@ export function buildApiHandler(configuration: ApiConfiguration): ApiHandler {
 		case "deepseek":
 			return new DeepSeekHandler(options)
 		default:
-			return new AnthropicHandler(options)
+			throw new Error(`Unsupported API provider: ${apiProvider}`)
 	}
 }
