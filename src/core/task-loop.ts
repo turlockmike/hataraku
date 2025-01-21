@@ -6,11 +6,8 @@ import { CliToolExecutor } from '../lib/tools/CliToolExecutor';
 import { McpClient } from '../lib/mcp/McpClient';
 import { formatToolResponse } from '../utils/format';
 import { ApiHandler } from '../api';
-import { Anthropic } from '@anthropic-ai/sdk';
-import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { listFiles } from '../services/glob/list-files';
 import { TaskHistory, HistoryEntry } from './TaskHistory';
 
 interface TaskLoopOptions {
@@ -87,7 +84,8 @@ export class TaskLoop {
         private toolExecutor: CliToolExecutor,
         private mcpClient: McpClient,
         private messageParser: MessageParser,
-        private maxAttempts: number = 3
+        private maxAttempts: number = 3,
+        private isInteractive: boolean = false
     ) {
         this.taskHistory = new TaskHistory();
         this.taskId = Date.now().toString();
@@ -122,9 +120,8 @@ export class TaskLoop {
                         mcpTools.push(...serverTools);
                     }
                 }
-
                 const systemPromptParts = [
-                    'You are Cline, a highly skilled software engineer.',
+                    'You are the worlds most powerful AI, an expert at everything. Your goal is to help the user with their tasks.',
                     '',
                     'TOOLS',
                     '',
@@ -141,10 +138,12 @@ export class TaskLoop {
                     '',
                     'RULES',
                     '',
-                    '1. YOU MUST use exactly one tool in each response. If this is the final response, you must use the `attempt_completion` tool.',
-                    '2. Wait for tool execution results before proceeding',
-                    '3. Handle errors appropriately',
-                    '4. Document your changes',
+                    '1. For simple questions or calculations, respond ONLY with attempt_completion containing the direct answer as the result.',
+                    '2. DO NOT overly explain your process or thinking - focus on the answer.',
+                    '4. Wait for tool execution results before proceeding.',
+                    '5. Handle errors appropriately.',
+                    '6. Be concise - one line responses are preferred for simple answers.',
+                    '7. YOU MUST use exactly one tool in each response.',
                     '',
                     'TASK',
                     '',
@@ -159,8 +158,6 @@ export class TaskLoop {
                     content: msg.content
                 }));
 
-                // We may see multiple "thinking..." messages since the AI can only execute one tool at a time,
-                // requiring multiple API calls to complete a task
                 console.log(chalk.yellow('thinking...'));
 
                 // Log and save request debug info
@@ -277,16 +274,30 @@ export class TaskLoop {
                     case 'attempt_completion': {
                         // Display final result and usage information
                         console.log(chalk.green(toolUse.params.result));
-                        console.log(chalk.yellow(`\nUsage:`));
-                        console.log(chalk.yellow(`Tokens: ${this.tokensIn} in, ${this.tokensOut} out`));
-                        console.log(chalk.yellow(`Cost: $${this.totalCost.toFixed(6)}`));
                         
                         if (toolUse.params.command) {
                             [error, result] = await this.toolExecutor.executeCommand(toolUse.params.command);
                         }
-                        // Save history before exiting
+                        
+                        // Save history
                         await this.saveTaskHistory(initialPrompt || '');
-                        process.exit(0);
+                        
+                        // Only exit if not in interactive mode
+                        if (!this.isInteractive) {
+                            console.log(chalk.yellow(`\nUsage:`));
+                            console.log(chalk.yellow(`Tokens: ${this.tokensIn} in, ${this.tokensOut} out`));
+                            console.log(chalk.yellow(`Cost: $${this.totalCost.toFixed(6)}`));
+                            process.exit(0);
+                        } else {
+                            // Reset history for next task in interactive mode
+                            this.history = [];
+                            this.tokensIn = 0;
+                            this.tokensOut = 0;
+                            this.totalCost = 0;
+                            this.taskId = Date.now().toString();
+                            console.log(''); // Add blank line between tasks
+                            return; // Exit the while loop iteration
+                        }
                     }
                     case 'list_code_definition_names': {
                         [error, result] = await this.toolExecutor.listCodeDefinitions(toolUse.params.path);

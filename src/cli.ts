@@ -11,7 +11,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import * as os from 'os';
 import * as path from 'path';
-
+import { input } from '@inquirer/prompts';
 const program = new Command();
 
 program
@@ -22,6 +22,7 @@ program
     .option('-k, --api-key <key>', 'API key for the provider (can also use PROVIDER_API_KEY env var)')
     .option('-a, --max-attempts <number>', 'Maximum number of consecutive mistakes before exiting (default: 3)')
     .option('-l, --list-history', 'List recent tasks from history')
+    .option('-i, --interactive', 'Run in interactive mode, prompting for tasks')
     .argument('[task]', 'Task or question for the AI assistant')
     .version('1.0.0')
     .addHelpText('after', `
@@ -30,6 +31,8 @@ Examples:
   $ cline --model deepseek/deepseek-chat "explain this code"             # Uses different model
   $ cline --provider anthropic --model claude-3 "write a test"           # Uses different provider
   $ OPENROUTER_API_KEY=<key> cline "write a test file"                  # Provides API key via env var
+  $ cline -i                                                             # Run in interactive mode
+  $ cline -i "initial task"                                              # Interactive mode with initial task
 
 Environment Variables:
   OPENROUTER_API_KEY    - API key for OpenRouter
@@ -99,21 +102,46 @@ async function main() {
             process.exit(0);
         }
 
-        // Check for task
-        if (!task) {
-            console.error(chalk.red('Error: Please provide a task or question'));
-            program.help();
-        }
-
-        // Start the task loop
+        // Initialize task loop
         const taskLoop = new TaskLoop(
             apiHandler,
             toolExecutor,
             mcpClient,
             messageParser,
-            parseInt(options.maxAttempts)
+            parseInt(options.maxAttempts),
+            options.interactive
         );
-        await taskLoop.run(task);
+
+        if (options.interactive) {
+            // Interactive mode
+            
+            async function promptForTask() {
+                const newTask = await input({
+                    message: 'Enter your task, or type "exit" to quit:',
+                    default: task // Use provided task argument as default if available
+                });
+
+                if (newTask === 'exit') {
+                    console.log(chalk.yellow('Exiting interactive mode.'));
+                    process.exit(0);
+                }
+
+                if (newTask) {
+                    await taskLoop.run(newTask);
+                    // Prompt for next task
+                    await promptForTask();
+                }
+            }
+
+            await promptForTask();
+        } else {
+            // Normal mode
+            if (!task) {
+                console.error(chalk.red('Error: Please provide a task or question'));
+                program.help();
+            }
+            await taskLoop.run(task);
+        }
 
     } catch (error) {
         console.error(chalk.red('Error:'), error);

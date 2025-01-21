@@ -260,15 +260,13 @@ export class BaseToolExecutor implements ToolExecutor {
 
     async waitForUser(prompt: string): Promise<[boolean, ToolResponse]> {
         try {
-            const inquirer = require('inquirer');
+            const { input } = await import('@inquirer/prompts');
             
-            const response = await inquirer.prompt([{
-                type: 'input',
-                name: 'userInput',
+            const response = await input({
                 message: prompt
-            }]);
+            });
             
-            return [false, `User input: ${response.userInput}`];
+            return [false, `User input: ${response}`];
         } catch (error) {
             return [true, `Error waiting for user input: ${error.message}`];
         }
