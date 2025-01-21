@@ -62,6 +62,7 @@ export interface ToolExecutor {
     searchFiles(path: string, regex: string, filePattern?: string): Promise<[boolean, ToolResponse]>;
     listCodeDefinitions(path: string): Promise<[boolean, ToolResponse]>;
     browserAction(action: string, url?: string, coordinate?: string, text?: string): Promise<[boolean, ToolResponse]>;
+    waitForUser(prompt: string): Promise<[boolean, ToolResponse]>;
 }
 
 export interface CliConfig {

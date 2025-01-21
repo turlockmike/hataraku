@@ -112,6 +112,7 @@ export class TaskLoop {
                 if (availableServers.length > 0) {
                     mcpTools.push('\nMCP SERVERS\n');
                     mcpTools.push('\nThe Model Context Protocol (MCP) enables communication between the system and locally running MCP servers that provide additional tools and resources to extend your capabilities.\n');
+                    mcpTools.push('\nMCP server settings are stored in ~/.cline/cline_mcp_settings.json\n');
                     mcpTools.push('\n# Connected MCP Servers\n');
                     mcpTools.push('\nWhen a server is connected, you can use the server\'s tools via the `use_mcp_tool` tool, and access the server\'s resources via the `access_mcp_resource` tool.\n');
                     mcpTools.push(`\nCurrently connected servers: ${availableServers.join(', ')}\n`);
@@ -337,6 +338,30 @@ export class TaskLoop {
                         } catch (err) {
                             error = true;
                             result = `Error accessing MCP resource: ${err.message}`;
+                        }
+                        break;
+                    }
+                    case 'wait_for_user': {
+                        try {
+                            // Display prompt and wait for user input
+                            console.log(chalk.yellow(toolUse.params.prompt));
+                            const readline = require('readline').createInterface({
+                                input: process.stdin,
+                                output: process.stdout
+                            });
+                            
+                            const userInput = await new Promise<string>((resolve) => {
+                                readline.question('> ', (answer: string) => {
+                                    readline.close();
+                                    resolve(answer);
+                                });
+                            });
+                            
+                            error = false;
+                            result = `User input: ${userInput}`;
+                        } catch (err) {
+                            error = true;
+                            result = `Error waiting for user input: ${err.message}`;
                         }
                         break;
                     }

@@ -129,6 +129,16 @@ export const AVAILABLE_TOOLS: Tool[] = [
                 description: 'The URI identifying the specific resource to access'
             }
         }
+    },
+    {
+        name: 'wait_for_user',
+        description: 'Pause execution and wait for user input',
+        parameters: {
+            prompt: {
+                required: true,
+                description: 'The message to display to the user before waiting for input'
+            }
+        }
     }
 ];
 
@@ -226,5 +236,21 @@ export class BaseToolExecutor implements ToolExecutor {
 
     async browserAction(action: string, url?: string, coordinate?: string, text?: string): Promise<[boolean, ToolResponse]> {
         throw new Error('browserAction must be implemented by platform');
+    }
+
+    async waitForUser(prompt: string): Promise<[boolean, ToolResponse]> {
+        try {
+            const inquirer = require('inquirer');
+            
+            const response = await inquirer.prompt([{
+                type: 'input',
+                name: 'userInput',
+                message: prompt
+            }]);
+            
+            return [false, `User input: ${response.userInput}`];
+        } catch (error) {
+            return [true, `Error waiting for user input: ${error.message}`];
+        }
     }
 }
