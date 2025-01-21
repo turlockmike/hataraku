@@ -342,27 +342,15 @@ export class TaskLoop {
                         break;
                     }
                     case 'wait_for_user': {
-                        try {
-                            // Display prompt and wait for user input
-                            console.log(chalk.yellow(toolUse.params.prompt));
-                            const readline = require('readline').createInterface({
-                                input: process.stdin,
-                                output: process.stdout
-                            });
-                            
-                            const userInput = await new Promise<string>((resolve) => {
-                                readline.question('> ', (answer: string) => {
-                                    readline.close();
-                                    resolve(answer);
-                                });
-                            });
-                            
-                            error = false;
-                            result = `User input: ${userInput}`;
-                        } catch (err) {
-                            error = true;
-                            result = `Error waiting for user input: ${err.message}`;
-                        }
+                        [error, result] = await this.toolExecutor.waitForUser(toolUse.params.prompt);
+                        break;
+                    }
+                    case 'show_image': {
+                        [error, result] = await this.toolExecutor.showImage(toolUse.params.path);
+                        break;
+                    }
+                    case 'play_audio': {
+                        [error, result] = await this.toolExecutor.playAudio(toolUse.params.path);
                         break;
                     }
                     default: {

@@ -63,6 +63,8 @@ export interface ToolExecutor {
     listCodeDefinitions(path: string): Promise<[boolean, ToolResponse]>;
     browserAction(action: string, url?: string, coordinate?: string, text?: string): Promise<[boolean, ToolResponse]>;
     waitForUser(prompt: string): Promise<[boolean, ToolResponse]>;
+    showImage(path: string): Promise<[boolean, ToolResponse]>;
+    playAudio(path: string): Promise<[boolean, ToolResponse]>;
 }
 
 export interface CliConfig {

@@ -139,6 +139,26 @@ export const AVAILABLE_TOOLS: Tool[] = [
                 description: 'The message to display to the user before waiting for input'
             }
         }
+    },
+    {
+        name: 'show_image',
+        description: 'Display an image in the terminal',
+        parameters: {
+            path: {
+                required: true,
+                description: 'The path to the image file to display'
+            }
+        }
+    },
+    {
+        name: 'play_audio',
+        description: 'Play an audio file using the system\'s default audio player',
+        parameters: {
+            path: {
+                required: true,
+                description: 'The path to the audio file to play'
+            }
+        }
     }
 ];
 
@@ -251,6 +271,65 @@ export class BaseToolExecutor implements ToolExecutor {
             return [false, `User input: ${response.userInput}`];
         } catch (error) {
             return [true, `Error waiting for user input: ${error.message}`];
+        }
+    }
+
+    async showImage(imagePath: string): Promise<[boolean, ToolResponse]> {
+        try {
+            if (!imagePath) {
+                throw new Error('Image path is required');
+            }
+
+            const absolutePath = this.resolvePath(imagePath);
+
+            // Check if file exists
+            try {
+                await fs.access(absolutePath);
+            } catch (err) {
+                throw new Error(`Image file not found at path: ${absolutePath}`);
+            }
+
+            // Use the system's default image viewer
+            const { platform } = require('os');
+            const { exec } = require('child_process');
+            
+            const command = platform() === 'win32'
+                ? `start "" "${absolutePath}"`  // Windows
+                : `open "${absolutePath}"`      // macOS
+            
+            exec(command, (error: Error | null) => {
+                if (error) {
+                    console.error(`Error opening image: ${error.message}`);
+                }
+            });
+
+            return [false, 'Image opened in default viewer'];
+        } catch (error) {
+            return [true, `Error displaying image: ${error.message}`];
+        }
+    }
+
+    async playAudio(audioPath: string): Promise<[boolean, ToolResponse]> {
+        try {
+            if (!audioPath) {
+                throw new Error('Audio path is required');
+            }
+
+            const absolutePath = this.resolvePath(audioPath);
+
+            // Check if file exists
+            try {
+                await fs.access(absolutePath);
+            } catch (err) {
+                throw new Error(`Audio file not found at path: ${absolutePath}`);
+            }
+
+            const sound = require('sound-play');
+            await sound.play(absolutePath);
+
+            return [false, 'Audio playback started'];
+        } catch (error) {
+            return [true, `Error playing audio: ${error.message}`];
         }
     }
 }
