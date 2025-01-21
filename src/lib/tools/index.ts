@@ -1,257 +1,81 @@
 import { Tool, ToolExecutor, ToolResponse } from '../types';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { searchFiles } from '../services/search';
-import { parseSourceCodeForDefinitionsTopLevel } from '../../services/tree-sitter';
+import { writeToFileTool } from './write-to-file';
+import { readFileTool } from './read-file';
+import { listFilesTool } from './list-files';
+import { searchFilesTool } from './search-files';
+import { executeCommandTool } from './execute-command';
+import { attemptCompletionTool } from './attempt-completion';
+import { listCodeDefinitionsTool } from './list-code-definition-names';
+import { useMcpTool } from './use-mcp-tool';
+import { accessMcpResourceTool } from './access-mcp-resource';
+import { waitForUserTool } from './wait-for-user';
+import { showImageTool } from './show-image';
+import { playAudioTool } from './play-audio';
+
+// Export all tools for backward compatibility
 export const AVAILABLE_TOOLS: Tool[] = [
-    {
-        name: 'write_to_file',
-        description: 'Write content to a file at the specified path',
-        parameters: {
-            path: {
-                required: true,
-                description: 'The path of the file to write to'
-            },
-            content: {
-                required: true,
-                description: 'The content to write to the file'
-            },
-            line_count: {
-                required: true,
-                description: 'The number of lines in the file'
-            }
-        }
-    },
-    {
-        name: 'read_file',
-        description: 'Read the contents of a file',
-        parameters: {
-            path: {
-                required: true,
-                description: 'The path of the file to read'
-            }
-        }
-    },
-    {
-        name: 'list_files',
-        description: 'List files in a directory',
-        parameters: {
-            path: {
-                required: true,
-                description: 'The path of the directory to list'
-            },
-            recursive: {
-                required: false,
-                description: 'Whether to list files recursively'
-            }
-        }
-    },
-    {
-        name: 'search_files',
-        description: 'Search files using regex',
-        parameters: {
-            path: {
-                required: true,
-                description: 'The path to search in'
-            },
-            regex: {
-                required: true,
-                description: 'The regex pattern to search for'
-            },
-            file_pattern: {
-                required: false,
-                description: 'Optional file pattern to filter files'
-            }
-        }
-    },
-    {
-        name: 'execute_command',
-        description: 'Execute a CLI command',
-        parameters: {
-            command: {
-                required: true,
-                description: 'The command to execute'
-            }
-        }
-    },
-    {
-        name: 'attempt_completion',
-        description: 'Attempt to complete the task',
-        parameters: {
-            result: {
-                required: true,
-                description: 'The result of the task'
-            },
-            command: {
-                required: false,
-                description: 'Optional command to execute to demonstrate the result'
-            }
-        }
-    },
-    {
-        name: 'list_code_definition_names',
-        description: 'List definition names (classes, functions, methods, etc.) used in source code files',
-        parameters: {
-            path: {
-                required: true,
-                description: 'The path of the directory to list code definitions for'
-            }
-        }
-    },
-    {
-        name: 'use_mcp_tool',
-        description: 'Request to use a tool provided by a connected MCP server',
-        parameters: {
-            server_name: {
-                required: true,
-                description: 'The name of the MCP server providing the tool'
-            },
-            tool_name: {
-                required: true,
-                description: 'The name of the tool to execute'
-            },
-            arguments: {
-                required: false,
-                description: 'A JSON string containing the tool\'s input parameters'
-            }
-        }
-    },
-    {
-        name: 'access_mcp_resource',
-        description: 'Request to access a resource provided by a connected MCP server',
-        parameters: {
-            server_name: {
-                required: true,
-                description: 'The name of the MCP server providing the resource'
-            },
-            uri: {
-                required: true,
-                description: 'The URI identifying the specific resource to access'
-            }
-        }
-    },
-    {
-        name: 'wait_for_user',
-        description: 'Pause execution and wait for user input',
-        parameters: {
-            prompt: {
-                required: true,
-                description: 'The message to display to the user before waiting for input'
-            }
-        }
-    },
-    {
-        name: 'show_image',
-        description: 'Display an image in the terminal',
-        parameters: {
-            path: {
-                required: true,
-                description: 'The path to the image file to display'
-            }
-        }
-    },
-    {
-        name: 'play_audio',
-        description: 'Play an audio file using the system\'s default audio player',
-        parameters: {
-            path: {
-                required: true,
-                description: 'The path to the audio file to play'
-            }
-        }
-    }
+    writeToFileTool,
+    readFileTool,
+    listFilesTool,
+    searchFilesTool,
+    executeCommandTool,
+    attemptCompletionTool,
+    listCodeDefinitionsTool,
+    useMcpTool,
+    accessMcpResourceTool,
+    waitForUserTool,
+    showImageTool,
+    playAudioTool
 ];
 
+// Re-export individual tools for direct access
+export {
+    writeToFileTool,
+    readFileTool,
+    listFilesTool,
+    searchFilesTool,
+    executeCommandTool,
+    attemptCompletionTool,
+    listCodeDefinitionsTool,
+    useMcpTool,
+    accessMcpResourceTool,
+    waitForUserTool,
+    showImageTool,
+    playAudioTool
+};
+
+// Base executor class that uses the new tool implementations
 export class BaseToolExecutor implements ToolExecutor {
-    constructor(private cwd: string) {}
+    constructor(protected cwd: string) {}
 
     async executeCommand(command: string): Promise<[boolean, ToolResponse]> {
-        throw new Error('executeCommand must be implemented by platform');
+        const result = await executeCommandTool.execute({ command }, this.cwd);
+        return [!result.success, result.output || result.message];
     }
 
     async writeFile(filePath: string, content: string, lineCount: number): Promise<[boolean, ToolResponse]> {
-        try {
-            const absolutePath = this.resolvePath(filePath);
-            const fileExists = await this.fileExists(absolutePath);
-            
-            // Create directories if they don't exist
-            await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-            
-            await fs.writeFile(absolutePath, content);
-            
-            return [false, `File successfully ${fileExists ? 'updated' : 'created'} at ${filePath}`];
-        } catch (error) {
-            return [true, `Error writing file: ${error.message}`];
-        }
+        const result = await writeToFileTool.execute({ path: filePath, content, line_count: lineCount }, this.cwd);
+        return [!result.success, result.message];
     }
 
     async readFile(filePath: string): Promise<[boolean, ToolResponse]> {
-        try {
-            const absolutePath = this.resolvePath(filePath);
-            const content = await fs.readFile(absolutePath, 'utf-8');
-            return [false, content];
-        } catch (error) {
-            return [true, `Error reading file: ${error.message}`];
-        }
+        const result = await readFileTool.execute({ path: filePath }, this.cwd);
+        return [!result.success, result.content || result.message];
     }
 
-    async listFiles(dirPath: string, recursive: boolean = false): Promise<[boolean, ToolResponse]> {
-        try {
-            const absolutePath = this.resolvePath(dirPath);
-            const files = await this.readDirRecursive(absolutePath, recursive);
-            return [false, files.join('\n')];
-        } catch (error) {
-            return [true, `Error listing files: ${error.message}`];
-        }
+    async listFiles(dirPath: string, recursive?: boolean): Promise<[boolean, ToolResponse]> {
+        const result = await listFilesTool.execute({ path: dirPath, recursive }, this.cwd);
+        return [!result.success, result.files?.join('\n') || result.message];
     }
 
     async searchFiles(dirPath: string, regex: string, filePattern?: string): Promise<[boolean, ToolResponse]> {
-        try {
-            const absolutePath = this.resolvePath(dirPath);
-            const results = await searchFiles(this.cwd, absolutePath, regex, filePattern);
-            return [false, results];
-        } catch (error) {
-            return [true, `Error searching files: ${error.message}`];
-        }
-    }
-
-    private async readDirRecursive(dir: string, recursive: boolean): Promise<string[]> {
-        const dirents = await fs.readdir(dir, { withFileTypes: true });
-        const files: string[] = [];
-        
-        for (const dirent of dirents) {
-            const res = path.resolve(dir, dirent.name);
-            if (dirent.isDirectory() && recursive) {
-                files.push(...await this.readDirRecursive(res, recursive));
-            } else {
-                files.push(path.relative(this.cwd, res));
-            }
-        }
-        
-        return files;
-    }
-
-    private resolvePath(relativePath: string): string {
-        return path.resolve(this.cwd, relativePath);
-    }
-
-    private async fileExists(filePath: string): Promise<boolean> {
-        try {
-            await fs.access(filePath);
-            return true;
-        } catch {
-            return false;
-        }
+        const result = await searchFilesTool.execute({ path: dirPath, regex, file_pattern: filePattern }, this.cwd);
+        return [!result.success, result.results || result.message];
     }
 
     async listCodeDefinitions(dirPath: string): Promise<[boolean, ToolResponse]> {
-        try {
-            const absolutePath = this.resolvePath(dirPath);
-            const result = await parseSourceCodeForDefinitionsTopLevel(absolutePath);
-            return [false, result];
-        } catch (error) {
-            return [true, `Error listing code definitions: ${error.message}`];
-        }
+        const result = await listCodeDefinitionsTool.execute({ path: dirPath }, this.cwd);
+        return [!result.success, result.definitions || result.message];
     }
 
     async browserAction(action: string, url?: string, coordinate?: string, text?: string): Promise<[boolean, ToolResponse]> {
@@ -259,75 +83,17 @@ export class BaseToolExecutor implements ToolExecutor {
     }
 
     async waitForUser(prompt: string): Promise<[boolean, ToolResponse]> {
-        try {
-            const { input } = await import('@inquirer/prompts');
-            
-            const response = await input({
-                message: prompt
-            });
-            
-            return [false, `User input: ${response}`];
-        } catch (error) {
-            return [true, `Error waiting for user input: ${error.message}`];
-        }
+        const result = await waitForUserTool.execute({ prompt }, this.cwd);
+        return [!result.success, result.response || result.message];
     }
 
     async showImage(imagePath: string): Promise<[boolean, ToolResponse]> {
-        try {
-            if (!imagePath) {
-                throw new Error('Image path is required');
-            }
-
-            const absolutePath = this.resolvePath(imagePath);
-
-            // Check if file exists
-            try {
-                await fs.access(absolutePath);
-            } catch (err) {
-                throw new Error(`Image file not found at path: ${absolutePath}`);
-            }
-
-            // Use the system's default image viewer
-            const { platform } = require('os');
-            const { exec } = require('child_process');
-            
-            const command = platform() === 'win32'
-                ? `start "" "${absolutePath}"`  // Windows
-                : `open "${absolutePath}"`      // macOS
-            
-            exec(command, (error: Error | null) => {
-                if (error) {
-                    console.error(`Error opening image: ${error.message}`);
-                }
-            });
-
-            return [false, 'Image opened in default viewer'];
-        } catch (error) {
-            return [true, `Error displaying image: ${error.message}`];
-        }
+        const result = await showImageTool.execute({ path: imagePath }, this.cwd);
+        return [!result.success, result.message];
     }
 
     async playAudio(audioPath: string): Promise<[boolean, ToolResponse]> {
-        try {
-            if (!audioPath) {
-                throw new Error('Audio path is required');
-            }
-
-            const absolutePath = this.resolvePath(audioPath);
-
-            // Check if file exists
-            try {
-                await fs.access(absolutePath);
-            } catch (err) {
-                throw new Error(`Audio file not found at path: ${absolutePath}`);
-            }
-
-            const sound = require('sound-play');
-            await sound.play(absolutePath);
-
-            return [false, 'Audio playback started'];
-        } catch (error) {
-            return [true, `Error playing audio: ${error.message}`];
-        }
+        const result = await playAudioTool.execute({ path: audioPath }, this.cwd);
+        return [!result.success, result.message];
     }
 }

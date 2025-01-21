@@ -54,6 +54,23 @@ export interface Tool {
     };
 }
 
+// New unified tool interface that extends Tool
+export interface UnifiedTool<TInput = any, TOutput = any> extends Tool {
+    inputSchema: {
+        type: 'object';
+        properties: Record<string, any>;
+        required: string[];
+        additionalProperties: boolean;
+    };
+    outputSchema: {
+        type: 'object';
+        properties: Record<string, any>;
+        required: string[];
+        additionalProperties: boolean;
+    };
+    execute: (params: TInput, cwd: string) => Promise<TOutput>;
+}
+
 export interface ToolExecutor {
     executeCommand(command: string): Promise<[boolean, ToolResponse]>;
     writeFile(path: string, content: string, lineCount: number): Promise<[boolean, ToolResponse]>;
