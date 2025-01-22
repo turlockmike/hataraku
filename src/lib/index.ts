@@ -5,4 +5,4 @@ export * from './parser';
 // Re-export specific types and implementations
 export type { ParsedTool } from './parser';
 export { MessageParser } from './parser';
-export { BaseToolExecutor, AVAILABLE_TOOLS } from './tools';
+export { AVAILABLE_TOOLS } from './tools';

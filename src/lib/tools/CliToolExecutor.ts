@@ -1,119 +1,110 @@
-import { spawn } from 'child_process';
 import { ToolResponse, ToolExecutor } from '../types';
-import { BaseToolExecutor } from './index';
-import { CliBrowserSession } from '../../services/browser/CliBrowserSession';
+import { browserActionTool } from './browser-action';
+import { writeToFileTool } from './write-to-file';
+import { readFileTool } from './read-file';
+import { listFilesTool } from './list-files';
+import { searchFilesTool } from './search-files';
+import { listCodeDefinitionsTool } from './list-code-definition-names';
+import { waitForUserTool } from './wait-for-user';
+import { showImageTool } from './show-image';
+import { playAudioTool } from './play-audio';
+import { executeCommandTool } from './execute-command';
+import { fetchTool } from './fetch';
 
-export class CliToolExecutor extends BaseToolExecutor implements ToolExecutor {
-    private browserSession?: CliBrowserSession;
+export class CliToolExecutor implements ToolExecutor {
+    constructor(private cwd: string) {}
 
-    override async executeCommand(command: string): Promise<[boolean, ToolResponse]> {
-        return new Promise((resolve) => {
-            const process = spawn(command, [], {
-                shell: true,
-                cwd: this.getCurrentWorkingDirectory()
-            });
-
-            let output = '';
-            let error = '';
-
-            process.stdout.on('data', (data) => {
-                output += data.toString();
-            });
-
-            process.stderr.on('data', (data) => {
-                error += data.toString();
-            });
-
-            process.on('close', (code) => {
-                if (code !== 0) {
-                    resolve([true, 'Command failed with code ' + code + '\n' + error]);
-                } else {
-                    resolve([false, output]);
-                }
-            });
-        });
+    async executeCommand(command: string): Promise<[boolean, ToolResponse]> {
+        const result = await executeCommandTool.execute({ command }, this.cwd);
+        return [!result.success, result.output || result.message];
     }
 
-    getCurrentWorkingDirectory(): string {
-        return process.cwd();
+    async browserAction(action: string, url?: string, coordinate?: string, text?: string): Promise<[boolean, ToolResponse]> {
+        const result = await browserActionTool.execute({
+            action,
+            url,
+            coordinate,
+            text
+        }, this.cwd);
+
+        return [!result.success, result.message];
     }
 
-    override async browserAction(action: string, url?: string, coordinate?: string, text?: string): Promise<[boolean, ToolResponse]> {
-        try {
-            // Initialize browser session if not exists
-            if (!this.browserSession) {
-                this.browserSession = new CliBrowserSession();
-            }
+    async writeFile(filePath: string, content: string, lineCount: number): Promise<[boolean, ToolResponse]> {
+        const result = await writeToFileTool.execute({
+            path: filePath,
+            content,
+            line_count: lineCount
+        }, this.cwd);
 
-            // Handle different browser actions
-            switch (action) {
-                case 'launch':
-                    if (!url) {
-                        return [true, 'URL is required for launch action'];
-                    }
-                    await this.browserSession.launchBrowser();
-                    const launchResult = await this.browserSession.navigateToUrl(url);
-                    return [false, formatBrowserResult(launchResult)];
-
-                case 'click':
-                    if (!coordinate) {
-                        return [true, 'Coordinate is required for click action'];
-                    }
-                    const clickResult = await this.browserSession.click(coordinate);
-                    return [false, formatBrowserResult(clickResult)];
-
-                case 'type':
-                    if (!text) {
-                        return [true, 'Text is required for type action'];
-                    }
-                    const typeResult = await this.browserSession.type(text);
-                    return [false, formatBrowserResult(typeResult)];
-
-                case 'scroll_down':
-                    const scrollDownResult = await this.browserSession.scrollDown();
-                    return [false, formatBrowserResult(scrollDownResult)];
-
-                case 'scroll_up':
-                    const scrollUpResult = await this.browserSession.scrollUp();
-                    return [false, formatBrowserResult(scrollUpResult)];
-
-                case 'close':
-                    const closeResult = await this.browserSession.closeBrowser();
-                    this.browserSession = undefined;
-                    return [false, 'Browser closed successfully'];
-
-                default:
-                    return [true, `Unknown browser action: ${action}`];
-            }
-        } catch (error) {
-            // Ensure browser is closed on error
-            if (this.browserSession) {
-                await this.browserSession.closeBrowser();
-                this.browserSession = undefined;
-            }
-            return [true, `Browser action failed: ${error.message}`];
-        }
+        return [!result.success, result.message];
     }
-}
 
-function formatBrowserResult(result: { screenshot?: string; logs?: string; currentUrl?: string; currentMousePosition?: string }): string {
-    const parts = [];
-    
-    if (result.logs) {
-        parts.push(`Console logs:\n${result.logs}`);
+    async readFile(filePath: string): Promise<[boolean, ToolResponse]> {
+        const result = await readFileTool.execute({
+            path: filePath
+        }, this.cwd);
+
+        return [!result.success, result.content || result.message];
     }
-    
-    if (result.currentUrl) {
-        parts.push(`Current URL: ${result.currentUrl}`);
+
+    async listFiles(dirPath: string, recursive?: boolean): Promise<[boolean, ToolResponse]> {
+        const result = await listFilesTool.execute({
+            path: dirPath,
+            recursive
+        }, this.cwd);
+
+        return [!result.success, result.files?.join('\n') || result.message];
     }
-    
-    if (result.currentMousePosition) {
-        parts.push(`Mouse position: ${result.currentMousePosition}`);
+
+    async searchFiles(dirPath: string, regex: string, filePattern?: string): Promise<[boolean, ToolResponse]> {
+        const result = await searchFilesTool.execute({
+            path: dirPath,
+            regex,
+            file_pattern: filePattern
+        }, this.cwd);
+
+        return [!result.success, result.results || result.message];
     }
-    
-    if (result.screenshot) {
-        parts.push(`Screenshot captured (base64 encoded)`);
+
+    async listCodeDefinitions(dirPath: string): Promise<[boolean, ToolResponse]> {
+        const result = await listCodeDefinitionsTool.execute({
+            path: dirPath
+        }, this.cwd);
+
+        return [!result.success, result.definitions || result.message];
     }
-    
-    return parts.join('\n\n') || 'Action completed successfully';
+
+    async waitForUser(prompt: string): Promise<[boolean, ToolResponse]> {
+        const result = await waitForUserTool.execute({
+            prompt
+        }, this.cwd);
+
+        return [!result.success, result.response || result.message];
+    }
+
+    async showImage(imagePath: string): Promise<[boolean, ToolResponse]> {
+        const result = await showImageTool.execute({
+            path: imagePath
+        }, this.cwd);
+
+        return [!result.success, result.message];
+    }
+
+    async playAudio(audioPath: string): Promise<[boolean, ToolResponse]> {
+        const result = await playAudioTool.execute({
+            path: audioPath
+        }, this.cwd);
+
+        return [!result.success, result.message];
+    }
+
+    async fetch(url: string, options?: { usePlaywright?: boolean; headers?: string; method?: string; body?: string }): Promise<[boolean, ToolResponse]> {
+        const result = await fetchTool.execute({
+            url,
+            ...options
+        }, this.cwd);
+
+        return [!result.success, result.content || result.message];
+    }
 }

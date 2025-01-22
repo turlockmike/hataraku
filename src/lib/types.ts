@@ -82,6 +82,12 @@ export interface ToolExecutor {
     waitForUser(prompt: string): Promise<[boolean, ToolResponse]>;
     showImage(path: string): Promise<[boolean, ToolResponse]>;
     playAudio(path: string): Promise<[boolean, ToolResponse]>;
+    fetch(url: string, options?: { 
+        usePlaywright?: boolean; 
+        headers?: string; 
+        method?: string; 
+        body?: string; 
+    }): Promise<[boolean, ToolResponse]>;
 }
 
 export interface CliConfig {

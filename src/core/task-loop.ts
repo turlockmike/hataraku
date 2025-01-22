@@ -1,6 +1,6 @@
 import chalk from 'chalk';
-import { MessageParser, ToolResponse, Tool } from '../lib/types';
-import { AVAILABLE_TOOLS } from '../lib/tools';
+import { MessageParser, ToolResponse } from '../lib/types';
+import { AVAILABLE_TOOLS, getToolDocs } from '../lib/tools';
 import type { ModelInfo } from '../shared/api';
 import { CliToolExecutor } from '../lib/tools/CliToolExecutor';
 import { McpClient } from '../lib/mcp/McpClient';
@@ -63,16 +63,7 @@ export class TaskLoop {
         responses: [],
         toolUsage: []
     };
-    private getToolDocs(): string {
-        return AVAILABLE_TOOLS.map(tool => {
-            const params = Object.entries(tool.parameters)
-                .map(([name, param]) =>
-                    `- ${name}: (${param.required ? 'required' : 'optional'}) ${param.description}`
-                )
-                .join('\n');
-            return `## ${tool.name}\nDescription: ${tool.description}\nParameters:\n${params}`;
-        }).join('\n\n');
-    }
+
     private tokensIn: number = 0;
     private tokensOut: number = 0;
     private cacheWrites: number = 0;
@@ -85,7 +76,8 @@ export class TaskLoop {
         private mcpClient: McpClient,
         private messageParser: MessageParser,
         private maxAttempts: number = 3,
-        private isInteractive: boolean = false
+        private isInteractive: boolean = false,
+        private cwd: string = process.cwd()
     ) {
         this.taskHistory = new TaskHistory();
         this.taskId = Date.now().toString();
@@ -120,6 +112,7 @@ export class TaskLoop {
                         mcpTools.push(...serverTools);
                     }
                 }
+
                 const systemPromptParts = [
                     'You are the worlds most powerful AI, an expert at everything. Your goal is to help the user with their tasks.',
                     '',
@@ -132,7 +125,7 @@ export class TaskLoop {
                     '<param2>value2</param2>',
                     '</tool_name>',
                     '',
-                    this.getToolDocs(),
+                    getToolDocs(),
                     '',
                     ...mcpTools,
                     '',
@@ -325,7 +318,7 @@ export class TaskLoop {
                                     .map(async (item, index) => {
                                         const ext = item.mimeType.split('/')[1] || 'png';
                                         const fileName = `mcp-image-${Date.now()}-${index}.${ext}`;
-                                        const filePath = path.join(process.cwd(), fileName);
+                                        const filePath = path.join(this.cwd, fileName);
                                         await fs.writeFile(filePath, Buffer.from(item.data, 'base64'));
                                         return `Image saved to: ${filePath}`;
                                     })
@@ -362,6 +355,18 @@ export class TaskLoop {
                     }
                     case 'play_audio': {
                         [error, result] = await this.toolExecutor.playAudio(toolUse.params.path);
+                        break;
+                    }
+                    case 'fetch': {
+                        [error, result] = await this.toolExecutor.fetch(
+                            toolUse.params.url,
+                            {
+                                usePlaywright: toolUse.params.usePlaywright === 'true',
+                                headers: toolUse.params.headers,
+                                method: toolUse.params.method,
+                                body: toolUse.params.body
+                            }
+                        );
                         break;
                     }
                     default: {
@@ -446,7 +451,7 @@ export class TaskLoop {
             `${formatter.format(now)} (${timeZone}, UTC${timeZoneOffsetStr})`,
             '',
             '# Current Working Directory',
-            process.cwd()
+            this.cwd
         ].join('\n');
 
         return `<environment_details>${details}</environment_details>`;

@@ -38,7 +38,7 @@ function getOpenCommand(imagePath: string): string {
 
 export const showImageTool: UnifiedTool<ShowImageInput, ShowImageOutput> = {
     name: 'show_image',
-    description: 'Display an image in the terminal. This tool will open the image using the system\'s default image viewer.',
+    description: 'Display an image to the user. Always use this tool when you think the user should see an image. This tool will open the image using the system\'s default image viewer.',
     parameters: {
         path: {
             required: true,
