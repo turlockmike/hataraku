@@ -284,14 +284,17 @@ export class McpClient {
             if (!connection.server.disabled && connection.server.status === 'connected') {
                 const serverTools = await this.fetchToolsList(connection.server.name);
                 if (serverTools.length > 0) {
-                    tools.push(`\n## ${connection.server.name} (${connection.server.config})\n`);
-                    tools.push(`### Available Tools`);
+                    let serverToolXml = `<server name="${connection.server.name}">\n`;
+                    serverToolXml += `  <tools>\n`;
                     for (const tool of serverTools) {
-                        tools.push(`- ${tool.name}: ${tool.description}`);
-                        tools.push(`    Input Schema:`);
-                        tools.push(`    ${JSON.stringify(tool.inputSchema, null, 2)}`);
-                        tools.push(``);
+                        serverToolXml += `    <tool name="${tool.name}">\n`;
+                        serverToolXml += `      <description>${tool.description}</description>\n`;
+                        serverToolXml += `      <inputSchema>${JSON.stringify(tool.inputSchema)}</inputSchema>\n`;
+                        serverToolXml += `    </tool>\n`;
                     }
+                    serverToolXml += `  </tools>\n`;
+                    serverToolXml += `</server>\n`;
+                    tools.push(serverToolXml);
                 }
             }
         }

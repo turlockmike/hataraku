@@ -13,6 +13,7 @@ import { showImageTool } from './show-image';
 import { playAudioTool } from './play-audio';
 import { browserActionTool } from './browser-action';
 import { fetchTool } from './fetch';
+import { toGraphTool } from './to-graph';
 
 // Export all tools for backward compatibility
 export const AVAILABLE_TOOLS: Tool[] = [
@@ -28,7 +29,8 @@ export const AVAILABLE_TOOLS: Tool[] = [
     waitForUserTool,
     showImageTool,
     playAudioTool,
-    fetchTool
+    toGraphTool,
+    // fetchTool // TODO: add this back in
 ];
 
 // Tool documentation generator
@@ -57,5 +59,6 @@ export {
     waitForUserTool,
     showImageTool,
     playAudioTool,
-    fetchTool
+    fetchTool,
+    toGraphTool
 };

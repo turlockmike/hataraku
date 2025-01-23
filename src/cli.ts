@@ -72,7 +72,7 @@ async function main() {
             [`${options.provider}ApiKey`]: apiKey,
             ...(options.model && {
                 [`${options.provider}ModelId`]: options.model,
-                [`${options.provider}ModelInfo`]: options.model === 'deepseek/deepseek-chat'
+                [`${options.provider}ModelInfo`]: options.model.startsWith('deepseek/')
                     ? deepSeekModels['deepseek-chat']
                     : openRouterDefaultModelInfo
             })

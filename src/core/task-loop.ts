@@ -58,6 +58,12 @@ export class TaskLoop {
             result: string;
             error: boolean;
         }>;
+        mcpServers?: Array<{
+            name: string;
+            status: 'connecting' | 'connected' | 'disconnected';
+            error?: string;
+            tools?: any[];
+        }>;
     } = {
         requests: [],
         responses: [],
@@ -86,6 +92,15 @@ export class TaskLoop {
     async run(initialPrompt?: string): Promise<void> {
         // Initialize MCP servers before starting
         await this.mcpClient.initializeServers();
+
+        // Get MCP server states for debug info
+        const connections = (this.mcpClient as any).connections || [];
+        this.debugInfo.mcpServers = connections.map((conn: { server: { name: string; status: 'connecting' | 'connected' | 'disconnected'; error?: string; tools?: any[] } }) => ({
+            name: conn.server.name,
+            status: conn.server.status,
+            error: conn.server.error,
+            tools: conn.server.tools
+        }));
 
         if (initialPrompt) {
             this.history.push({ role: 'user', content: initialPrompt });

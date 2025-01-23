@@ -17,6 +17,12 @@ export interface HistoryEntry {
         content: string;
     }>;
     debug?: {
+        mcpServers?: Array<{
+            name: string;
+            status: 'connecting' | 'connected' | 'disconnected';
+            error?: string;
+            tools?: any[];
+        }>;
         requests: Array<{
             timestamp: number;
             systemPrompt: string;
@@ -67,6 +73,8 @@ export class TaskHistory {
             cacheWrites: entry.cacheWrites,
             cacheReads: entry.cacheReads,
             totalCost: entry.totalCost,
+            model: entry.model,
+            mcpServers: entry.debug?.mcpServers
         };
         await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
 
@@ -87,17 +95,20 @@ export class TaskHistory {
             const metadataPath = path.join(taskDir, 'metadata.json');
             const historyPath = path.join(taskDir, 'conversation.json');
 
-            const [metadataContent, historyContent] = await Promise.all([
+            const [metadataContent, historyContent, debugContent] = await Promise.all([
                 fs.readFile(metadataPath, 'utf-8'),
                 fs.readFile(historyPath, 'utf-8'),
+                fs.readFile(path.join(taskDir, 'debug.json'), 'utf-8').catch(() => null)
             ]);
 
             const metadata = JSON.parse(metadataContent);
             const messages = JSON.parse(historyContent);
+            const debug = debugContent ? JSON.parse(debugContent) : undefined;
 
             return {
                 ...metadata,
                 messages,
+                debug
             };
         } catch (error) {
             return null;
