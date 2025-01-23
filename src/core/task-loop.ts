@@ -37,6 +37,7 @@ export class TaskLoop {
                 role: 'assistant' | 'user';
                 content: string;
             }>;
+            requestTime?: number;
         }>;
         responses: Array<{
             timestamp: number;
@@ -57,12 +58,6 @@ export class TaskLoop {
             params: Record<string, string>;
             result: string;
             error: boolean;
-        }>;
-        mcpServers?: Array<{
-            name: string;
-            status: 'connecting' | 'connected' | 'disconnected';
-            error?: string;
-            tools?: any[];
         }>;
     } = {
         requests: [],
@@ -94,13 +89,6 @@ export class TaskLoop {
         await this.mcpClient.initializeServers();
 
         // Get MCP server states for debug info
-        const connections = (this.mcpClient as any).connections || [];
-        this.debugInfo.mcpServers = connections.map((conn: { server: { name: string; status: 'connecting' | 'connected' | 'disconnected'; error?: string; tools?: any[] } }) => ({
-            name: conn.server.name,
-            status: conn.server.status,
-            error: conn.server.error,
-            tools: conn.server.tools
-        }));
 
         if (initialPrompt) {
             this.history.push({ role: 'user', content: initialPrompt });
@@ -169,10 +157,12 @@ export class TaskLoop {
                 console.log(chalk.yellow('thinking...'));
 
                 // Log and save request debug info
+                const requestStartTime = Date.now();
                 this.debugInfo.requests.push({
-                    timestamp: Date.now(),
+                    timestamp: requestStartTime,
                     systemPrompt,
-                    messages
+                    messages,
+                    requestTime: 0 // Will be updated after response
                 });
                 await this.saveTaskHistory(initialPrompt || '');
 
@@ -183,6 +173,7 @@ export class TaskLoop {
                     tokensOut: 0,
                     cost: 0
                 };
+                let requestEndTime: number;
                 for await (const chunk of stream) {
                     if (chunk.type === 'text' && chunk.text) {
                         response += chunk.text;
@@ -200,6 +191,13 @@ export class TaskLoop {
                             cost: chunk.totalCost || 0
                         };
                     }
+                }
+
+                // Calculate request time
+                requestEndTime = Date.now();
+                const lastRequest = this.debugInfo.requests[this.debugInfo.requests.length - 1];
+                if (lastRequest) {
+                    lastRequest.requestTime = requestEndTime - requestStartTime;
                 }
 
                 // Get model info from API handler
