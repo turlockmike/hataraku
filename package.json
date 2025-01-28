@@ -42,6 +42,7 @@
     "clean": "rm -rf dist",
     "lint": "eslint src --ext ts",
     "prepare": "husky",
+    "release": "changeset publish",
     "start": "node dist/cli.js",
     "test": "jest",
     "prepublishOnly": "npm run clean && npm run build"
