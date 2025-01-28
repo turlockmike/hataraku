@@ -1,13 +1,17 @@
 name: Publish Package to npm
 
 on:
-  push:
-    tags:
-      - 'v*'
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths:
+      - 'package.json'
 
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true && startsWith(github.head_ref, 'release/v')
     steps:
       - uses: actions/checkout@v4
       
