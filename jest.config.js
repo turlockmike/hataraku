@@ -34,8 +34,7 @@ module.exports = {
     modulePathIgnorePatterns: [
         '.vscode-test'
     ],
-    reporters: [
-        ["jest-simple-dot-reporter", {}]
-    ],
-    setupFiles: []
+    setupFiles: [],
+    forceExit: true,
+    detectOpenHandles: true
 }
