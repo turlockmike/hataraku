@@ -39,16 +39,28 @@ jobs:
       
       - name: Create release branch and bump version
         run: |
-          git checkout -b release/v${{ github.event.inputs.version_type }}
-          npm version ${{ github.event.inputs.version_type }} -m "Release %s"
-          git push --set-upstream origin release/v${{ github.event.inputs.version_type }}
-          git push --tags
+          TIMESTAMP=$(date +%s)
+          BRANCH_NAME="release/v${{ github.event.inputs.version_type }}-$TIMESTAMP"
+          git checkout -b $BRANCH_NAME
+          npm --no-git-tag-version version ${{ github.event.inputs.version_type }}
+          git add package.json package-lock.json
+          VERSION=$(node -p "require('./package.json').version")
+          git commit -m "Release v$VERSION"
+          git tag -f "v$VERSION" -m "Release v$VERSION"
+          git push --set-upstream origin $BRANCH_NAME
+          git push --force --tags
 
       - name: Create Pull Request
+        env:
+          BRANCH_NAME: release/v${{ github.event.inputs.version_type }}-$(date +%s)
         uses: peter-evans/create-pull-request@v5
         with:
           title: "chore: release version bump"
-          body: "Automated version bump for release"
-          branch: release/v${{ github.event.inputs.version_type }}
+          body: |
+            Automated version bump for release
+            
+            This PR updates the version number and creates a new release tag.
+            After merging, the package will be automatically published to npm.
+          branch: ${{ env.BRANCH_NAME }}
           base: main
           delete-branch: true
