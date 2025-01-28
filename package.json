@@ -43,7 +43,10 @@
     "prepare": "husky",
     "start": "node dist/cli.js",
     "test": "jest",
-    "prepublishOnly": "npm run clean && npm run build"
+    "prepublishOnly": "npm run clean && npm run build",
+    "release:patch": "npm version patch && git push --follow-tags",
+    "release:minor": "npm version minor && git push --follow-tags",
+    "release:major": "npm version major && git push --follow-tags"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.10",
