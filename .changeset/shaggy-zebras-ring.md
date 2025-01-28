@@ -1,0 +1,5 @@
+---
+"hataraku": minor
+---
+
+small fixes
