@@ -46,6 +46,12 @@ jobs:
           NEW_CHANGESETS=$(find .changeset -name "*.md" ! -name "README.md" | wc -l | tr -d ' ')
           echo "Changesets diff with previous version: $NEW_CHANGESETS"
           echo "new_changesets=$NEW_CHANGESETS" >> $GITHUB_OUTPUT
+          
+          if [ "$NEW_CHANGESETS" = "0" ]; then
+            echo "No changesets found - this is expected if you haven't created a changeset yet"
+            echo "To create a changeset, run: npm run changeset"
+            exit 0
+          fi
 
       # Create version bump PR using changesets/action if there are new changesets
       - name: Changeset Pull Request
