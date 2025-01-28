@@ -37,22 +37,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Create release branch and bump version
+      - name: Generate branch name
+        id: branch
         run: |
           TIMESTAMP=$(date +%s)
-          BRANCH_NAME="release/v${{ github.event.inputs.version_type }}-$TIMESTAMP"
-          git checkout -b $BRANCH_NAME
+          echo "name=release/v${{ github.event.inputs.version_type }}-$TIMESTAMP" >> $GITHUB_OUTPUT
+
+      - name: Create release branch and bump version
+        run: |
+          git checkout -b ${{ steps.branch.outputs.name }}
           npm --no-git-tag-version version ${{ github.event.inputs.version_type }}
           git add package.json package-lock.json
           VERSION=$(node -p "require('./package.json').version")
           git commit -m "Release v$VERSION"
           git tag -f "v$VERSION" -m "Release v$VERSION"
-          git push --set-upstream origin $BRANCH_NAME
+          git push --set-upstream origin ${{ steps.branch.outputs.name }}
           git push --force --tags
 
       - name: Create Pull Request
-        env:
-          BRANCH_NAME: release/v${{ github.event.inputs.version_type }}-$(date +%s)
         uses: peter-evans/create-pull-request@v5
         with:
           title: "chore: release version bump"
@@ -61,6 +63,6 @@ jobs:
             
             This PR updates the version number and creates a new release tag.
             After merging, the package will be automatically published to npm.
-          branch: ${{ env.BRANCH_NAME }}
+          branch: ${{ steps.branch.outputs.name }}
           base: main
           delete-branch: true
