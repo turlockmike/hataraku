@@ -1,19 +1,19 @@
 {
-  "name": "cline-cli",
+  "name": "hataraku",
   "version": "0.0.1",
-  "description": "An autonomous coding agent with CLI interface for automated development tasks",
+  "description": "An autonomous coding agent and SDK for building AI-powered development tools",
   "author": {
     "name": "Michael Darmousseh"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/turlockmike/cline-cli"
+    "url": "https://github.com/turlockmike/hataraku"
   },
-  "homepage": "https://github.com/turlockmike/cline-cli",
+  "homepage": "https://github.com/turlockmike/hataraku",
   "license": "Apache-2.0",
   "keywords": [
     "cli",
-    "cline",
+    "hataraku",
     "claude",
     "dev",
     "mcp",
@@ -21,11 +21,12 @@
     "coding",
     "agent",
     "autonomous",
-    "ai"
+    "ai",
+    "sdk"
   ],
   "main": "./dist/index.js",
   "bin": {
-    "cline": "./dist/cli.js"
+    "hataraku": "./dist/cli.js"
   },
   "files": [
     "dist",

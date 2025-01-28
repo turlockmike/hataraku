@@ -35,8 +35,8 @@ describe('OpenRouterHandler', () => {
             baseURL: 'https://openrouter.ai/api/v1',
             apiKey: mockOptions.openRouterApiKey,
             defaultHeaders: {
-                'HTTP-Referer': 'https://github.com/turlockmike/cline-cli',
-                'X-Title': 'Cline CLI',
+                'HTTP-Referer': 'https://github.com/turlockmike/hataraku',
+                'X-Title': 'Hataraku',
             },
         })
     })
