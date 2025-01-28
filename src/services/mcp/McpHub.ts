@@ -96,6 +96,10 @@ export class McpHub {
 
 	private async initializeMcpServers(): Promise<void> {
 		try {
+			if (!fileExistsAtPath(this.settingsPath)) {
+				console.debug("No MCP settings file found at", this.settingsPath)
+				return
+			}
 			const content = await fs.readFile(this.settingsPath, "utf-8")
 			const config = JSON.parse(content)
 			await this.updateServerConnections(config.mcpServers || {})

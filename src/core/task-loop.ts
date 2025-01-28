@@ -236,7 +236,8 @@ export class TaskLoop {
                     if (this.consecutiveMistakeCount >= this.maxAttempts) {
                         console.error(chalk.red('Failed to complete task after maximum attempts'));
                         await this.saveTaskHistory(initialPrompt || '');
-                        process.exit(1);
+                        // process.exit(1);
+                        throw new Error('Failed to complete task after maximum attempts');
                     }
                     continue;
                 }
