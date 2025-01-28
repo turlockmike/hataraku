@@ -6,4 +6,4 @@ if [ "$branch" = "main" ]; then
 fi
 
 npx lint-staged
-npm run compile
+npm run build

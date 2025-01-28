@@ -15,6 +15,7 @@ export class AnthropicHandler implements ApiHandler, SingleCompletionHandler {
 	private client: Anthropic
 
 	constructor(options: ApiHandlerOptions) {
+		console.log('anthropic options,', options)
 		this.options = options
 		this.client = new Anthropic({
 			apiKey: this.options.apiKey,

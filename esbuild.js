@@ -25,68 +25,37 @@ const esbuildProblemMatcherPlugin = {
 	},
 }
 
-const copyWasmFiles = {
-	name: "copy-wasm-files",
-	setup(build) {
-		build.onEnd(() => {
-			// tree sitter
-			const sourceDir = path.join(__dirname, "node_modules", "web-tree-sitter")
-			const targetDir = path.join(__dirname, "dist")
-
-			// Copy tree-sitter.wasm
-			fs.copyFileSync(path.join(sourceDir, "tree-sitter.wasm"), path.join(targetDir, "tree-sitter.wasm"))
-
-			// Copy language-specific WASM files
-			const languageWasmDir = path.join(__dirname, "node_modules", "tree-sitter-wasms", "out")
-			const languages = [
-				"typescript",
-				"tsx",
-				"python",
-				"rust",
-				"javascript",
-				"go",
-				"cpp",
-				"c",
-				"c_sharp",
-				"ruby",
-				"java",
-				"php",
-				"swift",
-			]
-
-			languages.forEach((lang) => {
-				const filename = `tree-sitter-${lang}.wasm`
-				fs.copyFileSync(path.join(languageWasmDir, filename), path.join(targetDir, filename))
-			})
-		})
-	},
-}
-
-const extensionConfig = {
+const buildConfig = {
 	bundle: true,
 	minify: production,
 	sourcemap: !production,
 	logLevel: "silent",
-	plugins: [
-		copyWasmFiles,
-		/* add to the end of plugins array */
-		esbuildProblemMatcherPlugin,
-	],
-	entryPoints: ["src/extension.ts"],
+	plugins: [esbuildProblemMatcherPlugin],
+	entryPoints: ["src/cli.ts"],
 	format: "cjs",
 	sourcesContent: false,
 	platform: "node",
-	outfile: "dist/extension.js",
-	external: ["vscode"],
+	outfile: "dist/cli.js",
+	external: ["vscode"], // Mark vscode as external to avoid build errors
+	define: {
+		'process.env.VSCODE': 'undefined' // Define vscode as undefined for CLI build
+	}
 }
 
 async function main() {
-	const extensionCtx = await esbuild.context(extensionConfig)
+	const ctx = await esbuild.context(buildConfig)
 	if (watch) {
-		await extensionCtx.watch()
+		await ctx.watch()
 	} else {
-		await extensionCtx.rebuild()
-		await extensionCtx.dispose()
+		await ctx.rebuild()
+		await ctx.dispose()
+		// Add shebang and make executable after build
+		const cliPath = path.join(__dirname, 'dist/cli.js')
+		const content = fs.readFileSync(cliPath, 'utf8')
+		// Remove any existing shebang line
+		const contentWithoutShebang = content.replace(/^#!.*\n/, '');
+		fs.writeFileSync(cliPath, `#!/usr/bin/env node\n${contentWithoutShebang}`);
+		fs.chmodSync(cliPath, '755')
 	}
 }
 

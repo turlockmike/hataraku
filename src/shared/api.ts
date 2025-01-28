@@ -22,6 +22,7 @@ export interface ApiHandlerOptions {
 	glamaModelId?: string
 	glamaModelInfo?: ModelInfo
 	glamaApiKey?: string
+	mistralApiKey?: string
 	openRouterApiKey?: string
 	openRouterModelId?: string
 	openRouterModelInfo?: ModelInfo
@@ -538,9 +539,18 @@ export const deepSeekModels = {
 		contextWindow: 64_000,
 		supportsImages: false,
 		supportsPromptCache: false,
-		inputPrice: 0.014,  // $0.014 per million tokens
-		outputPrice: 0.28,  // $0.28 per million tokens
+		inputPrice: 0.014, // $0.014 per million tokens
+		outputPrice: 0.28, // $0.28 per million tokens
 		description: `DeepSeek-V3 achieves a significant breakthrough in inference speed over previous models. It tops the leaderboard among open-source models and rivals the most advanced closed-source models globally.`,
+	},
+	"deepseek-r1": {
+		maxTokens: 8192,
+		contextWindow: 64_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.55, // $0.55 per million tokens
+		outputPrice: 2.19, // $2.19 per million tokens
+		description: `DeepSeek-R1 achieves performance comparable to OpenAI-o1 across math, code, and reasoning tasks.`,
 	},
 } as const satisfies Record<string, ModelInfo>
 
@@ -549,3 +559,17 @@ export const deepSeekModels = {
 // https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#api-specs
 export const azureOpenAiDefaultApiVersion = "2024-08-01-preview"
 
+// Mistral
+// https://docs.mistral.ai/getting-started/models/models_overview/
+export type MistralModelId = keyof typeof mistralModels
+export const mistralDefaultModelId: MistralModelId = "codestral-latest"
+export const mistralModels = {
+	"codestral-latest": {
+		maxTokens: 32_768,
+		contextWindow: 256_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.3,
+		outputPrice: 0.9,
+	},
+} as const satisfies Record<string, ModelInfo>
