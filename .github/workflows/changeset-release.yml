@@ -51,6 +51,7 @@ jobs:
       - name: Changeset Pull Request
         if: steps.check-changesets.outputs.new_changesets != '0'
         id: changesets
+        continue-on-error: true
         uses: changesets/action@v1
         with:
           commit: "changeset version bump"
@@ -60,6 +61,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Check Changeset Result
+        if: steps.check-changesets.outputs.new_changesets != '0'
+        run: |
+          if [[ "${{ steps.changesets.outcome }}" == "failure" ]]; then
+            ERROR_MSG="${{ steps.changesets.outputs.error }}"
+            if [[ $ERROR_MSG == *"No commits between"* ]] || [[ $ERROR_MSG == *"No unreleased changesets found"* ]]; then
+              echo "No changes to version - this is expected when all changesets are already processed"
+              exit 0
+            else
+              echo "Changeset action failed with unexpected error: $ERROR_MSG"
+              exit 1
+            fi
+          fi
 
   # Job 2: Process version bump PR created by R00-B0T
   changeset-pr-edit-approve:
