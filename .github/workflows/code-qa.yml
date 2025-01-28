@@ -21,7 +21,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm run install
+        run: npm install
 
       - name: Compile TypeScript
         run: npm run build
@@ -39,7 +39,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm run install
+        run: npm install
 
       - name: Run unit tests
         run: npm test
