@@ -1,6 +1,6 @@
 {
   "name": "hataraku",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "An autonomous coding agent and SDK for building AI-powered development tools",
   "author": {
     "name": "Michael Darmousseh"
@@ -43,7 +43,7 @@
     "prepare": "husky",
     "start": "node dist/cli.js",
     "test": "jest",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.10",
@@ -74,7 +74,7 @@
     "@aws-sdk/client-bedrock-runtime": "^3.706.0",
     "@google/generative-ai": "^0.18.0",
     "@inquirer/prompts": "^3.3.0",
-    "@mistralai/mistralai": "^1.5.0",
+    "@mistralai/mistralai": "^1.0.0",
     "@modelcontextprotocol/sdk": "^1.0.1",
     "@types/clone-deep": "^4.0.4",
     "@types/jsdom": "^21.1.7",
