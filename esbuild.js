@@ -40,7 +40,9 @@ const buildConfig = {
 		"vscode", // Mark vscode as external to avoid build errors
 		"web-tree-sitter", // Tree-sitter needs to be external
 		"puppeteer-core", // Puppeteer needs to be external
-		"./xhr-sync-worker.js" // Mark xhr-sync-worker as external
+		"./xhr-sync-worker.js", // Mark xhr-sync-worker as external
+		"node:worker_threads", // Node worker threads need to be external
+		"worker_threads" // Also mark without node: prefix
 	],
 	define: {
 		'process.env.VSCODE': 'undefined' // Define vscode as undefined for CLI build
