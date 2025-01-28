@@ -56,8 +56,10 @@ jobs:
           commit: "changeset version bump"
           title: "Changeset version bump"
           version: npm run version-packages
+          publish: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   # Job 2: Process version bump PR created by R00-B0T
   changeset-pr-edit-approve:
@@ -152,7 +154,7 @@ jobs:
       
       # Auto-merge PR
       - name: Automerge on PR
-        if: false # Needs enablePullRequestAutoMerge in repo settings to work contains(github.event.pull_request.labels.*.name, 'changelog-ready')
+        if: contains(github.event.pull_request.labels.*.name, 'changelog-ready')
         run: gh pr merge --auto --merge ${{ github.event.pull_request.number }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
