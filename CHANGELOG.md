@@ -1,5 +1,11 @@
 # Roo Cline Changelog
 
+## 0.1.0
+
+### Minor Changes
+
+-   small fixes
+
 ## [3.1.2]
 
 -   Experimental support for VS Code Language Models including Copilot (thanks @RaySinner / @julesmons!)
