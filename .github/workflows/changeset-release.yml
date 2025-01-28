@@ -1,5 +1,5 @@
 name: Changeset Release
-run-name: Changeset Release ${{ github.actor != 'R00-B0T' && '- Create PR' || '- Update Changelog' }}
+run-name: Changeset Release ${{ github.actor != 'github-actions[bot]' && '- Create PR' || '- Update Changelog' }}
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ jobs:
       ( github.event_name == 'pull_request' &&
       github.event.pull_request.merged == true &&
       github.event.pull_request.base.ref == 'main' &&
-      github.actor != 'R00-B0T' ) ||
+      github.actor != 'github-actions[bot]' ) ||
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
@@ -76,7 +76,7 @@ jobs:
             fi
           fi
 
-  # Job 2: Process version bump PR created by R00-B0T
+  # Job 2: Process version bump PR created by github-actions[bot]
   changeset-pr-edit-approve:
     name: Auto approve and merge Bump version PRs
     runs-on: ubuntu-latest
@@ -86,7 +86,7 @@ jobs:
     if: >
         github.event_name == 'pull_request' &&
         github.event.pull_request.base.ref == 'main' &&
-        github.actor == 'R00-B0T' &&
+        github.actor == 'github-actions[bot]' &&
         contains(github.event.pull_request.title, 'Changeset version bump')
     steps:
       - name: Determine checkout ref
@@ -97,7 +97,7 @@ jobs:
           echo "Head ref: ${{ github.head_ref }}"
           echo "PR SHA: ${{ github.event.pull_request.head.sha }}"
 
-          if [[ "${{ github.event.action }}" == "opened" && "${{ github.actor }}" == "R00-B0T" ]]; then
+          if [[ "${{ github.event.action }}" == "opened" && "${{ github.actor }}" == "github-actions[bot]" ]]; then
             echo "Using branch ref: ${{ github.head_ref }}"  
             echo "git_ref=${{ github.head_ref }}" >> $GITHUB_OUTPUT
           else
@@ -135,8 +135,8 @@ jobs:
       - name: Push Changelog updates
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'changelog-ready') }}
         run: |
-          git config user.name "R00-B0T"
-          git config user.email github-actions@github.com
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           echo "Running git add and commit..."
           git add CHANGELOG.md
           git commit -m "Updating CHANGELOG.md format"
@@ -173,3 +173,57 @@ jobs:
         run: gh pr merge --auto --merge ${{ github.event.pull_request.number }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job 3: Create GitHub Release and Publish to NPM when version bump PR is merged
+  release:
+    name: Create Release
+    needs: changeset-pr-edit-approve
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.actor == 'github-actions[bot]' &&
+      contains(github.event.pull_request.title, 'Changeset version bump')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${{ steps.get_version.outputs.version }}
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes-file CHANGELOG.md
+
+      - name: Publish to NPM
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
