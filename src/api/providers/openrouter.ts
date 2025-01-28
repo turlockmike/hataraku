@@ -29,8 +29,8 @@ export class OpenRouterHandler implements ApiHandler, SingleCompletionHandler {
 			baseURL: "https://openrouter.ai/api/v1",
 			apiKey: process.env.OPENROUTER_API_KEY || this.options.openRouterApiKey,
 			defaultHeaders: {
-				"HTTP-Referer": "https://github.com/turlockmike/cline-cli", // Optional, for including your app on openrouter.ai rankings.
-				"X-Title": "Cline CLI", // Optional. Shows in rankings on openrouter.ai.
+				"HTTP-Referer": "https://github.com/turlockmike/hataraku", // Optional, for including your app on openrouter.ai rankings.
+				"X-Title": "Hataraku", // Optional. Shows in rankings on openrouter.ai.
 			},
 		})
 	}

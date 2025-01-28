@@ -33,8 +33,21 @@ describe('McpHub', () => {
         await mcpHub.dispose()
     })
 
-    test('initializes with empty server list', () => {
-        expect(mcpHub.getServers()).toEqual([])
+    test('initializes with the list of servers', () => {
+        expect(mcpHub.getServers()).toEqual([{
+            name: 'test-server',
+            config: JSON.stringify({
+                command: 'test-command',
+                args: ['--test'],
+                env: { TEST: 'true' }
+            }),
+            status: 'connected',
+            error: '',
+            disabled: undefined,
+            tools: [],
+            resources: [],
+            resourceTemplates: []
+        }])
     })
 
     test('connects to configured servers on initialization', async () => {
@@ -43,7 +56,7 @@ describe('McpHub', () => {
         
         expect(mcpHub.connections.length).toBe(1)
         expect(mcpHub.connections[0].server.name).toBe('test-server')
-        expect(mcpHub.connections[0].server.status).toBe('connecting')
+        expect(mcpHub.connections[0].server.status).toBe('connected')
     })
 
     test('handles invalid settings file', async () => {

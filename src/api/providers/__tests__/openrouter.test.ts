@@ -24,8 +24,18 @@ describe('OpenRouterHandler', () => {
         } as ModelInfo
     }
 
+    // Store original env
+    const originalEnv = process.env.OPENROUTER_API_KEY
+
     beforeEach(() => {
         jest.clearAllMocks()
+        // Clear env variable before each test
+        delete process.env.OPENROUTER_API_KEY
+    })
+
+    afterEach(() => {
+        // Restore env variable after each test
+        process.env.OPENROUTER_API_KEY = originalEnv
     })
 
     test('constructor initializes with correct options', () => {
