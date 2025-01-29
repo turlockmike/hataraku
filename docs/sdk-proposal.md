@@ -56,20 +56,6 @@ Threads maintain conversation history and context between task executions. They 
 
 Tasks represent units of work that agents can perform. They can be one-off commands or part of larger workflows.
 
-## CLI Configuration
-
-The CLI provides a configurable runner for the SDK with these key settings:
-
-```typescript
-interface HatarakuConfig {
-  defaultProvider: 'anthropic' | 'openai' | 'local';
-  defaultModel: string;
-  maxTimeout: number; // in seconds
-  maxRetries: number;
-  // Enables MCP server integrations
-}
-```
-
 ## SDK API Design
 
 ### Creating an Agent
@@ -94,14 +80,29 @@ const config: AgentConfig = {
     ...mcpClient.listTools(),
     ...DefaultTools,
   ],
-  maxAttempts: 3, // Max number of attempts for a task
-  maxTimeout: 60, // Max number of seconds for a task
-  maxRetries: 3, // Max number of retries for a task
-  maxRequests: 10, // Max number of requests for a task
-  maxTools: 10, // Max number of tool calls for a task
-  contextSize: 1000000, // Max number of tokens for a task
-  parallelism: 10, // Max number of tools to use in parallel, defaults to 1 no parallelism, Infinity for unlimited
-
+  taskConfig: {
+    maxAttempts: 3, // Max number of model attempts for a task before erroring out
+    maxTimeout: 60, // Max number of seconds for a full task
+    maxRequests: 10, // Max number of model requests for a task
+    maxTools: 10, // Max number of tool calls for a task
+    contextSize: 1000000, // Max number of tokens for a task
+    parallelism: 3, // Max number of tools to use in parallel, defaults to 1 no parallelism, Infinity for unlimited
+  },
+  otelConfig: {
+    serviceName: 'my-awesome-service',
+    enabled: true,
+    sampling: {
+      type: 'ratio',
+      probability: 0.5,
+    },
+    export: {
+      type: 'otlp',
+      endpoint: 'https://otel-collector.example.com/v1/traces',
+      headers: {
+        Authorization: 'Bearer YOUR_TOKEN_HERE',
+      },
+    },
+  },
 };
 
 // Create the agent
@@ -160,7 +161,22 @@ const result = await agent.task({
   content: 'Process warranty claim for order #12345',
   thread: claimThread,
 });
+
+// Streaming output
+const result = await agent.task({
+  role: 'user',
+  content: 'Process warranty claim for order #12345',
+  thread: claimThread,
+  stream: true,
+});
+
+for await (const chunk of result) {
+  console.log(chunk);
+}
 ```
+
+### 
+
 
 ### Getting structured output with tasks
 
@@ -191,15 +207,21 @@ console.log(result);
 Tasks can be enriched with additional context to help the agent make better decisions. Context can be added in several ways:
 
 ```typescript
-// Add context through thread memory
+// Add context
 const thread = new Thread();
-thread.addMemory({
+thread.addContext({
   key: 'customer_info',
   content: {
     id: '12345',
     tier: 'premium',
     purchaseHistory: ['SKU123', 'SKU456']
   }
+});
+
+thread.addFileContext({
+  name: 'receipt.pdf',
+  content: receiptBuffer,
+  type: 'application/pdf'
 });
 
 // Add context directly in the task
@@ -219,36 +241,67 @@ const result = await agent.task({
   role: 'user',
   content: 'Review this warranty claim',
   thread: thread,
-  files: [
-    {
-      name: 'receipt.pdf',
-      content: receiptBuffer,
-      type: 'application/pdf'
-    },
-    {
-      name: 'damage_photo.jpg',
-      content: photoBuffer,
-      type: 'image/jpeg'
-    }
-  ]
-});
+  context: [new FileContext({
+    name: 'receipt.pdf',
+    content: receiptBuffer,
+    type: 'application/pdf'
+  }), 
+  new FileContext({
+    name: 'damage_photo.jpg',
+    content: photoBuffer,
+    type: 'image/jpeg'
+  })
+]);
 
 // Combine multiple context types
 const result = await agent.task({
   role: 'user',
   content: 'Evaluate this warranty claim',
   thread: thread,
-  context: {
-    priority: 'high',
-    customerHistory: customerData
-  },
-  files: [attachmentBuffer],
-  metadata: {
-    source: 'customer_portal',
-    timestamp: new Date()
-  }
+  context: [
+    new FileContext({
+      name: 'receipt.pdf',
+      content: receiptBuffer,
+      type: 'application/pdf'
+    }),
+    new ObjectContext({
+      key: 'customer_info',
+      content: {
+        id: '12345',
+        tier: 'premium',
+        purchaseHistory: ['SKU123', 'SKU456']
+      }
+    }) 
+  ]
 });
 ```
+
+## Logging, Debugging, and Observability
+
+Aside from otel configuration, you can also hook into events to log and debug the agent.
+
+```typescript
+agent.on('tool_call', (toolCall) => {
+  console.log(`Tool call: ${toolCall.name}`);
+});
+
+agent.on('tool_result', (toolResult) => {
+  console.log(`Tool result: ${toolResult.name}`);
+});
+
+agent.on('task_start', (task) => {
+  console.log(`Task started: ${task.id}`);
+});
+
+agent.on('task_end', (task) => {
+  console.log(`Task ended: ${task.id}`);
+});
+
+agent.on('task_error', (task, error) => {
+  console.error(`Task error: ${task.id}`, error);
+});
+```
+
 
 Context is preserved throughout the thread's lifetime and can be accessed by the agent and its tools during task execution. This enables more informed decision-making and maintains consistency across multiple interactions.
 
@@ -286,6 +339,8 @@ hataraku task run --disable-parallelization                     # Disable parall
 hataraku task run --watcher *.ts                              # Watch for changes in the given files and rerun the task
 hataraku task run --no-sound                                    # Disable sound when the task is complete
 hataraku task run --no-notifications                            # Disable notifications when the task is complete
+hataraku task run --with-parallelism 3                        # Run with specific amount of tool parallelism
+# Other Configuration options can be set in the config file or through the CLI.
 
 # Configuration
 hataraku config --help                                        # Show configuration options
