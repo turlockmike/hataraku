@@ -254,6 +254,13 @@ Context is preserved throughout the thread's lifetime and can be accessed by the
 
 
 
+# Additional Features
+
+- [ ] Can run tools in parallel
+- [ ] Tool chaining to support the output of one tool being the input of another tool.
+- [ ] Supports MCP Resources, Prompts, Tools, Sampling, and roots.
+
+
 # CLI
 
 ## Commands
@@ -277,6 +284,13 @@ hataraku task run --context '{"key": "value"}'                 # Run with specif
 hataraku task run --disable-mcp                              # Disable MCP server
 hataraku task run --disable-parallelization                     # Disable parallelization
 hataraku task run --watcher *.ts                              # Watch for changes in the given files and rerun the task
+hataraku task run --no-sound                                    # Disable sound when the task is complete
+hataraku task run --no-notifications                            # Disable notifications when the task is complete
+
+# Configuration
+hataraku config --help                                        # Show configuration options
+hataraku config --set <key> <value>                          # Set a configuration option
+hataraku config --get <key>                                  # Get a configuration option
 
 # Agent Management
 hataraku agent list                                        # List all agents
@@ -284,7 +298,7 @@ hataraku agent show <agent-name>                             # Show agent detail
 hataraku agent logs <agent-name> [--follow]                  # Show agent output
 hataraku agent create <agent-name>                         # Create a new agent interactively, including tools and instructions
 hataraku agent delete <agent-name>                         # Delete an agent
-
+hataraku agent update <agent-name>                         # Update an agent with new instructions or tools interactively
 # Task Management
 hataraku task list                                        # List all currently running tasks
 hataraku task show <task-id>                             # Show task details
@@ -295,8 +309,9 @@ hataraku task cancel <task-id>                           # Cancel scheduled task
 hataraku mcp list                                        # List all MCP servers
 hataraku mcp show <mcp-name>                             # Show MCP server details
 hataraku mcp logs <mcp-name> [--follow]                  # Show MCP server output
-hataraku mcp create <mcp-name>                         # Create a new MCP server interactively
+hataraku mcp add <mcp-name>                         # Add a new MCP server interactively. 
 hataraku mcp delete <mcp-name>                         # Delete an MCP server
+hataraku mcp config                                # returns location of the mcp config file
 
 # Hataraku as an MCP Server. Allows you to run Hataraku as an MCP server to create tasks and tools.
 hataraku mcp serve --help                              # Show configuration options for running an MCP server
