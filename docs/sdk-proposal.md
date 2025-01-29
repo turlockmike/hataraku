@@ -1,304 +1,312 @@
 # Extend Agent Framework Proposal
 
 ## Overview
+
 The Extend Agent Framework provides a powerful, flexible framework for building AI-powered agents and automation tools. It offers a clean, intuitive API for creating agents, defining custom tools, managing tasks, and handling the complete lifecycle of AI interactions.
 
-## Core Concepts
+## SDK Core Concepts
 
 ### Agents
+
 Agents are the primary actors in the Extend ecosystem. They can be configured with specific capabilities, tools, and behaviors.
 
 ### Tools
-Tools are the building blocks that agents use to interact with the world. They can be anything from API calls to database operations to complex business logic.
+
+Tools are the building blocks that agents use to interact with the world. They can be anything from API calls to database operations to complex business logic. Supports Zod for parameter validation.
+
+### Default Tools
+
+The SDK comes with a comprehensive set of built-in tools organized by category:
+
+#### File System
+- `read_file`: Read contents of a file
+- `write_to_file`: Write or append content to a file
+- `apply_diff`: Apply code changes with diff support
+- `list_files`: List files in a directory
+- `search_and_replace`: Pattern-based text replacement
+- `search_files`: Search for files using patterns or content
+
+#### CLI
+- `execute_shell`: Run shell commands with configurable options
+
+#### MCP (Multi-Context Protocol)
+- `use_mcp_tool`: Execute tools from connected MCP servers
+- `access_mcp_resource`: Access resources from MCP servers
+- `get_mcp_prompts`: Retrieve prompts from MCP servers
+
+
+#### Browser
+- `fetch`: Make HTTP requests with Playwright support
+- `show_image`: Display images in supported environments
+
+#### Audio/Visual
+- `play_audio`: Play audio files with configurable options
+
+#### Utilities
+- `attempt_completion`: Try to complete a task with retries
+- `websearch`: Perform web searches (requires Tavily integration)
+- `notifications`: Send system notifications (macOS)
+- `prompt_user`: Request input from the user
+
+### Threads
+
+Threads maintain conversation history and context between task executions. They enable agents to persist state and share context across multiple interactions.
 
 ### Tasks
-Tasks represent units of work that agents can perform. They can be one-off commands or complex workflows with multiple steps.
 
-## API Design
+Tasks represent units of work that agents can perform. They can be one-off commands or part of larger workflows.
+
+## CLI Configuration
+
+The CLI provides a configurable runner for the SDK with these key settings:
+
+```typescript
+interface HatarakuConfig {
+  defaultProvider: 'anthropic' | 'openai' | 'local';
+  defaultModel: string;
+  maxTimeout: number; // in seconds
+  maxRetries: number;
+  // Enables MCP server integrations
+}
+```
+
+## SDK API Design
 
 ### Creating an Agent
 
 ```typescript
-import { Agent, AgentConfig } from '@extend/agent-framework';
+import { Agent, AgentConfig } from 'hataraku';
+import { MCPClient } from 'hataraku/mcp';
+import { DefaultTools } from 'hataraku/tools';
 
-// Configure the agent
+const mcpClient = MCPClient.fromConfig(path.join(__dirname, 'servers.json'));
+
+// Optional: Configure the agent
 const config: AgentConfig = {
-  name: 'ClaimsProcessor',
-  provider: 'anthropic',
-  model: 'claude-3',
-  apiKey: process.env.ANTHROPIC_API_KEY,
-  role: `You are an expert in processing warranty claims and detecting potential fraud patterns.`,
-  capabilities: ['read_database', 'analyze_claims', 'verify_purchase'],
-  maxAttempts: 3
+  name: 'ClaimsProcessor', 
+  model: {
+    name: 'claude-3', // optional, defaults to 'claude-3'
+    provider: 'anthropic', // optional, defaults to 'anthropic'
+    apiKey: process.env.ANTHROPIC_API_KEY, // optional, defaults to process.env.ANTHROPIC_API_KEY
+  }, 
+  instructions: `You are an expert in processing warranty claims and detecting potential fraud patterns.`,
+  tools: [
+    ...mcpClient.listTools(),
+    ...DefaultTools,
+  ],
+  maxAttempts: 3, // Max number of attempts for a task
+  maxTimeout: 60, // Max number of seconds for a task
+  maxRetries: 3, // Max number of retries for a task
+  maxRequests: 10, // Max number of requests for a task
+  maxTools: 10, // Max number of tool calls for a task
+  contextSize: 1000000, // Max number of tokens for a task
+  parallelism: 10, // Max number of tools to use in parallel, defaults to 1 no parallelism, Infinity for unlimited
+
 };
 
 // Create the agent
 const agent = new Agent(config);
 
-// Add event handlers
-agent.on('thinking', (context) => {
-  console.log('Agent is analyzing claim:', context);
-});
-
-agent.on('toolUse', (tool, params) => {
-  console.log(`Using tool ${tool} with params:`, params);
-});
-
-// Start the agent
+// Optionally start the agent. This will load any MCP servers and tools to preload any dependencies.
 await agent.initialize();
 ```
 
 ### Defining Custom Tools
 
 ```typescript
-import { Tool, ToolContext } from '@extend/agent-framework';
+import { Tool, ToolContext } from 'hataraku';
+import { z } from 'zod';
 
 // Define a custom tool for warranty validation
 const warrantyValidationTool = new Tool({
   name: 'validate_warranty',
   description: 'Validate warranty eligibility and coverage',
-  parameters: {
-    orderId: { type: 'string', required: true },
-    productSku: { type: 'string', required: true },
-    purchaseDate: { type: 'string', format: 'date' }
-  },
+  // Zod schema for parameter validation
+  inputSchema: z.object({
+    orderId: z.string(),
+    productSku: z.string(),
+    purchaseDate: z.coerce.date().optional()
+  }),
+  outputSchema: z.object({
+    eligible: z.boolean(),
+    planSku: z.string(),
+    expirationDate: z.coerce.date(),
+    coverages: z.array(z.string())
+  }),
   async execute(context: ToolContext) {
     const { orderId, productSku, purchaseDate } = context.params;
     // Implementation of warranty validation logic
-    return { 
-      eligible: true, 
-      planSku: 'WAR-789',
-      expirationDate: '2025-01-22',
-      coverages: ['screen_repair', 'battery_replacement']
-    };
+    const res = await extendApi.getWarranty(orderId, productSku, purchaseDate);
+    return {
+      eligible: res.eligible,
+      planSku: res.planSku,
+      expirationDate: res.expirationDate,
+      coverages: res.coverages
+    }
   }
 });
-
-// Add tool to agent
-agent.addTool(warrantyValidationTool);
 ```
-
 ### Running Tasks
 
 ```typescript
-// Simple claim processing
-const result = await agent.runTask('Process warranty claim for order #12345');
 
-// Complex claim with context
-const result = await agent.runTask({
-  instruction: 'Review and process this warranty claim',
-  context: {
-    orderId: 'ORD-12345',
-    product: 'iPhone 13 Pro',
-    issueDescription: 'Screen cracked within coverage period'
-  },
-  resources: {
-    customerInfo: getCustomerInfo('12345'), // Promise<CustomerInfo>
-    warrantyContract: getWarrantyContract('WAR-789'), // Promise<WarrantyContract>
-    productDetails: getProductDetails('SKU-456') // Promise<ProductDetails>
+// Create a persistent thread for the agent.
+
+const claimThread = new Thread();
+
+// Simple claim processing
+const result = await agent.task({
+  role: 'user',
+  content: 'Process warranty claim for order #12345',
+  thread: claimThread,
+});
+```
+
+### Getting structured output with tasks
+
+```typescript
+const result = await agent.task({
+  role: 'user',
+  content: 'Process warranty claim for order #12345',
+  thread: claimThread,
+  outputSchema: z.object({
+    eligible: z.boolean(),
+    planSku: z.string(),
+    expirationDate: z.coerce.date(),
+    coverages: z.array(z.string())
+  }), // Automatically parses the output into the schema.
+});
+
+console.log(result);
+// {
+//   eligible: true,
+//   planSku: '12345',
+//   expirationDate: '2025-01-01',
+//   coverages: ['coverage1', 'coverage2']
+// }
+```
+
+### Adding Context to Tasks
+
+Tasks can be enriched with additional context to help the agent make better decisions. Context can be added in several ways:
+
+```typescript
+// Add context through thread memory
+const thread = new Thread();
+thread.addMemory({
+  key: 'customer_info',
+  content: {
+    id: '12345',
+    tier: 'premium',
+    purchaseHistory: ['SKU123', 'SKU456']
   }
 });
 
-// Multi-step claims workflow
-const workflow = new TaskWorkflow({
-  steps: [
+// Add context directly in the task
+const result = await agent.task({
+  role: 'user',
+  content: 'Process warranty claim for order #12345',
+  thread: thread,
+  context: {
+    priority: 'high',
+    previousClaims: 2,
+    productCategory: 'electronics'
+  }
+});
+
+// Add files as context
+const result = await agent.task({
+  role: 'user',
+  content: 'Review this warranty claim',
+  thread: thread,
+  files: [
     {
-      name: 'troubleshoot',
-      instruction: 'Perform initial troubleshooting steps with customer'
+      name: 'receipt.pdf',
+      content: receiptBuffer,
+      type: 'application/pdf'
     },
     {
-      name: 'checkEntitlement',
-      instruction: 'Verify warranty entitlement and coverage',
-      dependsOn: ['troubleshoot'],
-      condition: (results) => results.troubleshoot.requiresReplacement === true
-    },
-    {
-      name: 'fraudCheck',
-      instruction: 'Perform fraud detection analysis',
-      dependsOn: ['checkEntitlement'],
-      condition: (results) => results.checkEntitlement.isEntitled === true
-    },
-    {
-      name: 'adjudicate',
-      instruction: 'Review claim details and make coverage decision',
-      dependsOn: ['fraudCheck'],
-      condition: (results) => results.fraudCheck.riskScore < 0.7
-    },
-    {
-      name: 'fulfill',
-      instruction: 'Process approved claim and initiate fulfillment',
-      dependsOn: ['adjudicate'],
-      condition: (results) => results.adjudicate.approved === true
+      name: 'damage_photo.jpg',
+      content: photoBuffer,
+      type: 'image/jpeg'
     }
   ]
 });
 
-const results = await agent.runWorkflow(workflow);
-```
-
-### Error Handling and Recovery
-
-```typescript
-try {
-  await agent.runTask('Process high-value claim for order #12345');
-} catch (error) {
-  if (error instanceof ClaimProcessingError) {
-    console.error('Claim processing failed:', error.reason);
-    console.log('Verification attempts:', error.attempts);
-    console.log('Last verification step:', error.lastToolUse);
-  }
-}
-
-// Configure automatic retry behavior
-agent.setRetryStrategy({
-  maxAttempts: 3,
-  backoff: 'exponential',
-  onRetry: (attempt, error) => {
-    console.log(`Retry attempt ${attempt} for claim processing:`, error);
-  }
-});
-```
-
-## Example Use Cases
-
-### Troubleshooting Agent
-
-```typescript
-const troubleshootingAgent = new Agent({
-  name: 'TroubleshootingAgent',
-  role: 'Expert product troubleshooter',
-  tools: [
-    new Tool({
-      name: 'diagnose_issues',
-      description: 'Diagnose device issues',
-      parameters: {
-        product: { type: 'string', required: true },
-        issueDescription: { type: 'string', required: true }
-      }
-    })
-  ]
-});
-
-await troubleshootingAgent.runTask({
-  instruction: 'Help customer troubleshoot device issues',
+// Combine multiple context types
+const result = await agent.task({
+  role: 'user',
+  content: 'Evaluate this warranty claim',
+  thread: thread,
   context: {
-    product: 'iPhone 13 Pro',
-    issueDescription: 'Screen unresponsive after liquid contact',
-    previousAttempts: ['force restart', 'safe mode boot']
+    priority: 'high',
+    customerHistory: customerData
+  },
+  files: [attachmentBuffer],
+  metadata: {
+    source: 'customer_portal',
+    timestamp: new Date()
   }
 });
 ```
 
-### Entitlement Agent
+Context is preserved throughout the thread's lifetime and can be accessed by the agent and its tools during task execution. This enables more informed decision-making and maintains consistency across multiple interactions.
 
-```typescript
-const entitlementAgent = new Agent({
-  name: 'EntitlementAgent',
-  role: 'Warranty coverage verification specialist',
-  instructions: [
-    'Verify warranty entitlement',
-    'Check coverage details',
-    'Validate purchase date'
-  ],
-  exceptions: [
-    'If the customer is not entitled to coverage, return a message indicating the reason',
-    'Do not attempt to solve tasks that are not related to warranty entitlement, instead return a client error'
-  ],
-  tools: ['verify_contract', 'check_coverage', 'validate_purchase']
-});
 
-await entitlementAgent.runTask({
-  instruction: 'Verify warranty entitlement',
-  context: {
-    contractId: 'WAR-789',
-    purchaseDate: '2023-12-01',
-    claimDate: '2024-03-15'
-  }
-});
+
+# CLI
+
+## Commands
+
+### `hataraku 'prompt'`
+
+Runs a task with the given prompt.
+
+#### Options
+
+### Task Commands
+```bash
+# Task Execution (with optional agent and schedule)
+hataraku task run 'prompt'                                     # Immediate execution, uses default agent, 1 time.
+hataraku task run --agent <agent-id> 'prompt'                 # Execute with specific agent
+hataraku task run --schedule "every day at 9am" 'prompt'      # Scheduled execution
+hataraku task run --help                                      # Show configuration options for running tasks
+hataraku task run --tools *,my_custom_tool.ts                 # Run with specific tools
+hataraku task run --files *.txt,*.pdf,*.jpg,*.png              # Run with specific files as context
+hataraku task run --context '{"key": "value"}'                 # Run with specific context
+hataraku task run --disable-mcp                              # Disable MCP server
+hataraku task run --disable-parallelization                     # Disable parallelization
+hataraku task run --watcher *.ts                              # Watch for changes in the given files and rerun the task
+
+# Agent Management
+hataraku agent list                                        # List all agents
+hataraku agent show <agent-name>                             # Show agent details
+hataraku agent logs <agent-name> [--follow]                  # Show agent output
+hataraku agent create <agent-name>                         # Create a new agent interactively, including tools and instructions
+hataraku agent delete <agent-name>                         # Delete an agent
+
+# Task Management
+hataraku task list                                        # List all currently running tasks
+hataraku task show <task-id>                             # Show task details
+hataraku task logs <task-id> [--follow]                  # Show task output
+hataraku task cancel <task-id>                           # Cancel scheduled task
+
+# MCP Management
+hataraku mcp list                                        # List all MCP servers
+hataraku mcp show <mcp-name>                             # Show MCP server details
+hataraku mcp logs <mcp-name> [--follow]                  # Show MCP server output
+hataraku mcp create <mcp-name>                         # Create a new MCP server interactively
+hataraku mcp delete <mcp-name>                         # Delete an MCP server
+
+# Hataraku as an MCP Server. Allows you to run Hataraku as an MCP server to create tasks and tools.
+hataraku mcp serve --help                              # Show configuration options for running an MCP server
+
 ```
 
-### Fraud Detection Agent
-
-```typescript
-const fraudAgent = new Agent({
-  name: 'FraudDetectionAgent',
-  role: 'Fraud detection and risk assessment expert',
-  capabilities: ['analyze_patterns', 'verify_documents', 'assess_risk']
-});
-
-await fraudAgent.runTask({
-  instruction: 'Perform fraud risk assessment',
-  context: {
-    claimId: 'CLM-12345',
-    customerHistory: await getCustomerHistory('CUST-789'),
-    claimPattern: await getClaimPatterns('CUST-789')
-  }
-});
-```
-
-### Adjudication Agent
-
-```typescript
-const adjudicationAgent = new Agent({
-  name: 'AdjudicationAgent',
-  role: 'Claims adjudication specialist',
-  capabilities: ['review_evidence', 'apply_policy', 'make_decisions']
-});
-
-await adjudicationAgent.runTask({
-  instruction: 'Review and adjudicate claim',
-  context: {
-    claimId: 'CLM-12345',
-    fraudScore: 0.2,
-    entitlementStatus: 'VERIFIED',
-    claimAmount: 299.99
-  }
-});
-```
-
-### Fulfillment Agent
-
-```typescript
-const fulfillmentAgent = new Agent({
-  name: 'FulfillmentAgent',
-  role: 'Claims fulfillment specialist',
-  capabilities: ['process_replacement', 'initiate_refund', 'track_fulfillment']
-});
-
-await fulfillmentAgent.runTask({
-  instruction: 'Process approved claim fulfillment',
-  context: {
-    claimId: 'CLM-12345',
-    fulfillmentType: 'REPLACEMENT',
-    shippingAddress: await getCustomerAddress('CUST-789'),
-    productSku: 'SKU-456'
-  }
-});
-```
-
-## Best Practices
-
-1. **Tool Design**
-   - Keep tools focused and single-purpose
-   - Provide clear documentation and examples
-   - Include proper error handling and validation
-
-2. **Agent Configuration**
-   - Use environment variables for sensitive data
-   - Configure appropriate timeouts and retry strategies
-   - Implement proper logging and monitoring
-
-3. **Task Management**
-   - Break complex claims into smaller, manageable steps
-   - Provide clear success criteria
-   - Include relevant context and resources
-
-4. **Error Handling**
-   - Implement proper error recovery mechanisms
-   - Log errors with appropriate context
-   - Use typed errors for better error handling
-
-5. **Security**
-   - Implement proper access controls
-   - Validate and sanitize inputs
-   - Audit tool usage and access patterns
+Note: The --schedule parameter accepts natural language timing expressions like:
+- "every Monday at 2pm"
+- "daily at midnight"
+- "in 2 hours"
+- "tomorrow at 3pm"
+- "every 15 minutes"
+- "next Friday at noon"

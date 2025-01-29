@@ -87,7 +87,7 @@
     "cheerio": "^1.0.0",
     "chokidar": "^4.0.1",
     "clone-deep": "^4.0.1",
-    "commander": "^11.0.0",
+    "commander": "^13.1.0",
     "default-shell": "^2.2.0",
     "delay": "^6.0.0",
     "diff": "^5.2.0",

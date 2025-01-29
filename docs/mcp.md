@@ -1,10 +1,10 @@
-# Model Context Protocol (MCP) in Cline CLI
+# Model Context Protocol (MCP) in Hataraku CLI
 
-The Model Context Protocol (MCP) enables communication between Cline CLI and locally running MCP servers that provide additional tools and resources to extend Cline's capabilities.
+The Model Context Protocol (MCP) enables communication between Hataraku CLI and locally running MCP servers that provide additional tools and resources to extend Hataraku's capabilities.
 
 ## Understanding MCP
 
-MCP servers operate in a non-interactive environment and communicate with Cline CLI through a standardized protocol. Each server can provide:
+MCP servers operate in a non-interactive environment and communicate with Hataraku CLI through a standardized protocol. Each server can provide:
 
 - Tools: Executable functions that can perform actions
 - Resources: Data sources that can be accessed
@@ -12,7 +12,7 @@ MCP servers operate in a non-interactive environment and communicate with Cline 
 
 ## Built-in MCP Servers
 
-Cline CLI comes with two built-in MCP servers:
+Hataraku CLI comes with two built-in MCP servers:
 
 1. mcp-rand
    - Tools for random number generation, UUIDs, and more
@@ -126,7 +126,7 @@ npm run build
 
 ## Installing an MCP Server
 
-1. Add your server to Cline's MCP settings file at `~/.cline/cline_mcp_settings.json`:
+1. Add your server to Hataraku's MCP settings file at `~/.hataraku/mcp_settings.json`:
 ```json
 {
     "mcpServers": {
@@ -141,7 +141,7 @@ npm run build
 }
 ```
 
-2. Your server will be automatically loaded when Cline starts.
+2. Your server will be automatically loaded when Hataraku starts.
 
 ## Using MCP Tools
 
@@ -169,16 +169,16 @@ Use MCP tools in your tasks with the `use_mcp_tool` command:
 
 ## Debugging
 
-1. Use the `--debug` flag with Cline CLI to see detailed MCP interactions:
+1. Use the `--debug` flag with Hataraku CLI to see detailed MCP interactions:
 ```bash
-cline "Your task" --debug
+Hataraku "Your task" --debug
 ```
 
 2. Check your server's stderr output in the debug logs
 
 3. Verify server connection status with:
 ```bash
-cline "What tools are available?" --tools
+Hataraku "What tools are available?" --tools
 ```
 
 ## Common Issues

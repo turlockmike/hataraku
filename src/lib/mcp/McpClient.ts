@@ -48,7 +48,7 @@ export class McpClient {
     private initialized: boolean = false;
 
     constructor() {
-        this.settingsPath = path.join(os.homedir(), '.cline', 'cline_mcp_settings.json');
+        this.settingsPath = path.join(os.homedir(), '.hataraku', 'mcp_settings.json');
     }
 
     async readSettings(): Promise<McpSettings> {

@@ -12,27 +12,33 @@ import { Command } from 'commander';
 import * as os from 'os';
 import * as path from 'path';
 import { input } from '@inquirer/prompts';
+import { playAudioTool } from './lib/tools/play-audio';
+import { version } from '../package.json';
+
 const program = new Command();
 
+
 program
-    .name('cline')
-    .description('CLI version of Cline AI assistant - An autonomous coding agent')
+    .name('hataraku')
+    .description('Hataraku is a CLI tool for creating and managing tasks')
     .option('-p, --provider <provider>', 'API provider to use (openrouter, anthropic, openai)', 'openRouter')
     .option('-m, --model <model>', 'Model ID for the provider (e.g., anthropic/claude-3.5-sonnet:beta, deepseek/deepseek-chat)', 'anthropic/claude-3.5-sonnet:beta')
     .option('-k, --api-key <key>', 'API key for the provider (can also use PROVIDER_API_KEY env var)')
     .option('-a, --max-attempts <number>', 'Maximum number of consecutive mistakes before exiting (default: 3)')
     .option('-l, --list-history', 'List recent tasks from history')
     .option('-i, --interactive', 'Run in interactive mode, prompting for tasks')
+    .option('--no-sound', 'Disable sound effects')
     .argument('[task]', 'Task or question for the AI assistant')
-    .version('1.0.0')
+    .version(version)
     .addHelpText('after', `
 Examples:
-  $ cline "create a hello world html file"                                # Uses default model (claude-3.5-sonnet:beta)
-  $ cline --model deepseek/deepseek-chat "explain this code"             # Uses different model
-  $ cline --provider anthropic --model claude-3 "write a test"           # Uses different provider
-  $ OPENROUTER_API_KEY=<key> cline "write a test file"                  # Provides API key via env var
-  $ cline -i                                                             # Run in interactive mode
-  $ cline -i "initial task"                                              # Interactive mode with initial task
+  $ hataraku "create a hello world html file"                                # Uses default model (claude-3.5-sonnet:beta)
+  $ hataraku --model deepseek/deepseek-chat "explain this code"             # Uses different model
+  $ hataraku --provider anthropic --model claude-3 "write a test"           # Uses different provider
+  $ OPENROUTER_API_KEY=<key> hataraku "write a test file"                  # Provides API key via env var
+  $ hataraku -i                                                             # Run in interactive mode
+  $ hataraku -i "initial task"                                              # Interactive mode with initial task
+  $ hataraku --no-sound "create a test file"                               # Run without sound effects
 
 Environment Variables:
   OPENROUTER_API_KEY    - API key for OpenRouter
@@ -45,7 +51,7 @@ Output:
   - "thinking..." indicator shows when processing
 
 Task History:
-  - Tasks are saved in ~/.config/cline/tasks/
+  - Tasks are saved in ~/.config/hataraku/tasks/
   - Use --list-history to view recent tasks
   - Each task includes:
     * Task ID and timestamp
@@ -88,7 +94,7 @@ async function main() {
         // Handle history listing
         if (options.listHistory) {
             const tasks = await taskHistory.listTasks();
-            console.log(chalk.yellow(`Task history location: ${path.join(os.homedir(), '.config', 'cline', 'tasks')}\n`));
+            console.log(chalk.yellow(`Task history location: ${path.join(os.homedir(), '.config', 'hataraku', 'tasks')}\n`));
             if (tasks.length === 0) {
                 console.log('No task history found.');
             } else {
@@ -109,12 +115,13 @@ async function main() {
             mcpClient,
             messageParser,
             parseInt(options.maxAttempts),
-            options.interactive
+            options.interactive,
+            process.cwd(),
+            { sound: options.sound }
         );
 
         if (options.interactive) {
             // Interactive mode
-            
             async function promptForTask() {
                 const newTask = await input({
                     message: 'Enter your task, or type "exit" to quit:',
@@ -128,6 +135,10 @@ async function main() {
 
                 if (newTask) {
                     await taskLoop.run(newTask);
+                    // Play celebration sound if sounds are enabled
+                    if (options.sound) {
+                        await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
+                    }
                     // Prompt for next task
                     await promptForTask();
                 }
@@ -141,6 +152,10 @@ async function main() {
                 program.help();
             }
             await taskLoop.run(task);
+            // Play celebration sound if sounds are enabled
+            if (options.sound) {
+                await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
+            }
         }
 
     } catch (error) {

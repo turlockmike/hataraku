@@ -78,7 +78,8 @@ export class TaskLoop {
         private messageParser: MessageParser,
         private maxAttempts: number = 3,
         private isInteractive: boolean = false,
-        private cwd: string = process.cwd()
+        private cwd: string = process.cwd(),
+        private options: { sound?: boolean } = {}
     ) {
         this.taskHistory = new TaskHistory();
         this.taskId = Date.now().toString();
@@ -105,7 +106,7 @@ export class TaskLoop {
                 if (availableServers.length > 0) {
                     mcpTools.push('\nMCP SERVERS\n');
                     mcpTools.push('\nThe Model Context Protocol (MCP) enables communication between the system and locally running MCP servers that provide additional tools and resources to extend your capabilities.\n');
-                    mcpTools.push('\nMCP server settings are stored in ~/.cline/cline_mcp_settings.json\n');
+                    mcpTools.push('\nMCP server settings are stored in ~/.hatraku/mcp_settings.json\n');
                     mcpTools.push('\n# Connected MCP Servers\n');
                     mcpTools.push('\nWhen a server is connected, you can use the server\'s tools via the `use_mcp_tool` tool, and access the server\'s resources via the `access_mcp_resource` tool.\n');
                     mcpTools.push(`\nCurrently connected servers: ${availableServers.join(', ')}\n`);
@@ -294,7 +295,7 @@ export class TaskLoop {
                             console.log(chalk.yellow(`\nUsage:`));
                             console.log(chalk.yellow(`Tokens: ${this.tokensIn} in, ${this.tokensOut} out`));
                             console.log(chalk.yellow(`Cost: $${this.totalCost.toFixed(6)}`));
-                            process.exit(0);
+                            return;
                         } else {
                             // Reset history for next task in interactive mode
                             this.history = [];
@@ -360,6 +361,10 @@ export class TaskLoop {
                         break;
                     }
                     case 'wait_for_user': {
+                        // Play notification sound if sounds are enabled
+                        if (this.options.sound !== false) {
+                            await this.toolExecutor.playAudio('audio/notification.wav');
+                        }
                         [error, result] = await this.toolExecutor.waitForUser(toolUse.params.prompt);
                         break;
                     }
