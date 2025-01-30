@@ -26,9 +26,9 @@ I've updated the CSS styling for the landing page to use a modern design system 
 </result>
 <command>open index.html</command>
 <follow_up_tasks>
-- Add dark mode support to the new design system
-- Implement responsive breakpoints for mobile devices
-- Create documentation for the new design system components
+<item>Add dark mode support to the new design system</item>
+<item>Implement responsive breakpoints for mobile devices</item>
+<item>Create documentation for the new design system components</item>
 </follow_up_tasks>
 </attempt_completion>`
 }
