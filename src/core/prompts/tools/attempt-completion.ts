@@ -13,9 +13,9 @@ Your final result description here
 </result>
 <command>Command to demonstrate result (optional)</command>
 <follow_up_tasks>
-- First suggested follow-up task
-- Second suggested follow-up task
-- Third suggested follow-up task
+<item>First suggested follow-up task</item>
+<item>Second suggested follow-up task</item>
+<item>Third suggested follow-up task</item>
 </follow_up_tasks>
 </attempt_completion>
 
