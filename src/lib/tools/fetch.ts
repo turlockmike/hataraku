@@ -2,6 +2,7 @@ import { UnifiedTool } from '../types';
 import { Fetcher } from '../fetcher';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { getFetchDescription } from '../../core/prompts/tools';
 
 export interface FetchInput {
     url: string;
@@ -18,7 +19,7 @@ export interface FetchOutput {
 
 export const fetchTool: UnifiedTool<FetchInput, FetchOutput> = {
     name: 'fetch',
-    description: 'Fetch content from a URL in various formats (HTML, JSON, text, or markdown).',
+    description: getFetchDescription(),
     parameters: {
         url: {
             required: true,

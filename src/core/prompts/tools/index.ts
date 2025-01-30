@@ -9,6 +9,11 @@ import { getAskFollowupQuestionDescription } from './ask-followup-question'
 import { getAttemptCompletionDescription } from './attempt-completion'
 import { getUseMcpToolDescription } from './use-mcp-tool'
 import { getAccessMcpResourceDescription } from './access-mcp-resource'
+import { getFetchDescription } from './fetch'
+import { getPlayAudioDescription } from './play-audio'
+import { getShowImageDescription } from './show-image'
+import { getToGraphDescription } from './to-graph'
+import { getWaitForUserDescription } from './wait-for-user'
 import { DiffStrategy } from '../../diff/DiffStrategy'
 import { McpHub } from '../../../services/mcp/McpHub'
 import { Mode, codeMode, askMode } from '../modes'
@@ -97,5 +102,10 @@ export {
     getAskFollowupQuestionDescription,
     getAttemptCompletionDescription,
     getUseMcpToolDescription,
-    getAccessMcpResourceDescription
+    getAccessMcpResourceDescription,
+    getFetchDescription,
+    getPlayAudioDescription,
+    getShowImageDescription,
+    getToGraphDescription,
+    getWaitForUserDescription
 }

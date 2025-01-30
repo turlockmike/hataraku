@@ -1,6 +1,7 @@
 import { UnifiedTool } from '../types';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { getWriteToFileDescription } from '../../core/prompts/tools';
 
 export interface WriteToFileInput {
     path: string;
@@ -30,7 +31,7 @@ const fileExists = async (filePath: string): Promise<boolean> => {
 
 export const writeToFileTool: UnifiedTool<WriteToFileInput, WriteToFileOutput> = {
     name: 'write_to_file',
-    description: 'Write content to a file at the specified path. If the file exists, it will be overwritten with the provided content. If the file doesn\'t exist, it will be created. This tool will automatically create any directories needed to write the file.',
+    description: getWriteToFileDescription,
     parameters: {
         path: {
             required: true,

@@ -1,4 +1,4 @@
-import { Tool } from '../types';
+import { Tool, UnifiedTool } from '../types';
 import { writeToFileTool } from './write-to-file';
 import { readFileTool } from './read-file';
 import { listFilesTool } from './list-files';
@@ -11,12 +11,12 @@ import { accessMcpResourceTool } from './access-mcp-resource';
 import { waitForUserTool } from './wait-for-user';
 import { showImageTool } from './show-image';
 import { playAudioTool } from './play-audio';
-import { browserActionTool } from './browser-action';
+// import { browserActionTool } from './browser-action'; // TODO: add this back in with a headless browser.
 import { fetchTool } from './fetch';
 import { toGraphTool } from './to-graph';
 
 // Export all tools for backward compatibility
-export const AVAILABLE_TOOLS: Tool[] = [
+export const AVAILABLE_TOOLS: UnifiedTool[] = [
     writeToFileTool,
     readFileTool,
     listFilesTool,
@@ -38,10 +38,10 @@ export function getToolDocs(): string {
     return AVAILABLE_TOOLS.map(tool => {
         const params = Object.entries(tool.parameters)
             .map(([name, param]) =>
-                `- ${name}: (${param.required ? 'required' : 'optional'}) ${param.description}`
+                `- ${name}: (${param.required ? 'required' : 'optional'}) ${typeof param.description === 'function' ? param.description(process.cwd()) : param.description}`
             )
             .join('\n');
-        return `## ${tool.name}\nDescription: ${tool.description}\nParameters:\n${params}`;
+        return `## ${tool.name}\nDescription: ${typeof tool.description === 'function' ? tool.description(process.cwd()) : tool.description}\nParameters:\n${params}`;
     }).join('\n\n');
 }
 

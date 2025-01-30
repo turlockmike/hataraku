@@ -5,6 +5,7 @@ import * as fs from 'fs/promises';
 import { platform } from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { getToGraphDescription } from '../../core/prompts/tools';
 
 const execAsync = promisify(exec);
 
@@ -141,7 +142,7 @@ function generateHtml(data: string, type: string, title?: string, xLabel?: strin
 
 export const toGraphTool: UnifiedTool<ToGraphInput, ToGraphOutput> = {
     name: 'to_graph',
-    description: 'Generate an HTML page with a graph visualization of the provided data using Chart.js. Accepts CSV or JSON formatted data.',
+    description: getToGraphDescription(),
     parameters: {
         data: {
             required: true,

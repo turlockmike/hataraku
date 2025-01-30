@@ -45,11 +45,11 @@ export interface ApiClient {
 
 export interface Tool {
     name: string;
-    description: string;
+    description: string | ((cwd: string) => string);
     parameters: {
         [key: string]: {
             required: boolean;
-            description: string;
+            description: string | ((cwd: string) => string);
         };
     };
 }

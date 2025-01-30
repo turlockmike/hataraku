@@ -1,5 +1,6 @@
 import { UnifiedTool } from '../types';
 import { CliBrowserSession } from '../../services/browser/CliBrowserSession';
+import { getBrowserActionDescription } from '../../core/prompts/tools';
 
 export interface BrowserActionInput {
     action: string;
@@ -49,7 +50,7 @@ function formatBrowserResult(result: {
 
 export const browserActionTool: UnifiedTool<BrowserActionInput, BrowserActionOutput> = {
     name: 'browser_action',
-    description: 'Request to interact with a Puppeteer-controlled browser. Every action, except `close`, will be responded to with a screenshot of the browser\'s current state, along with any new console logs.',
+    description: getBrowserActionDescription,
     parameters: {
         action: {
             required: true,

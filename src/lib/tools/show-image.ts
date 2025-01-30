@@ -4,6 +4,7 @@ import * as fs from 'fs/promises';
 import { platform } from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { getShowImageDescription } from '../../core/prompts/tools';
 
 const execAsync = promisify(exec);
 
@@ -38,7 +39,7 @@ function getOpenCommand(imagePath: string): string {
 
 export const showImageTool: UnifiedTool<ShowImageInput, ShowImageOutput> = {
     name: 'show_image',
-    description: 'Display an image to the user. Always use this tool when you think the user should see an image. This tool will open the image using the system\'s default image viewer.',
+    description: getShowImageDescription(),
     parameters: {
         path: {
             required: true,

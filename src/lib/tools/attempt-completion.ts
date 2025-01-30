@@ -1,3 +1,4 @@
+import { getAttemptCompletionDescription } from '../../core/prompts/tools';
 import { UnifiedTool } from '../types';
 import { executeCommandTool } from './execute-command';
 
@@ -17,7 +18,7 @@ export interface AttemptCompletionOutput {
 
 export const attemptCompletionTool: UnifiedTool<AttemptCompletionInput, AttemptCompletionOutput> = {
     name: 'attempt_completion',
-    description: 'After each tool use, the user will respond with the result of that tool use, i.e. if it succeeded or failed, along with any reasons for failure. Once you\'ve received the results of tool uses and can confirm that the task is complete, use this tool to present the result of your work to the user.',
+    description: getAttemptCompletionDescription(),
     parameters: {
         result: {
             required: true,

@@ -1,6 +1,7 @@
 import { UnifiedTool } from '../types';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { getReadFileDescription } from '../../core/prompts/tools';
 
 export interface ReadFileInput {
     path: string;
@@ -20,7 +21,7 @@ function resolvePath(relativePath: string, cwd: string): string {
 
 export const readFileTool: UnifiedTool<ReadFileInput, ReadFileOutput> = {
     name: 'read_file',
-    description: 'Read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file you do not know the contents of, for example to analyze code, review text files, or extract information from configuration files.',
+    description: getReadFileDescription,
     parameters: {
         path: {
             required: true,

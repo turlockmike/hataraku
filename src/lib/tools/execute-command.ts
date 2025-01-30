@@ -1,5 +1,6 @@
 import { UnifiedTool } from '../types';
 import { spawn } from 'child_process';
+import { getExecuteCommandDescription } from '../../core/prompts/tools';
 
 export interface ExecuteCommandInput {
     command: string;
@@ -14,7 +15,7 @@ export interface ExecuteCommandOutput {
 
 export const executeCommandTool: UnifiedTool<ExecuteCommandInput, ExecuteCommandOutput> = {
     name: 'execute_command',
-    description: 'Request to execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user\'s task. You must tailor your command to the user\'s system and provide a clear explanation of what the command does.',
+    description: getExecuteCommandDescription,
     parameters: {
         command: {
             required: true,

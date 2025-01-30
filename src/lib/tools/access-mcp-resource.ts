@@ -1,5 +1,6 @@
 import { UnifiedTool } from '../types';
 import { McpClient } from '../mcp/McpClient';
+import { getAccessMcpResourceDescription } from '../../core/prompts/tools';
 
 export interface AccessMcpResourceInput {
     server_name: string;
@@ -17,7 +18,7 @@ let mcpClient: McpClient | null = null;
 
 export const accessMcpResourceTool: UnifiedTool<AccessMcpResourceInput, AccessMcpResourceOutput> = {
     name: 'access_mcp_resource',
-    description: 'Request to access a resource provided by a connected MCP server. Resources represent data sources that can be used as context, such as files, API responses, or system information.',
+    description: getAccessMcpResourceDescription(),
     parameters: {
         server_name: {
             required: true,
