@@ -1,3 +1,6 @@
+import * as fs from 'fs/promises';
+import { TaskHistory, HistoryEntry } from './TaskHistory';
+import { input, select } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { MessageParser, ToolResponse } from '../lib/types';
 import { AVAILABLE_TOOLS, getToolDocs } from '../lib/tools';
@@ -7,8 +10,6 @@ import { McpClient } from '../lib/mcp/McpClient';
 import { formatToolResponse } from '../utils/format';
 import { ApiHandler } from '../api';
 import * as path from 'path';
-import * as fs from 'fs/promises';
-import { TaskHistory, HistoryEntry } from './TaskHistory';
 
 interface TaskLoopOptions {
     apiHandler: ApiHandler;
@@ -85,7 +86,7 @@ export class TaskLoop {
         this.taskId = Date.now().toString();
     }
 
-    async run(initialPrompt?: string): Promise<void> {
+    async run(initialPrompt?: string): Promise<string[] | void> {
         // Initialize MCP servers before starting
         await this.mcpClient.initializeServers();
 
@@ -126,7 +127,7 @@ export class TaskLoop {
                     '',
                     '<tool_name>',
                     '<param1>value1</param1>',
-                    '<param2>value2</param2>',
+                    '<param2><item>value1</item><item>value2</item></param2>',
                     '</tool_name>',
                     '',
                     getToolDocs(),
@@ -135,7 +136,7 @@ export class TaskLoop {
                     '',
                     'RULES',
                     '',
-                    '1. For simple questions or calculations, respond ONLY with attempt_completion containing the direct answer as the result.',
+                    '1. For simple questions or calculations, respond with attempt_completion containing the direct answer as the result, but optionally include the follow_up_tasks parameter with 2-3 likely next tasks the user can choose from.',
                     '2. DO NOT overly explain your process or thinking - focus on the answer.',
                     '4. Wait for tool execution results before proceeding.',
                     '5. Handle errors appropriately.',
@@ -290,22 +291,27 @@ export class TaskLoop {
                         // Save history
                         await this.saveTaskHistory(initialPrompt || '');
                         
-                        // Only exit if not in interactive mode
-                        if (!this.isInteractive) {
-                            console.log(chalk.yellow(`\nUsage:`));
-                            console.log(chalk.yellow(`Tokens: ${this.tokensIn} in, ${this.tokensOut} out`));
-                            console.log(chalk.yellow(`Cost: $${this.totalCost.toFixed(6)}`));
-                            return;
-                        } else {
-                            // Reset history for next task in interactive mode
-                            this.history = [];
-                            this.tokensIn = 0;
-                            this.tokensOut = 0;
-                            this.totalCost = 0;
-                            this.taskId = Date.now().toString();
-                            console.log(''); // Add blank line between tasks
-                            return; // Exit the while loop iteration
-                        }
+                        // Parse the follow up tasks by splitting on <item> and </item> tags
+                        const followUpTasks = toolUse.params.follow_up_tasks
+                            .split(/<item>|<\/item>/)
+                            .map(task => task.trim())
+                            .filter(task => task.length > 0);
+
+                        // Display usage information
+                        console.log(chalk.yellow(`\nUsage:`));
+                        console.log(chalk.yellow(`Tokens: ${this.tokensIn} in, ${this.tokensOut} out`));
+                        console.log(chalk.yellow(`Cost: $${this.totalCost.toFixed(6)}`));
+
+                        // Reset history for next task
+                        this.history = [];
+                        this.tokensIn = 0;
+                        this.tokensOut = 0;
+                        this.totalCost = 0;
+                        this.taskId = Date.now().toString();
+                        console.log(''); // Add blank line between tasks
+
+                        // Return follow-up tasks to be handled by CLI
+                        return followUpTasks;
                     }
                     case 'list_code_definition_names': {
                         [error, result] = await this.toolExecutor.listCodeDefinitions(toolUse.params.path);

@@ -51,7 +51,7 @@ export interface HistoryEntry {
 }
 
 export class TaskHistory {
-    private historyDir: string = path.join(os.homedir(), '.config', 'cline', 'tasks');
+    private historyDir: string = path.join(os.homedir(), '.config', 'hataraku', 'logs');
 
     private async ensureHistoryDir(): Promise<void> {
         await fs.mkdir(this.historyDir, { recursive: true });

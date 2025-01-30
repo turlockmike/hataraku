@@ -11,7 +11,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import * as os from 'os';
 import * as path from 'path';
-import { input } from '@inquirer/prompts';
+import { input, select } from '@inquirer/prompts';
 import { playAudioTool } from './lib/tools/play-audio';
 import { version } from '../package.json';
 
@@ -22,7 +22,7 @@ program
     .name('hataraku')
     .description('Hataraku is a CLI tool for creating and managing tasks')
     .option('-p, --provider <provider>', 'API provider to use (openrouter, anthropic, openai)', 'openRouter')
-    .option('-m, --model <model>', 'Model ID for the provider (e.g., anthropic/claude-3.5-sonnet:beta, deepseek/deepseek-chat)', 'anthropic/claude-3.5-sonnet:beta')
+    .option('-m, --model <model>', 'Model ID for the provider (e.g., anthropic/claude-3.5-sonnet:beta, deepseek/deepseek-chat)', 'anthropic/claude-3.5-sonnet')
     .option('-k, --api-key <key>', 'API key for the provider (can also use PROVIDER_API_KEY env var)')
     .option('-a, --max-attempts <number>', 'Maximum number of consecutive mistakes before exiting (default: 3)')
     .option('-l, --list-history', 'List recent tasks from history')
@@ -58,6 +58,40 @@ Task History:
     * Input/output tokens
     * Cost information
     * Full conversation history`);
+
+async function promptForNextTask(followUpTasks: string[], defaultTask?: string): Promise<string | null> {
+    // Create choices array with follow-up tasks and additional options
+    const choices = [
+        ...followUpTasks.map((task, index) => ({
+            value: task, // Use the actual task text as the value
+            label: task,
+            description: `Follow-up task ${index + 1}`
+        })),
+        { value: 'write_own', label: 'Write my own', description: 'Enter a custom task' },
+        { value: 'quit', label: 'Exit', description: 'Exit the program' }
+    ];
+
+    const choice = await select({
+        message: 'Choose your next task:',
+        choices
+    });
+
+    if (choice === 'quit') {
+        console.log(chalk.yellow('Exiting...'));
+        process.exit(0);
+    }
+
+    if (choice === 'write_own') {
+        const customTask = await input({
+            message: 'Enter your task:',
+            default: defaultTask
+        });
+        return customTask || null;
+    }
+
+    // Since we're using the actual task text as the value, we can return it directly
+    return choice;
+}
 
 async function main() {
     try {
@@ -122,29 +156,43 @@ async function main() {
 
         if (options.interactive) {
             // Interactive mode
-            async function promptForTask() {
-                const newTask = await input({
-                    message: 'Enter your task, or type "exit" to quit:',
-                    default: task // Use provided task argument as default if available
-                });
+            async function runInteractiveTask(currentTask?: string) {
+                let taskToRun = currentTask;
+                
+                if (!taskToRun) {
+                    taskToRun = await input({
+                        message: 'Enter your task, or type "exit" to quit:',
+                        default: task // Use provided task argument as default if available
+                    });
 
-                if (newTask === 'exit') {
-                    console.log(chalk.yellow('Exiting interactive mode.'));
-                    process.exit(0);
+                    if (taskToRun === 'exit') {
+                        console.log(chalk.yellow('Exiting interactive mode.'));
+                        process.exit(0);
+                    }
                 }
 
-                if (newTask) {
-                    await taskLoop.run(newTask);
+                if (taskToRun) {
+                    const followUpTasks = await taskLoop.run(taskToRun);
                     // Play celebration sound if sounds are enabled
                     if (options.sound) {
                         await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
                     }
-                    // Prompt for next task
-                    await promptForTask();
+
+                    // Handle follow-up tasks if they exist
+                    if (followUpTasks && followUpTasks.length > 0) {
+                        const nextTask = await promptForNextTask(followUpTasks);
+                        if (nextTask) {
+                            await runInteractiveTask(nextTask);
+                            return;
+                        }
+                    }
+
+                    // If no follow-up tasks or user didn't select one, prompt for new task
+                    await runInteractiveTask();
                 }
             }
 
-            await promptForTask();
+            await runInteractiveTask(task);
         } else {
             // Normal mode
             if (!task) {
