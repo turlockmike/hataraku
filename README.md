@@ -1,117 +1,90 @@
 # Hataraku
 
-An autonomous coding agent and SDK for building AI-powered development tools. The name "Hataraku" (働く) means "to work" in Japanese, reflecting its dual nature as both a worker (CLI tool) and a framework for building workers (SDK).
+An autonomous coding agent for building AI-powered development tools. The name "Hataraku" (働く) means "to work" in Japanese.
+
+## Installation
+
+```bash
+# Install globally via npm
+npm install -g hataraku
+
+# Or run directly with npx
+npx hataraku
+```
+
+## Environment Setup
+
+Before using Hataraku, make sure to set your API key for your chosen provider:
+
+```bash
+# For OpenRouter (default)
+export OPENROUTER_API_KEY=your_api_key_here
+
+# Or for Anthropic
+export ANTHROPIC_API_KEY=your_api_key_here
+
+# Or for OpenAI
+export OPENAI_API_KEY=your_api_key_here
+```
+
+## Quick Start
+
+```bash
+# Run a task
+hataraku "create a react component that..."
+
+# Interactive Mode (prompts for tasks)
+hataraku -i
+
+# With specific provider and model
+hataraku --provider anthropic --model claude-3 "optimize this function..."
+
+# List recent task history
+hataraku --list-history
+
+# Run without sound effects
+hataraku --no-sound "create a test file"
+```
+
+## CLI Options
+
+- `-p, --provider <provider>` - API provider to use (openrouter, anthropic, openai) [default: openrouter]
+- `-m, --model <model>` - Model ID for the provider [default: anthropic/claude-3.5-sonnet]
+- `-k, --api-key <key>` - API key for the provider (can also use environment variables)
+- `-a, --max-attempts <number>` - Maximum number of consecutive mistakes before exiting [default: 3]
+- `-l, --list-history` - List recent tasks from history
+- `-i, --interactive` - Run in interactive mode, prompting for tasks
+- `--no-sound` - Disable sound effects
+- `-v, --version` - Output the version number
+- `-h, --help` - Display help information
 
 ## Features
 
-### 🤖 CLI Tool
 - Create and edit files with diff view and linting support
 - Execute terminal commands with real-time output monitoring
 - Launch and control browsers for testing and debugging
 - Support for multiple AI providers (OpenRouter, Anthropic, OpenAI, etc.)
 - Built-in tools for file operations, code analysis, and more
-
-### 🛠️ SDK Framework
-Build your own AI-powered development tools with a clean, intuitive API:
-
-```typescript
-import { Agent, AgentConfig } from '@hataraku/sdk';
-
-const agent = new Agent({
-  name: 'CodeReviewer',
-  provider: 'anthropic',
-  model: 'claude-3',
-  role: 'Expert code reviewer focusing on security and performance',
-  capabilities: ['read_files', 'analyze_code', 'create_pr']
-});
-
-await agent.runTask({
-  instruction: 'Review this PR for security issues',
-  context: {
-    prNumber: 123,
-    repository: 'org/repo'
-  }
-});
-```
-
-### 🔌 Extensible with MCP
-Add new capabilities through the Model Context Protocol:
-- Create custom tools that integrate with your workflow
-- Access external APIs and services
-- Share tools across your organization
-- Built-in MCP servers for common operations
-
-## Installation
-
-```bash
-# Install CLI tool
-npm install -g hataraku
-
-# Install SDK for development
-npm install @hataraku/sdk
-```
-
-## Quick Start
-
-### CLI Usage
-```bash
-# Run a task
-hataraku "create a react component that..."
-
-# With specific provider
-hataraku --provider anthropic "optimize this function..."
-```
-
-### SDK Usage
-```typescript
-import { Agent, Tool } from '@hataraku/sdk';
-
-// Create custom tools
-const gitTool = new Tool({
-  name: 'create_branch',
-  description: 'Create a new git branch',
-  parameters: {
-    name: { type: 'string', required: true },
-    baseBranch: { type: 'string', default: 'main' }
-  },
-  async execute(context) {
-    // Implementation
-  }
-});
-
-// Configure agent
-const agent = new Agent({
-  name: 'GitAutomation',
-  tools: [gitTool]
-});
-
-// Run tasks
-await agent.runTask('create a feature branch for ticket ABC-123');
-```
+- Interactive mode with follow-up task suggestions
+- Task history tracking and review
+- Sound effects for task completion (can be disabled)
 
 ## Documentation
 
 - [CLI Documentation](./docs/cli.md)
-- [SDK Reference](./docs/sdk.md)
-- [MCP Guide](./docs/mcp.md)
 - [Examples](./examples/)
+
+## Task History
+
+Tasks are automatically saved in `~/.config/hataraku/tasks/` and include:
+- Task ID and timestamp
+- Input/output tokens
+- Cost information
+- Full conversation history
 
 ## Contributing
 
-1. Clone the repository:
-```bash
-git clone https://github.com/turlockmike/hataraku.git
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Run in development:
-```bash
-npm run dev
-```
+We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details on how to get started.
 
 ## License
 
