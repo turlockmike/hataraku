@@ -40,7 +40,6 @@ const buildConfig = {
 		"vscode", // Mark vscode as external to avoid build errors
 		"web-tree-sitter", // Tree-sitter needs to be external
 		"puppeteer-core", // Puppeteer needs to be external
-		"jsdom", // JSDOM needs to be external
 		"node:worker_threads", // Node worker threads need to be external
 		"worker_threads" // Also mark without node: prefix
 	],

@@ -1,5 +1,5 @@
 import TurndownService from "turndown";
-import { JSDOM } from 'jsdom';
+import * as cheerio from 'cheerio';
 
 interface RequestPayload {
     url: string;
@@ -72,21 +72,15 @@ export class Fetcher {
             const response = await this._fetch(requestPayload);
             const html = await response.text();
 
-            const dom = new JSDOM(html);
-            const document = dom.window.document;
+            // Load HTML with cheerio
+            const $ = cheerio.load(html);
 
-            // Type-safe element removal
-            const scripts = document.getElementsByTagName("script");
-            const styles = document.getElementsByTagName("style");
-            
-            // Convert HTMLCollections to arrays and specify element types
-            Array.from(scripts as HTMLCollectionOf<HTMLScriptElement>)
-                .forEach(script => script.parentNode?.removeChild(script));
-            
-            Array.from(styles as HTMLCollectionOf<HTMLStyleElement>)
-                .forEach(style => style.parentNode?.removeChild(style));
+            // Remove scripts and styles
+            $('script').remove();
+            $('style').remove();
 
-            const text = document.body?.textContent || "";
+            // Get text content and normalize whitespace
+            const text = $('body').text();
             const normalizedText = text.replace(/\s+/g, " ").trim();
 
             return {
