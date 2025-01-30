@@ -1,5 +1,11 @@
 # hataraku
 
+## 0.2.0
+
+### Minor Changes
+
+-   added lots of functionality and cleaned up
+
 ## 0.1.1
 
 ### Patch Changes
