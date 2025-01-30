@@ -2,6 +2,7 @@ import { UnifiedTool } from '../types';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as sound from 'sound-play';
+import { getPlayAudioDescription } from '../../core/prompts/tools';
 
 export interface PlayAudioInput {
     path: string;
@@ -23,7 +24,7 @@ const SUPPORTED_FORMATS = ['.mp3', '.wav', '.ogg', '.aac', '.m4a'];
 
 export const playAudioTool: UnifiedTool<PlayAudioInput, PlayAudioOutput> = {
     name: 'play_audio',
-    description: 'Play an audio file using the system\'s default audio player. This tool supports common audio formats and uses the sound-play package for playback.',
+    description: getPlayAudioDescription(),
     parameters: {
         path: {
             required: true,

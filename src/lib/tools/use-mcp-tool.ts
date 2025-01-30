@@ -2,6 +2,7 @@ import { UnifiedTool } from '../types';
 import { McpClient } from '../mcp/McpClient';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { getUseMcpToolDescription } from '../../core/prompts/tools';
 
 export interface UseMcpToolInput {
     server_name: string;
@@ -20,7 +21,7 @@ let mcpClient: McpClient | null = null;
 
 export const useMcpTool: UnifiedTool<UseMcpToolInput, UseMcpToolOutput> = {
     name: 'use_mcp_tool',
-    description: 'Request to use a tool provided by a connected MCP server. Each MCP server can provide multiple tools with different capabilities. Tools have defined input schemas that specify required and optional parameters.',
+    description: getUseMcpToolDescription(),
     parameters: {
         server_name: {
             required: true,

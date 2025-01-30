@@ -114,7 +114,7 @@ export class McpHub {
 		try {
 			const client = new Client(
 				{
-					name: "Cline-CLI",
+					name: "Hataraku",
 					version: "1.0.0",
 				},
 				{

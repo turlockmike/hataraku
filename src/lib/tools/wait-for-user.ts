@@ -1,5 +1,6 @@
 import { UnifiedTool } from '../types';
 import { input } from '@inquirer/prompts';
+import { getWaitForUserDescription } from '../../core/prompts/tools';
 
 export interface WaitForUserInput {
     prompt: string;
@@ -14,7 +15,7 @@ export interface WaitForUserOutput {
 
 export const waitForUserTool: UnifiedTool<WaitForUserInput, WaitForUserOutput> = {
     name: 'wait_for_user',
-    description: 'Pause execution and wait for user input. This tool should be used when you need to gather additional information or confirmation from the user before proceeding.',
+    description: getWaitForUserDescription(),
     parameters: {
         prompt: {
             required: true,

@@ -1,6 +1,7 @@
 import { UnifiedTool } from '../types';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { getListFilesDescription } from '../../core/prompts/tools';
 
 export interface ListFilesInput {
     path: string;
@@ -37,7 +38,7 @@ async function readDirRecursive(dir: string, recursive: boolean, cwd: string): P
 
 export const listFilesTool: UnifiedTool<ListFilesInput, ListFilesOutput> = {
     name: 'list_files',
-    description: 'List files and directories within the specified directory. If recursive is true, it will list all files and directories recursively. If recursive is false or not provided, it will only list the top-level contents.',
+    description: getListFilesDescription,
     parameters: {
         path: {
             required: true,

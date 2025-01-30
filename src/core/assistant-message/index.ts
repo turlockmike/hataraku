@@ -47,6 +47,7 @@ export const toolParamNames = [
 	"diff",
 	"start_line",
 	"end_line",
+	"follow_up_tasks",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]
@@ -112,5 +113,5 @@ export interface AskFollowupQuestionToolUse extends ToolUse {
 
 export interface AttemptCompletionToolUse extends ToolUse {
 	name: "attempt_completion"
-	params: Partial<Pick<Record<ToolParamName, string>, "result" | "command">>
+	params: Partial<Pick<Record<ToolParamName, string>, "result" | "command" | "follow_up_tasks">>
 }

@@ -1,6 +1,7 @@
 import { UnifiedTool } from '../types';
 import * as path from 'path';
 import { parseSourceCodeForDefinitionsTopLevel } from '../../services/tree-sitter';
+import { getListCodeDefinitionNamesDescription } from '../../core/prompts/tools';
 
 export interface ListCodeDefinitionsInput {
     path: string;
@@ -20,7 +21,7 @@ function resolvePath(relativePath: string, cwd: string): string {
 
 export const listCodeDefinitionsTool: UnifiedTool<ListCodeDefinitionsInput, ListCodeDefinitionsOutput> = {
     name: 'list_code_definition_names',
-    description: 'Request to list definition names (classes, functions, methods, etc.) used in source code files at the top level of the specified directory. This tool provides insights into the codebase structure and important constructs, encapsulating high-level concepts and relationships that are crucial for understanding the overall architecture.',
+    description: getListCodeDefinitionNamesDescription,
     parameters: {
         path: {
             required: true,

@@ -1,6 +1,7 @@
 import { UnifiedTool } from '../types';
 import * as path from 'path';
 import { searchFiles } from '../services/search';
+import { getSearchFilesDescription } from '../../core/prompts/tools';
 
 export interface SearchFilesInput {
     path: string;
@@ -22,7 +23,7 @@ function resolvePath(relativePath: string, cwd: string): string {
 
 export const searchFilesTool: UnifiedTool<SearchFilesInput, SearchFilesOutput> = {
     name: 'search_files',
-    description: 'Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.',
+    description: getSearchFilesDescription,
     parameters: {
         path: {
             required: true,

@@ -68,7 +68,7 @@ export class McpClient {
         try {
             const client = new Client(
                 {
-                    name: "Cline",
+                    name: "Hataraku",
                     version: "1.0.0",
                 },
                 {
