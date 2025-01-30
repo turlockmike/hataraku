@@ -1,14 +1,19 @@
-# Extend Agent Framework Proposal
+# Hataraku SDK Proposal
 
 ## Overview
 
-The Extend Agent Framework provides a powerful, flexible framework for building AI-powered agents and automation tools. It offers a clean, intuitive API for creating agents, defining custom tools, managing tasks, and handling the complete lifecycle of AI interactions.
+Hataraku is a powerful framework that serves three main purposes:
+1. A headless agentic client for running AI-powered tasks and automation
+2. An MCP (Multi-Context Protocol) server for creating and managing agents
+3. An SDK framework for building and running your own agents
+
+It offers a clean, intuitive API for creating agents, defining custom tools, managing tasks, and handling the complete lifecycle of AI interactions.
 
 ## SDK Core Concepts
 
 ### Agents
 
-Agents are the primary actors in the Extend ecosystem. They can be configured with specific capabilities, tools, and behaviors.
+Agents are the primary actors in the Hataraku ecosystem. They can be configured with specific capabilities, tools, and behaviors, and can be run either through the headless client or as part of your own application using the SDK.
 
 ### Tools
 
@@ -69,13 +74,13 @@ const mcpClient = MCPClient.fromConfig(path.join(__dirname, 'servers.json'));
 
 // Optional: Configure the agent
 const config: AgentConfig = {
-  name: 'ClaimsProcessor', 
+  name: 'CodeAssistant', 
   model: {
     name: 'claude-3', // optional, defaults to 'claude-3'
     provider: 'anthropic', // optional, defaults to 'anthropic'
     apiKey: process.env.ANTHROPIC_API_KEY, // optional, defaults to process.env.ANTHROPIC_API_KEY
   }, 
-  instructions: `You are an expert in processing warranty claims and detecting potential fraud patterns.`,
+  instructions: `You are an expert coding assistant that helps users write, review, and debug code.`,
   tools: [
     ...mcpClient.listTools(),
     ...DefaultTools,
@@ -89,7 +94,7 @@ const config: AgentConfig = {
     parallelism: 3, // Max number of tools to use in parallel, defaults to 1 no parallelism, Infinity for unlimited
   },
   otelConfig: {
-    serviceName: 'my-awesome-service',
+    serviceName: 'code-assistant',
     enabled: true,
     sampling: {
       type: 'ratio',
@@ -118,55 +123,59 @@ await agent.initialize();
 import { Tool, ToolContext } from 'hataraku';
 import { z } from 'zod';
 
-// Define a custom tool for warranty validation
-const warrantyValidationTool = new Tool({
-  name: 'validate_warranty',
-  description: 'Validate warranty eligibility and coverage',
+// Define a custom tool for code analysis
+const codeAnalysisTool = new Tool({
+  name: 'analyze_code',
+  description: 'Analyze code for potential issues and improvements',
   // Zod schema for parameter validation
   inputSchema: z.object({
-    orderId: z.string(),
-    productSku: z.string(),
-    purchaseDate: z.coerce.date().optional()
+    filePath: z.string(),
+    language: z.string(),
+    lintRules: z.array(z.string()).optional()
   }),
   outputSchema: z.object({
-    eligible: z.boolean(),
-    planSku: z.string(),
-    expirationDate: z.coerce.date(),
-    coverages: z.array(z.string())
+    issues: z.array(z.object({
+      type: z.enum(['error', 'warning', 'suggestion']),
+      line: z.number(),
+      message: z.string(),
+      fix: z.string().optional()
+    })),
+    metrics: z.object({
+      complexity: z.number(),
+      maintainability: z.number(),
+      testCoverage: z.number().optional()
+    })
   }),
   async execute(context: ToolContext) {
-    const { orderId, productSku, purchaseDate } = context.params;
-    // Implementation of warranty validation logic
-    const res = await extendApi.getWarranty(orderId, productSku, purchaseDate);
+    const { filePath, language, lintRules } = context.params;
+    // Implementation of code analysis logic
+    const analysis = await analyzeCode(filePath, language, lintRules);
     return {
-      eligible: res.eligible,
-      planSku: res.planSku,
-      expirationDate: res.expirationDate,
-      coverages: res.coverages
+      issues: analysis.issues,
+      metrics: analysis.metrics
     }
   }
 });
 ```
+
 ### Running Tasks
 
 ```typescript
+// Create a persistent thread for the agent
+const codeThread = new Thread();
 
-// Create a persistent thread for the agent.
-
-const claimThread = new Thread();
-
-// Simple claim processing
+// Simple code review
 const result = await agent.task({
   role: 'user',
-  content: 'Process warranty claim for order #12345',
-  thread: claimThread,
+  content: 'Review the code in src/main.ts for potential improvements',
+  thread: codeThread,
 });
 
 // Streaming output
 const result = await agent.task({
   role: 'user',
-  content: 'Process warranty claim for order #12345',
-  thread: claimThread,
+  content: 'Help me debug the error in src/utils/parser.ts',
+  thread: codeThread,
   stream: true,
 });
 
@@ -175,30 +184,38 @@ for await (const chunk of result) {
 }
 ```
 
-### 
-
-
 ### Getting structured output with tasks
 
 ```typescript
 const result = await agent.task({
   role: 'user',
-  content: 'Process warranty claim for order #12345',
-  thread: claimThread,
+  content: 'Analyze the code quality metrics for src/utils/parser.ts',
+  thread: codeThread,
   outputSchema: z.object({
-    eligible: z.boolean(),
-    planSku: z.string(),
-    expirationDate: z.coerce.date(),
-    coverages: z.array(z.string())
+    issues: z.array(z.object({
+      type: z.enum(['error', 'warning', 'suggestion']),
+      line: z.number(),
+      message: z.string(),
+      fix: z.string().optional()
+    })),
+    metrics: z.object({
+      complexity: z.number(),
+      maintainability: z.number(),
+      testCoverage: z.number().optional()
+    })
   }), // Automatically parses the output into the schema.
 });
 
 console.log(result);
 // {
-//   eligible: true,
-//   planSku: '12345',
-//   expirationDate: '2025-01-01',
-//   coverages: ['coverage1', 'coverage2']
+//   issues: [
+//     { type: 'warning', line: 23, message: 'Unused variable', fix: 'Remove unused variable' }
+//   ],
+//   metrics: {
+//     complexity: 12,
+//     maintainability: 85,
+//     testCoverage: 76.5
+//   }
 // }
 ```
 
@@ -210,71 +227,91 @@ Tasks can be enriched with additional context to help the agent make better deci
 // Add context
 const thread = new Thread();
 thread.addContext({
-  key: 'customer_info',
+  key: 'project_info',
   content: {
-    id: '12345',
-    tier: 'premium',
-    purchaseHistory: ['SKU123', 'SKU456']
+    language: 'typescript',
+    framework: 'react',
+    testRunner: 'jest'
   }
 });
 
 thread.addFileContext({
-  name: 'receipt.pdf',
-  content: receiptBuffer,
-  type: 'application/pdf'
+  name: 'tsconfig.json',
+  content: configBuffer,
+  type: 'application/json'
 });
 
 // Add context directly in the task
 const result = await agent.task({
   role: 'user',
-  content: 'Process warranty claim for order #12345',
+  content: 'Review the code in src/components/Button.tsx',
   thread: thread,
   context: {
     priority: 'high',
-    previousClaims: 2,
-    productCategory: 'electronics'
+    accessibility: true,
+    platform: 'web'
   }
 });
 
 // Add files as context
 const result = await agent.task({
   role: 'user',
-  content: 'Review this warranty claim',
+  content: 'Debug the failing test',
   thread: thread,
   context: [new FileContext({
-    name: 'receipt.pdf',
-    content: receiptBuffer,
-    type: 'application/pdf'
+    name: 'test.log',
+    content: logBuffer,
+    type: 'text/plain'
   }), 
   new FileContext({
-    name: 'damage_photo.jpg',
-    content: photoBuffer,
-    type: 'image/jpeg'
-  })
-]);
-
-// Combine multiple context types
-const result = await agent.task({
-  role: 'user',
-  content: 'Evaluate this warranty claim',
-  thread: thread,
-  context: [
-    new FileContext({
-      name: 'receipt.pdf',
-      content: receiptBuffer,
-      type: 'application/pdf'
-    }),
-    new ObjectContext({
-      key: 'customer_info',
-      content: {
-        id: '12345',
-        tier: 'premium',
-        purchaseHistory: ['SKU123', 'SKU456']
-      }
-    }) 
-  ]
+    name: 'screenshot.png',
+    content: screenshotBuffer,
+    type: 'image/png'
+  })]
 });
 ```
+
+## Running as an MCP Server
+
+Hataraku can be run as an MCP server to provide agent capabilities to other applications:
+
+```typescript
+import { MCPServer, MCPServerConfig } from 'hataraku/mcp';
+
+const config: MCPServerConfig = {
+  port: 3000,
+  host: 'localhost',
+  agents: {
+    codeAssistant: {
+      // Agent config as shown above
+    },
+    documentationWriter: {
+      // Another agent config
+    }
+  },
+  auth: {
+    type: 'apiKey',
+    keys: ['your-api-key']
+  }
+};
+
+const server = new MCPServer(config);
+await server.start();
+```
+
+## Additional Features
+
+- [x] Parallel tool execution
+- [x] Tool chaining (output of one tool as input to another)
+- [x] MCP Resources, Prompts, Tools, Sampling, and roots
+- [x] Headless operation mode
+- [x] Extensive CLI support
+- [x] OpenTelemetry integration
+- [x] Streaming responses
+- [x] Structured output validation
+- [x] Context management
+- [x] File handling and code analysis
+- [x] Custom tool development
 
 ## Logging, Debugging, and Observability
 
@@ -316,62 +353,88 @@ Context is preserved throughout the thread's lifetime and can be accessed by the
 
 # CLI
 
+The Hataraku CLI provides comprehensive commands for running agents headlessly and managing MCP servers:
+
 ## Commands
 
-### `hataraku 'prompt'`
+### Running Agents Headlessly
 
-Runs a task with the given prompt.
-
-#### Options
-
-### Task Commands
 ```bash
-# Task Execution (with optional agent and schedule)
-hataraku task run 'prompt'                                     # Immediate execution, uses default agent, 1 time.
-hataraku task run --agent <agent-id> 'prompt'                 # Execute with specific agent
-hataraku task run --schedule "every day at 9am" 'prompt'      # Scheduled execution
-hataraku task run --help                                      # Show configuration options for running tasks
+# Task Execution
+hataraku task run 'prompt'                                     # Run a task with the default agent
+hataraku task run --agent <agent-id> 'prompt'                 # Run with specific agent
+hataraku task run --schedule "every day at 9am" 'prompt'      # Schedule task execution
 hataraku task run --tools *,my_custom_tool.ts                 # Run with specific tools
-hataraku task run --files *.txt,*.pdf,*.jpg,*.png              # Run with specific files as context
-hataraku task run --context '{"key": "value"}'                 # Run with specific context
-hataraku task run --disable-mcp                              # Disable MCP server
-hataraku task run --disable-parallelization                     # Disable parallelization
-hataraku task run --watcher *.ts                              # Watch for changes in the given files and rerun the task
-hataraku task run --no-sound                                    # Disable sound when the task is complete
-hataraku task run --no-notifications                            # Disable notifications when the task is complete
-hataraku task run --with-parallelism 3                        # Run with specific amount of tool parallelism
-# Other Configuration options can be set in the config file or through the CLI.
+hataraku task run --files *.ts,*.pdf                          # Include files as context
+hataraku task run --context '{"key": "value"}'                # Add custom context
+hataraku task run --disable-mcp                               # Disable MCP server connections
+hataraku task run --disable-parallelization                   # Disable tool parallelization
+hataraku task run --watcher *.ts                              # Watch files and rerun on changes
+hataraku task run --with-parallelism 3                        # Set tool parallelism level
+
+# Task Management
+hataraku task list                                            # List running tasks
+hataraku task show <task-id>                                  # Show task details
+hataraku task logs <task-id> [--follow]                       # Show task output
+hataraku task cancel <task-id>                                # Cancel scheduled task
+```
+
+### MCP Server Management
+
+```bash
+# Server Operations
+hataraku mcp serve                                            # Start MCP server
+hataraku mcp serve --config mcp.config.json                   # Start with config file
+hataraku mcp serve --port 3000                                # Start on specific port
+
+# Interactive Agent Management
+hataraku mcp agent create                                     # Start interactive agent creation wizard
+                                                             # - Configure model and provider
+                                                             # - Set instructions and capabilities
+                                                             # - Select and configure tools
+                                                             # - Set task limits and parallelism
+                                                             # - Configure observability
+
+hataraku mcp agent update <name>                              # Start interactive agent update wizard
+                                                             # - Modify existing configuration
+                                                             # - Add/remove tools
+                                                             # - Update instructions
+                                                             # - Adjust resource limits
+
+hataraku mcp agent list                                       # List available agents
+hataraku mcp agent info <name>                                # Show detailed agent configuration
+hataraku mcp agent delete <name>                              # Remove agent (with confirmation)
+hataraku mcp agent export <name>                              # Export agent config to file
+hataraku mcp agent import <file>                              # Import agent from config file
+
+# Interactive Tool Management
+hataraku mcp tool create                                      # Start interactive tool creation wizard
+                                                             # - Define tool interface with Zod
+                                                             # - Configure execution settings
+                                                             # - Set up authentication
+                                                             # - Add documentation
+                                                             # - Test tool functionality
+
+hataraku mcp tool update <name>                               # Start interactive tool update wizard
+                                                             # - Modify tool configuration
+                                                             # - Update schemas
+                                                             # - Adjust settings
+
+hataraku mcp tool list                                        # List available tools
+hataraku mcp tool info <name>                                 # Show detailed tool configuration
+hataraku mcp tool delete <name>                               # Remove tool (with confirmation)
+hataraku mcp tool export <name>                               # Export tool config to file
+hataraku mcp tool import <file>                               # Import tool from config file
+
+# Resource Management
+hataraku mcp resource list                                    # List MCP resources
+hataraku mcp resource add <path>                              # Add resource
+hataraku mcp resource remove <name>                           # Remove resource
 
 # Configuration
-hataraku config --help                                        # Show configuration options
-hataraku config --set <key> <value>                          # Set a configuration option
-hataraku config --get <key>                                  # Get a configuration option
-
-# Agent Management
-hataraku agent list                                        # List all agents
-hataraku agent show <agent-name>                             # Show agent details
-hataraku agent logs <agent-name> [--follow]                  # Show agent output
-hataraku agent create <agent-name>                         # Create a new agent interactively, including tools and instructions
-hataraku agent delete <agent-name>                         # Delete an agent
-hataraku agent update <agent-name>                         # Update an agent with new instructions or tools interactively
-# Task Management
-hataraku task list                                        # List all currently running tasks
-hataraku task show <task-id>                             # Show task details
-hataraku task logs <task-id> [--follow]                  # Show task output
-hataraku task cancel <task-id>                           # Cancel scheduled task
-
-# MCP Management
-hataraku mcp list                                        # List all MCP servers
-hataraku mcp show <mcp-name>                             # Show MCP server details
-hataraku mcp logs <mcp-name> [--follow]                  # Show MCP server output
-hataraku mcp add <mcp-name>                         # Add a new MCP server interactively. 
-hataraku mcp delete <mcp-name>                         # Delete an MCP server
-hataraku mcp config                                # returns location of the mcp config file
-
-# Hataraku as an MCP Server. Allows you to run Hataraku as an MCP server to create tasks and tools.
-hataraku mcp serve --help                              # Show configuration options for running an MCP server
-
-```
+hataraku config set <key> <value>                            # Set config option
+hataraku config get <key>                                     # Get config value
+hataraku config list                                          # Show all config
 
 Note: The --schedule parameter accepts natural language timing expressions like:
 - "every Monday at 2pm"
@@ -380,3 +443,4 @@ Note: The --schedule parameter accepts natural language timing expressions like:
 - "tomorrow at 3pm"
 - "every 15 minutes"
 - "next Friday at noon"
+```
