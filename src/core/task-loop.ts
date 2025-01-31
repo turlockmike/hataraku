@@ -25,6 +25,11 @@ interface TaskMessage {
     content: string;
 }
 
+interface TaskResult {
+    followUpTasks?: string[];
+    completionResult?: string;
+}
+
 export class TaskLoop {
     private consecutiveMistakeCount: number = 0;
     private history: TaskMessage[] = [];
@@ -86,7 +91,7 @@ export class TaskLoop {
         this.taskId = Date.now().toString();
     }
 
-    async run(initialPrompt?: string): Promise<string[] | void> {
+    async run(initialPrompt?: string): Promise<TaskResult> {
         // Initialize MCP servers before starting
         await this.mcpClient.initializeServers();
 
@@ -302,16 +307,15 @@ export class TaskLoop {
                         console.log(chalk.yellow(`Tokens: ${this.tokensIn} in, ${this.tokensOut} out`));
                         console.log(chalk.yellow(`Cost: $${this.totalCost.toFixed(6)}`));
 
-                        // Reset history for next task
-                        this.history = [];
-                        this.tokensIn = 0;
-                        this.tokensOut = 0;
-                        this.totalCost = 0;
+                        // Only reset taskId for new task tracking
                         this.taskId = Date.now().toString();
                         console.log(''); // Add blank line between tasks
 
-                        // Return follow-up tasks to be handled by CLI
-                        return followUpTasks;
+                        // Return both the follow-up tasks and completion result
+                        return {
+                            followUpTasks,
+                            completionResult: toolUse.params.result
+                        };
                     }
                     case 'list_code_definition_names': {
                         [error, result] = await this.toolExecutor.listCodeDefinitions(toolUse.params.path);

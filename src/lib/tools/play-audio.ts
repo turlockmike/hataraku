@@ -82,7 +82,15 @@ export const playAudioTool: UnifiedTool<PlayAudioInput, PlayAudioOutput> = {
             }
 
             // Play the audio file
-            await sound.play(absolutePath);
+            const soundPromise = sound.play(absolutePath);
+            
+            // Set a timeout to ensure the sound handle is cleaned up
+            const timeoutPromise = new Promise((resolve) => {
+                setTimeout(resolve, 1000); // Wait 1 second for the sound to play
+            });
+            
+            // Wait for either the sound to finish or the timeout
+            await Promise.race([soundPromise, timeoutPromise]);
 
             return {
                 success: true,

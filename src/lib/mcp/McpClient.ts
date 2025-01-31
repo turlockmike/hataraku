@@ -53,10 +53,25 @@ export class McpClient {
 
     async readSettings(): Promise<McpSettings> {
         try {
+            // Ensure the directory exists
             await fs.mkdir(path.dirname(this.settingsPath), { recursive: true });
-            const content = await fs.readFile(this.settingsPath, 'utf-8');
-            return JSON.parse(content);
-        } catch {
+            
+            // Try to read the settings file
+            try {
+                const content = await fs.readFile(this.settingsPath, 'utf-8');
+                return JSON.parse(content);
+            } catch (error: any) {
+                // If file doesn't exist, create it with default settings
+                if (error.code === 'ENOENT') {
+                    const defaultSettings: McpSettings = { mcpServers: {} };
+                    await fs.writeFile(this.settingsPath, JSON.stringify(defaultSettings, null, 2));
+                    console.log(`Created new MCP settings file at ${this.settingsPath}`);
+                    return defaultSettings;
+                }
+                throw error;
+            }
+        } catch (error) {
+            console.error('Error accessing MCP settings:', error);
             return { mcpServers: {} };
         }
     }

@@ -15,10 +15,33 @@ import { execSync } from 'child_process';
 import { input, select } from '@inquirer/prompts';
 import { playAudioTool } from './lib/tools/play-audio';
 import { version } from '../package.json';
+import { startServer } from './server';
 
 const program = new Command();
 
+// Add serve command first
+program
+    .command('serve')
+    .description('Start the web interface')
+    .option('-p, --port <number>', 'Port to run the server on', '3000')
+    .action(async (options) => {
+        const port = parseInt(options.port);
+        const apiKey = program.opts().apiKey || process.env[`${program.opts().provider.toUpperCase()}_API_KEY`];
+        
+        if (!apiKey) {
+            console.error(chalk.red(`Error: API key required. Provide via --api-key or ${program.opts().provider.toUpperCase()}_API_KEY env var`));
+            process.exit(1);
+        }
 
+        try {
+            await startServer(port, apiKey, program.opts().provider.toLowerCase(), program.opts().model);
+        } catch (error) {
+            console.error(chalk.red('Error starting server:'), error);
+            process.exit(1);
+        }
+    });
+
+// Add default command
 program
     .name('hataraku')
     .description('Hataraku is a CLI tool for creating and managing tasks')
@@ -42,6 +65,7 @@ Examples:
   $ hataraku -i "initial task"                                              # Interactive mode with initial task
   $ hataraku --no-sound "create a test file"                               # Run without sound effects
   $ hataraku --update                                                       # Update Hataraku to the latest version
+  $ hataraku serve                                                          # Start web interface
 
 Environment Variables:
   OPENROUTER_API_KEY    - API key for OpenRouter
@@ -54,13 +78,16 @@ Output:
   - "thinking..." indicator shows when processing
 
 Task History:
-  - Tasks are saved in ~/.config/hataraku/tasks/
+  - Tasks are saved in ~/.hataraku/logs/
   - Use --list-history to view recent tasks
   - Each task includes:
     * Task ID and timestamp
     * Input/output tokens
     * Cost information
-    * Full conversation history`);
+    * Full conversation history`)
+    .action(async (task) => {
+        await main(task);
+    });
 
 async function promptForNextTask(followUpTasks: string[], defaultTask?: string): Promise<string | null> {
     // Create choices array with follow-up tasks and additional options
@@ -96,18 +123,15 @@ async function promptForNextTask(followUpTasks: string[], defaultTask?: string):
     return choice;
 }
 
-async function main() {
+async function main(task?: string) {
     try {
-        program.parse();
         const options = program.opts();
-        const task = program.args[0];
 
         // Handle update flag
         if (options.update) {
             console.log(chalk.yellow('Checking for updates...'));
             try {
                 // Use npm to update the package globally
-                const { execSync } = require('child_process');
                 execSync('npm install -g hataraku@latest', { stdio: 'inherit' });
                 console.log(chalk.green('Successfully updated Hataraku to the latest version!'));
                 process.exit(0);
@@ -147,7 +171,7 @@ async function main() {
         // Handle history listing
         if (options.listHistory) {
             const tasks = await taskHistory.listTasks();
-            console.log(chalk.yellow(`Task history location: ${path.join(os.homedir(), '.config', 'hataraku', 'tasks')}\n`));
+            console.log(chalk.yellow(`Task history location: ${path.join(os.homedir(), '.hataraku', 'logs')}\n`));
             if (tasks.length === 0) {
                 console.log('No task history found.');
             } else {
@@ -191,15 +215,15 @@ async function main() {
                 }
 
                 if (taskToRun) {
-                    const followUpTasks = await taskLoop.run(taskToRun);
+                    const result = await taskLoop.run(taskToRun);
                     // Play celebration sound if sounds are enabled
                     if (options.sound) {
                         await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
                     }
 
                     // Handle follow-up tasks if they exist
-                    if (followUpTasks && followUpTasks.length > 0) {
-                        const nextTask = await promptForNextTask(followUpTasks);
+                    if (result.followUpTasks && result.followUpTasks.length > 0) {
+                        const nextTask = await promptForNextTask(result.followUpTasks);
                         if (nextTask) {
                             await runInteractiveTask(nextTask);
                             return;
@@ -223,6 +247,7 @@ async function main() {
             if (options.sound) {
                 await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
             }
+            process.exit(0);
         }
 
     } catch (error) {
@@ -234,4 +259,5 @@ async function main() {
     }
 }
 
-main().catch(console.error);
+// Parse command line arguments
+program.parse();
