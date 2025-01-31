@@ -14,9 +14,10 @@ import * as path from 'path';
 import { input, select } from '@inquirer/prompts';
 import { playAudioTool } from './lib/tools/play-audio';
 import { version } from '../package.json';
+import { VoiceMonitor } from './services/voice/VoiceMonitor';
+import { VoiceServiceState, VoiceCommandResult } from './services/voice/types';
 
 const program = new Command();
-
 
 program
     .name('hataraku')
@@ -28,6 +29,7 @@ program
     .option('-l, --list-history', 'List recent tasks from history')
     .option('-i, --interactive', 'Run in interactive mode, prompting for tasks')
     .option('--no-sound', 'Disable sound effects')
+    .option('-v, --voice', 'Enable voice command mode with "Hey Hataraku" wake word')
     .argument('[task]', 'Task or question for the AI assistant')
     .version(version)
     .addHelpText('after', `
@@ -39,6 +41,7 @@ Examples:
   $ hataraku -i                                                             # Run in interactive mode
   $ hataraku -i "initial task"                                              # Interactive mode with initial task
   $ hataraku --no-sound "create a test file"                               # Run without sound effects
+  $ hataraku --voice                                                        # Run with voice command support
 
 Environment Variables:
   OPENROUTER_API_KEY    - API key for OpenRouter
@@ -49,6 +52,7 @@ Output:
   - Results are shown in green
   - Usage information in yellow
   - "thinking..." indicator shows when processing
+  - Voice command status shown when enabled
 
 Task History:
   - Tasks are saved in ~/.config/hataraku/tasks/
@@ -63,7 +67,7 @@ async function promptForNextTask(followUpTasks: string[], defaultTask?: string):
     // Create choices array with follow-up tasks and additional options
     const choices = [
         ...followUpTasks.map((task, index) => ({
-            value: task, // Use the actual task text as the value
+            value: task,
             label: task,
             description: `Follow-up task ${index + 1}`
         })),
@@ -89,8 +93,52 @@ async function promptForNextTask(followUpTasks: string[], defaultTask?: string):
         return customTask || null;
     }
 
-    // Since we're using the actual task text as the value, we can return it directly
     return choice;
+}
+
+async function initializeVoiceMonitor(taskLoop: TaskLoop): Promise<VoiceMonitor> {
+    const voiceMonitor = new VoiceMonitor({
+        wakeWord: 'Hey Hataraku',
+        sensitivity: 0.5,
+        enableLogging: true
+    });
+
+    // Handle voice commands
+    voiceMonitor.setHandlers({
+        onCommand: async (result: VoiceCommandResult) => {
+            console.log(chalk.blue('\nProcessing voice command:', result.text));
+            await taskLoop.run(result.text);
+            if (program.opts().sound) {
+                await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
+            }
+        },
+        onStateChange: (state: VoiceServiceState) => {
+            switch (state) {
+                case VoiceServiceState.LISTENING:
+                    console.log(chalk.blue('\nListening for "Hey Hataraku"...'));
+                    break;
+                case VoiceServiceState.PROCESSING:
+                    console.log(chalk.blue('\nProcessing speech...'));
+                    break;
+                case VoiceServiceState.ERROR:
+                    console.log(chalk.red('\nVoice processing error occurred'));
+                    break;
+            }
+        },
+        onError: (error: Error) => {
+            console.error(chalk.red('\nVoice Error:'), error);
+        }
+    });
+
+    try {
+        await voiceMonitor.start();
+        console.log(chalk.green('\nVoice commands enabled. Say "Hey Hataraku" to start.'));
+    } catch (error) {
+        console.error(chalk.red('\nFailed to initialize voice commands:'), error);
+        process.exit(1);
+    }
+
+    return voiceMonitor;
 }
 
 async function main() {
@@ -154,18 +202,27 @@ async function main() {
             { sound: options.sound }
         );
 
+        // Initialize voice monitor if voice mode is enabled
+        let voiceMonitor: VoiceMonitor | undefined;
+        if (options.voice) {
+            voiceMonitor = await initializeVoiceMonitor(taskLoop);
+        }
+
         if (options.interactive) {
             // Interactive mode
             async function runInteractiveTask(currentTask?: string) {
                 let taskToRun = currentTask;
-                
+
                 if (!taskToRun) {
                     taskToRun = await input({
                         message: 'Enter your task, or type "exit" to quit:',
-                        default: task // Use provided task argument as default if available
+                        default: task
                     });
 
                     if (taskToRun === 'exit') {
+                        if (voiceMonitor) {
+                            await voiceMonitor.stop();
+                        }
                         console.log(chalk.yellow('Exiting interactive mode.'));
                         process.exit(0);
                     }
@@ -173,12 +230,10 @@ async function main() {
 
                 if (taskToRun) {
                     const followUpTasks = await taskLoop.run(taskToRun);
-                    // Play celebration sound if sounds are enabled
                     if (options.sound) {
                         await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
                     }
 
-                    // Handle follow-up tasks if they exist
                     if (followUpTasks && followUpTasks.length > 0) {
                         const nextTask = await promptForNextTask(followUpTasks);
                         if (nextTask) {
@@ -187,7 +242,6 @@ async function main() {
                         }
                     }
 
-                    // If no follow-up tasks or user didn't select one, prompt for new task
                     await runInteractiveTask();
                 }
             }
@@ -195,14 +249,21 @@ async function main() {
             await runInteractiveTask(task);
         } else {
             // Normal mode
-            if (!task) {
-                console.error(chalk.red('Error: Please provide a task or question'));
+            if (!task && !options.voice) {
+                console.error(chalk.red('Error: Please provide a task or question, or use --voice for voice commands'));
                 program.help();
             }
-            await taskLoop.run(task);
-            // Play celebration sound if sounds are enabled
-            if (options.sound) {
-                await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
+            if (task) {
+                await taskLoop.run(task);
+                if (options.sound) {
+                    await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
+                }
+            }
+            // If only voice mode is enabled, keep the process running
+            if (options.voice) {
+                console.log(chalk.blue('\nListening for voice commands. Press Ctrl+C to exit.'));
+                // Keep the process running
+                await new Promise(() => { });
             }
         }
 
@@ -214,5 +275,11 @@ async function main() {
         process.exit(1);
     }
 }
+
+// Handle cleanup on exit
+process.on('SIGINT', async () => {
+    console.log(chalk.yellow('\nShutting down...'));
+    process.exit(0);
+});
 
 main().catch(console.error);

@@ -44,7 +44,40 @@ hataraku --list-history
 
 # Run without sound effects
 hataraku --no-sound "create a test file"
+
+# Enable voice commands
+hataraku --voice
 ```
+
+## Voice Commands 🎙️
+
+Hataraku now supports voice commands with completely local processing using Ollama!
+
+### Quick Setup
+
+```bash
+# 1. Install dependencies and models
+./scripts/setup-voice.sh
+
+# 2. Start with voice commands
+hataraku --voice
+```
+
+### Key Features
+- 🏠 100% Local Processing - No cloud services needed
+- 🔒 Complete Privacy - All processing happens on your machine
+- 💰 Zero Cost - No API keys or subscription fees
+- 🗣️ Natural wake word detection ("Hey Hataraku")
+- 🎯 High accuracy speech recognition
+- 🌍 Multi-language support
+- ⚡ Fast response times
+
+[📚 Read the detailed Voice Commands documentation](./docs/voice-commands.md) for:
+- Complete setup instructions
+- Usage examples and best practices
+- Technical details and performance tips
+- Troubleshooting guide
+- FAQ and future enhancements
 
 ## CLI Options
 
@@ -54,24 +87,27 @@ hataraku --no-sound "create a test file"
 - `-a, --max-attempts <number>` - Maximum number of consecutive mistakes before exiting [default: 3]
 - `-l, --list-history` - List recent tasks from history
 - `-i, --interactive` - Run in interactive mode, prompting for tasks
+- `--voice` - Enable voice command mode with "Hey Hataraku" wake word
 - `--no-sound` - Disable sound effects
 - `-v, --version` - Output the version number
 - `-h, --help` - Display help information
 
 ## Features
 
-- Create and edit files with diff view and linting support
-- Execute terminal commands with real-time output monitoring
-- Launch and control browsers for testing and debugging
-- Support for multiple AI providers (OpenRouter, Anthropic, OpenAI, etc.)
-- Built-in tools for file operations, code analysis, and more
-- Interactive mode with follow-up task suggestions
-- Task history tracking and review
-- Sound effects for task completion (can be disabled)
+- ✨ Create and edit files with diff view and linting support
+- 🖥️ Execute terminal commands with real-time output monitoring
+- 🌐 Launch and control browsers for testing and debugging
+- 🤖 Support for multiple AI providers (OpenRouter, Anthropic, OpenAI, etc.)
+- 🛠️ Built-in tools for file operations, code analysis, and more
+- 💬 Interactive mode with follow-up task suggestions
+- 🎙️ Voice command support with local processing
+- 📝 Task history tracking and review
+- 🔊 Sound effects for task completion (can be disabled)
 
 ## Documentation
 
 - [CLI Documentation](./docs/cli.md)
+- [Voice Commands Guide](./docs/voice-commands.md)
 - [Examples](./examples/)
 
 ## Task History
