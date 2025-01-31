@@ -1,7 +1,7 @@
 {
   "name": "hataraku",
   "version": "0.2.0",
-  "description": "An autonomous coding agent and SDK for building AI-powered development tools",
+  "description": "An autonomous coding agent for building AI-powered development tools",
   "author": {
     "name": "Michael Darmousseh"
   },
@@ -95,6 +95,8 @@
     "isbinaryfile": "^5.0.2",
     "mammoth": "^1.8.0",
     "node-fetch": "^3.3.2",
+    "node-record-lpcm16": "^1.0.1",
+    "ollama": "^0.4.4",
     "openai": "^4.78.1",
     "os-name": "^6.0.0",
     "p-wait-for": "^5.0.2",
