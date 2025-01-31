@@ -111,6 +111,10 @@
     "web-tree-sitter": "^0.22.6",
     "zod": "^3.23.8"
   },
+  "overrides": {
+    "minimist": "^1.2.8",
+    "minimatch": "^3.1.2"
+  },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
       "npx eslint -c .eslintrc.json"
