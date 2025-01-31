@@ -11,6 +11,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import * as os from 'os';
 import * as path from 'path';
+import { execSync } from 'child_process';
 import { input, select } from '@inquirer/prompts';
 import { playAudioTool } from './lib/tools/play-audio';
 import { version } from '../package.json';
@@ -21,6 +22,7 @@ const program = new Command();
 program
     .name('hataraku')
     .description('Hataraku is a CLI tool for creating and managing tasks')
+    .option('--update', 'Update Hataraku to the latest version')
     .option('-p, --provider <provider>', 'API provider to use (openrouter, anthropic, openai)', 'openRouter')
     .option('-m, --model <model>', 'Model ID for the provider (e.g., anthropic/claude-3.5-sonnet:beta, deepseek/deepseek-chat)', 'anthropic/claude-3.5-sonnet')
     .option('-k, --api-key <key>', 'API key for the provider (can also use PROVIDER_API_KEY env var)')
@@ -39,6 +41,7 @@ Examples:
   $ hataraku -i                                                             # Run in interactive mode
   $ hataraku -i "initial task"                                              # Interactive mode with initial task
   $ hataraku --no-sound "create a test file"                               # Run without sound effects
+  $ hataraku --update                                                       # Update Hataraku to the latest version
 
 Environment Variables:
   OPENROUTER_API_KEY    - API key for OpenRouter
@@ -99,6 +102,22 @@ async function main() {
         const options = program.opts();
         const task = program.args[0];
 
+        // Handle update flag
+        if (options.update) {
+            console.log(chalk.yellow('Checking for updates...'));
+            try {
+                // Use npm to update the package globally
+                const { execSync } = require('child_process');
+                execSync('npm install -g hataraku@latest', { stdio: 'inherit' });
+                console.log(chalk.green('Successfully updated Hataraku to the latest version!'));
+                process.exit(0);
+            } catch (error) {
+                console.error(chalk.red('Error updating Hataraku:'), error);
+                console.log(chalk.yellow('Try running with sudo if you get permission errors.'));
+                process.exit(1);
+            }
+        }
+
         // Check for API key
         const apiKey = options.apiKey || process.env[`${options.provider.toUpperCase()}_API_KEY`];
         if (!apiKey) {
@@ -158,7 +177,7 @@ async function main() {
             // Interactive mode
             async function runInteractiveTask(currentTask?: string) {
                 let taskToRun = currentTask;
-                
+
                 if (!taskToRun) {
                     taskToRun = await input({
                         message: 'Enter your task, or type "exit" to quit:',
