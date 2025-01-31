@@ -76,7 +76,7 @@ hataraku --no-sound "create a test file"
 
 ## Task History
 
-Tasks are automatically saved in `~/.config/hataraku/tasks/` and include:
+Tasks are automatically saved in `~/.hataraku/logs` and include:
 - Task ID and timestamp
 - Input/output tokens
 - Cost information
