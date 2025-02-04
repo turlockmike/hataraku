@@ -3,7 +3,6 @@ import { AgentConfig, TaskInput } from './types/config';
 import { agentConfigSchema } from './schemas/config';
 import { UnifiedTool } from '../../lib/types';
 import { ModelProvider, modelProviderFromConfig } from '../../api';
-import { ModelConfiguration } from '../../shared/api';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { SystemPromptBuilder } from '../prompts/SystemPromptBuilder';
 

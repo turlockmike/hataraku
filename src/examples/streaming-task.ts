@@ -1,6 +1,5 @@
 import { Agent } from '../core/agent';
-import { AgentConfig, TaskInput } from '../core/agent/types/config';
-import { z } from 'zod';
+import { AgentConfig } from '../core/agent/types/config';
 
 async function main() {
   // Create agent config with OpenRouter/Sonnet model
@@ -42,43 +41,3 @@ async function main() {
 
 // Run the program
 main().catch(console.error);
-
-// Example with schema validation:
-async function schemaExample() {
-  const agent = new Agent({
-    model: {
-      apiProvider: 'openrouter',
-      apiModelId: 'anthropic/claude-3-sonnet-20240229'
-    },
-    tools: []
-  });
-  await agent.initialize();
-
-  // Define schema and type for structured output
-  const StanzaSchema = z.object({
-    stanza: z.number(),
-    lines: z.array(z.string())
-  });
-  type Stanza = z.infer<typeof StanzaSchema>;
-
-  const task = {
-    role: 'user' as const,
-    content: 'Write a poem with 3 stanzas, each with 4 lines. Return each stanza as a structured JSON object.',
-    stream: true as const,
-    outputSchema: StanzaSchema
-  };
-
-  try {
-    // Process structured streaming output
-    const stream = await agent.task<Stanza, true>(task);
-    for await (const chunk of stream) {
-      // Each chunk is a validated stanza object
-      console.log(`\nStanza ${chunk.stanza}:`);
-      for (const line of chunk.lines) {
-        console.log(line);
-      }
-    }
-  } catch (error) {
-    console.error('Error:', error);
-  }
-}
