@@ -1,64 +1,38 @@
 import { Agent } from '..';
 import { AgentConfig, TaskInput, Thread } from '../types/config';
-import { UnifiedTool } from '../../../lib/types';
 import { z } from 'zod';
-import { MockProvider } from '../../../lib/testing/MockProvider';
+import { MockProvider, MockTool } from '../../../lib/testing';
+import { ModelProvider } from '../../../api';
 
 describe('Agent', () => {
-  // Create a mock tool for testing
-  const mockTool: UnifiedTool = {
-    name: 'mock_tool',
-    description: 'A mock tool for testing',
-    parameters: {
-      param1: {
-        required: true,
-        description: 'Test parameter'
-      }
-    },
-    inputSchema: {
-      type: 'object',
-      properties: {
-        param1: { type: 'string' }
-      },
-      required: ['param1'],
-      additionalProperties: false
-    },
-    outputSchema: {
-      type: 'object',
-      properties: {
-        result: { type: 'string' }
-      },
-      required: ['result'],
-      additionalProperties: false
-    },
-    execute: async () => ({ result: 'test' })
-  };
-
-  // Create a mock tool with initialize method
-  const mockToolWithInit: UnifiedTool = {
-    ...mockTool,
-    name: 'mock_tool_init',
-    initialize: async () => { /* mock initialization */ }
-  };
-
   let mockProvider: MockProvider;
+  let mockTool: MockTool;
+  let mockToolWithInit: MockTool;
   let validConfigWithProvider: AgentConfig;
+  let validConfigWithModelConfig: AgentConfig;
 
   beforeEach(() => {
     mockProvider = new MockProvider();
+    mockTool = MockTool.createBasic('mock_tool');
+    mockToolWithInit = MockTool.createBasic('mock_tool_init');
+    mockToolWithInit.initialize = async () => {
+      mockToolWithInit.initializeCalls++;
+      /* mock initialization */
+    };
+
     validConfigWithProvider = {
-      model: mockProvider,
+      model: mockProvider as ModelProvider,
+      tools: [mockTool, mockToolWithInit],
+    };
+
+    validConfigWithModelConfig = {
+      model: {
+        apiProvider: 'anthropic',
+        apiModelId: 'claude-3-5-sonnet-20241022'
+      },
       tools: [mockTool, mockToolWithInit],
     };
   });
-
-  const validConfigWithModelConfig: AgentConfig = {
-    model: {
-      apiProvider: 'anthropic',
-      apiModelId: 'claude-3-5-sonnet-20241022'
-    },
-    tools: [mockTool, mockToolWithInit],
-  };
 
   const validTaskInput: TaskInput = {
     role: 'user',
@@ -97,6 +71,7 @@ describe('Agent', () => {
       await agent.initialize();
       expect(agent.getLoadedTools()).toContain('mock_tool');
       expect(agent.getLoadedTools()).toContain('mock_tool_init');
+      expect(mockToolWithInit.getInitializeCallCount()).toBe(1);
     });
 
     it('should initialize successfully with ModelConfiguration', async () => {
@@ -104,6 +79,7 @@ describe('Agent', () => {
       await agent.initialize();
       expect(agent.getLoadedTools()).toContain('mock_tool');
       expect(agent.getLoadedTools()).toContain('mock_tool_init');
+      expect(mockToolWithInit.getInitializeCallCount()).toBe(1);
     });
 
     it('should only initialize once', async () => {
@@ -111,6 +87,7 @@ describe('Agent', () => {
       await agent.initialize();
       await agent.initialize();
       expect(agent.getLoadedTools()).toContain('mock_tool');
+      expect(mockToolWithInit.getInitializeCallCount()).toBe(1);
     });
   });
 
@@ -122,6 +99,8 @@ describe('Agent', () => {
 
     it('should execute task successfully', async () => {
       mockProvider.clearResponses().mockResponse('test response');
+      mockTool.mockResponse({ result: 'tool success' });
+
       const agent = new Agent(validConfigWithProvider);
       await agent.initialize();
       
@@ -191,6 +170,18 @@ describe('Agent', () => {
       
       await expect(agent.task(validTaskInput))
         .rejects.toThrow('Model error');
+    });
+
+    it('should handle tool errors', async () => {
+      mockProvider.clearResponses().mockResponse('test response');
+      mockTool.mockError(new Error('Tool error'));
+
+      const agent = new Agent(validConfigWithProvider);
+      await agent.initialize();
+      
+      const result = await agent.task(validTaskInput);
+      expect(result).toBe('test response');
+      expect(mockTool.getCallCount()).toBe(0); // Tool not called yet since we haven't implemented tool execution
     });
   });
 

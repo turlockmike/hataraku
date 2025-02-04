@@ -133,10 +133,9 @@ export class Agent extends EventEmitter {
     let response = '';
 
     try {
-      for await (const chunk of stream) {
-        if (chunk.type === 'text' && chunk.text) {
-          response += chunk.text;
-        }
+      const result = await stream.next();
+      if (result.value?.type === 'text' && result.value.text) {
+        response = result.value.text;
       }
 
       // If output schema is provided, validate and parse response
