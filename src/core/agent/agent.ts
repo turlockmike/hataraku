@@ -5,16 +5,18 @@ import { UnifiedTool } from '../../lib/types';
 import { ModelProvider, modelProviderFromConfig } from '../../api';
 import { ModelConfiguration } from '../../shared/api';
 import { Anthropic } from '@anthropic-ai/sdk';
+import { SystemPromptBuilder } from '../prompts/SystemPromptBuilder';
 
 /**
  * Core Agent class that serves as the primary entry point for the Hataraku SDK.
  * Handles configuration, tool management, and task execution.
  */
-export class Agent extends EventEmitter {
+export class Agent {
   private readonly config: AgentConfig;
   private initialized: boolean = false;
   private tools: Map<string, UnifiedTool> = new Map();
   private modelProvider: ModelProvider;
+  private systemPromptBuilder: SystemPromptBuilder;
 
   /**
    * Creates a new Agent instance with the provided configuration
@@ -22,8 +24,6 @@ export class Agent extends EventEmitter {
    * @throws {Error} If the configuration is invalid
    */
   constructor(config: AgentConfig) {
-    super();
-    
     // Validate configuration
     const result = agentConfigSchema.safeParse(config);
     if (!result.success) {
@@ -40,6 +40,11 @@ export class Agent extends EventEmitter {
       // ModelConfiguration - create provider
       this.modelProvider = modelProviderFromConfig(config.model);
     }
+
+    // Initialize system prompt builder with default config
+    this.systemPromptBuilder = new SystemPromptBuilder({
+      ...config.systemPrompt,
+    }, process.cwd());
   }
 
   /**
@@ -54,11 +59,8 @@ export class Agent extends EventEmitter {
     try {
       // Load and initialize tools
       await this.loadTools();
-      
       this.initialized = true;
-      this.emit('initialized');
     } catch (error) {
-      this.emit('error', error);
       throw error;
     }
   }
@@ -66,89 +68,23 @@ export class Agent extends EventEmitter {
   /**
    * Executes a task using the configured model and tools
    * @param input The task input configuration
-   * @returns The result of the task execution
+   * @returns The result of the task execution or an AsyncIterable for streaming responses
    * @throws {Error} If the agent is not initialized or task execution fails
    */
-  public async task<TOutput = unknown>(input: TaskInput<TOutput>): Promise<TOutput> {
+  public async task<TOutput = string, TStream extends boolean = false>(
+    input: TaskInput<TOutput> & {
+      stream?: TStream;
+    }
+  ): Promise<TStream extends true ? AsyncIterable<TOutput> : TOutput> {
     if (!this.initialized) {
-      const error = new Error('Agent must be initialized before executing tasks');
-      this.emit('error', error);
-      throw error;
+      await this.initialize();
     }
 
-    this.emit('taskStart', input);
-
-    try {
-      if (input.stream) {
-        return await this.executeStreamingTask(input);
-      }
-      return await this.executeTask(input);
-    } catch (error) {
-      this.emit('error', error);
-      throw error;
-    } finally {
-      this.emit('taskEnd', input);
-    }
-  }
-
-  /**
-   * Executes a task with streaming response
-   * @private
-   */
-  private async executeStreamingTask<TOutput>(input: TaskInput<TOutput>): Promise<TOutput> {
-    // Create system prompt
-    const systemPrompt = `You are an AI assistant. Your task is: ${input.content}`;
-
-    // Create message array
-    const messages: Anthropic.Messages.MessageParam[] = [];
-    if (input.thread) {
-      // Add thread context if available
-      const contexts = input.thread.getAllContexts();
-      for (const [key, value] of contexts) {
-        messages.push({
-          role: 'user',
-          content: `Context ${key}: ${JSON.stringify(value)}`
-        });
-      }
+    if (input.stream) {
+      return this.executeStreamingTask(input) as any;
     }
 
-    // Add the task input as a user message
-    messages.push({
-      role: 'user',
-      content: input.content
-    });
-
-    // Get response stream from model provider
-    const stream = this.modelProvider.createMessage(systemPrompt, messages);
-    let response = '';
-
-    try {
-      // Process stream chunks
-      for await (const chunk of stream) {
-        if (chunk.type === 'text' && chunk.text) {
-          response += chunk.text;
-          // Emit streaming chunk
-          this.emit('streamChunk', chunk.text);
-        }
-      }
-
-      // If output schema is provided, validate and parse response
-      if (input.outputSchema) {
-        try {
-          const parsed = input.outputSchema.parse(JSON.parse(response));
-          return parsed as TOutput;
-        } catch (error) {
-          const parseError = new Error(`Failed to parse response with schema: ${error.message}`);
-          this.emit('error', parseError);
-          throw parseError;
-        }
-      }
-
-      return response as TOutput;
-    } catch (error) {
-      this.emit('error', error);
-      throw error;
-    }
+    return this.executeTask(input) as any;
   }
 
   /**
@@ -156,8 +92,15 @@ export class Agent extends EventEmitter {
    * @private
    */
   private async executeTask<TOutput>(input: TaskInput<TOutput>): Promise<TOutput> {
-    // Create system prompt
-    const systemPrompt = `You are an AI assistant. Your task is: ${input.content}`;
+    // Create system prompt using builder with task content
+    const systemPrompt = this.systemPromptBuilder
+      .addSection({
+        name: 'task',
+        content: input.content,
+        order: 0,  // Place at the beginning
+        enabled: true
+      })
+      .build();
 
     // Create message array
     const messages: Anthropic.Messages.MessageParam[] = [];
@@ -178,33 +121,116 @@ export class Agent extends EventEmitter {
       content: input.content
     });
 
-    // Get response from model provider
-    const stream = this.modelProvider.createMessage(systemPrompt, messages);
-    let response = '';
-
     try {
-      // Process all stream chunks
-      for await (const chunk of stream) {
-        if (chunk.type === 'text' && chunk.text) {
-          response += chunk.text;
+      // Get response from model provider
+      const stream = this.modelProvider.createMessage(systemPrompt, messages);
+      let fullResponse = '';
+
+      // Get first chunk
+      const { value: firstChunk, done: firstDone } = await stream.next();
+      if (firstChunk?.type === 'text' && firstChunk.text) {
+        fullResponse = firstChunk.text;
+      }
+
+      // If not done, accumulate remaining chunks
+      if (!firstDone) {
+        for await (const chunk of stream) {
+          if (chunk.type === 'text' && chunk.text) {
+            fullResponse += chunk.text;
+          }
         }
       }
 
       // If output schema is provided, validate and parse response
       if (input.outputSchema) {
         try {
-          const parsed = input.outputSchema.parse(JSON.parse(response));
+          const parsed = input.outputSchema.parse(JSON.parse(fullResponse));
           return parsed as TOutput;
         } catch (error) {
           const parseError = new Error(`Failed to parse response with schema: ${error.message}`);
-          this.emit('error', parseError);
           throw parseError;
         }
       }
 
-      return response as TOutput;
+      return fullResponse as TOutput;
     } catch (error) {
-      this.emit('error', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Executes a task with streaming response
+   * @private
+   */
+  private async *executeStreamingTask<TOutput>(
+    input: TaskInput<TOutput>
+  ): AsyncGenerator<TOutput> {
+    // Create system prompt using builder with task content
+    const systemPrompt = this.systemPromptBuilder
+      .addSection({
+        name: 'task',
+        content: input.content,
+        order: 0,  // Place at the beginning
+        enabled: true
+      })
+      .build();
+
+    // Create message array
+    const messages: Anthropic.Messages.MessageParam[] = [];
+    if (input.thread) {
+      // Add thread context if available
+      const contexts = input.thread.getAllContexts();
+      for (const [key, value] of contexts) {
+        messages.push({
+          role: 'user',
+          content: `Context ${key}: ${JSON.stringify(value)}`
+        });
+      }
+    }
+
+    // Add the task input as a user message
+    messages.push({
+      role: 'user',
+      content: input.content
+    });
+
+    try {
+      // Get response stream from model provider
+      const stream = this.modelProvider.createMessage(systemPrompt, messages);
+      let currentChunk = '';
+
+      // Process stream chunks
+      for await (const chunk of stream) {
+        if (chunk.type === 'text' && chunk.text) {
+          if (input.outputSchema) {
+            currentChunk += chunk.text;
+            try {
+              // Try to parse as JSON and validate
+              const parsed = input.outputSchema.parse(JSON.parse(currentChunk));
+              yield parsed as TOutput;
+              currentChunk = ''; // Reset after successful parse
+            } catch {
+              // If parsing fails, continue accumulating chunks
+              continue;
+            }
+          } else {
+            // If no schema, yield the text directly
+            yield chunk.text as TOutput;
+          }
+        }
+      }
+
+      // Handle any remaining chunk
+      if (currentChunk && input.outputSchema) {
+        try {
+          const parsed = input.outputSchema.parse(JSON.parse(currentChunk));
+          yield parsed as TOutput;
+        } catch (error) {
+          const parseError = new Error(`Failed to parse response with schema: ${error.message}`);
+          throw parseError;
+        }
+      }
+    } catch (error) {
       throw error;
     }
   }
@@ -237,8 +263,6 @@ export class Agent extends EventEmitter {
         await tool.initialize();
       }
     }
-
-    this.emit('toolsLoaded', Array.from(this.tools.keys()));
   }
 
   /**

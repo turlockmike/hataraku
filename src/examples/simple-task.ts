@@ -23,16 +23,18 @@ async function main() {
   const agent = new Agent(config);
   await agent.initialize();
 
-  // Create task input with query from command line
-  const task: TaskInput = {
-    role: 'user',
+  // Create task input
+  const task = {
+    role: 'user' as const,
     content: query
   };
 
   try {
-    // Execute task and log response
+    // Execute task and get complete response
+    console.log('\nResponse:\n');
     const response = await agent.task(task);
-    console.log('Response:', response);
+    console.log(response);
+    console.log(); // Add newline at end
   } catch (error) {
     console.error('Error:', error);
   }

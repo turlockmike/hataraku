@@ -1,4 +1,6 @@
 import { DiffStrategy } from "../../diff/DiffStrategy"
+// Import path utils to get access to toPosix string extension
+import "../../../utils/path"
 
 export function getRulesSection(
     cwd: string,

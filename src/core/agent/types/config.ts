@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { UnifiedTool } from '../../../lib/types';
 import { ModelConfiguration, ModelProvider as ApiModelProvider } from '../../../shared/api';
 import { ModelProvider } from '../../../api';
+import { SystemPromptConfig } from '../../prompts/SystemPromptBuilder';
 
 /**
  * Model configuration for the agent - can be either a ModelProvider instance or a ModelConfiguration
@@ -34,6 +35,8 @@ export interface AgentConfig {
   maxRetries?: number;
   /** Timeout for operations in milliseconds */
   timeout?: number;
+  /** System prompt configuration */
+  systemPrompt?: SystemPromptConfig;
 }
 
 /**

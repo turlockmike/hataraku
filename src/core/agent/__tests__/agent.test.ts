@@ -33,9 +33,10 @@ describe('Agent', () => {
     };
   });
 
-  const validTaskInput: TaskInput = {
+  const validTaskInput: TaskInput & { stream?: false } = {
     role: 'user',
     content: 'test task',
+    stream: false
   };
 
   describe('constructor', () => {
@@ -91,11 +92,6 @@ describe('Agent', () => {
   });
 
   describe('task', () => {
-    it('should throw error if not initialized', async () => {
-      const agent = new Agent(validConfigWithProvider);
-      await expect(agent.task(validTaskInput)).rejects.toThrow('Agent must be initialized');
-    });
-
     it('should execute task successfully', async () => {
       mockProvider.clearResponses().mockResponse('test response');
       mockTool.mockResponse({ result: 'tool success' });
@@ -116,11 +112,20 @@ describe('Agent', () => {
       });
     });
 
-    it('should throw not implemented error for streaming task', async () => {
+    it('should handle streaming task', async () => {
+      mockProvider.clearResponses().mockResponse('test response');
       const agent = new Agent(validConfigWithProvider);
       await agent.initialize();
-      await expect(agent.task({ ...validTaskInput, stream: true }))
-        .rejects.toThrow('Streaming task execution not implemented yet');
+
+      const streamingInput: TaskInput & { stream: true } = {
+        role: 'user',
+        content: 'test task',
+        stream: true
+      };
+
+      const result = await agent.task(streamingInput);
+      expect(result).toBeDefined();
+      expect(result[Symbol.asyncIterator]).toBeDefined();
     });
 
     it('should handle task with thread context', async () => {
@@ -180,62 +185,7 @@ describe('Agent', () => {
       
       const result = await agent.task(validTaskInput);
       expect(result).toBe('test response');
-      expect(mockTool.getCallCount()).toBe(0); // Tool not called yet since we haven't implemented tool execution
-    });
-  });
-
-  describe('events', () => {
-    it('should emit initialization events', async () => {
-      const agent = new Agent(validConfigWithProvider);
-      const initListener = jest.fn();
-      const toolsLoadedListener = jest.fn();
-      
-      agent.on('initialized', initListener);
-      agent.on('toolsLoaded', toolsLoadedListener);
-      
-      await agent.initialize();
-      
-      expect(initListener).toHaveBeenCalled();
-      expect(toolsLoadedListener).toHaveBeenCalledWith(['mock_tool', 'mock_tool_init']);
-    });
-
-    it('should emit task events', async () => {
-      mockProvider.clearResponses().mockResponse('test response');
-      const agent = new Agent(validConfigWithProvider);
-      const taskStartListener = jest.fn();
-      const taskEndListener = jest.fn();
-      const errorListener = jest.fn();
-      
-      agent.on('taskStart', taskStartListener);
-      agent.on('taskEnd', taskEndListener);
-      agent.on('error', errorListener);
-      
-      await agent.initialize();
-      await agent.task(validTaskInput);
-      
-      expect(taskStartListener).toHaveBeenCalledWith(validTaskInput);
-      expect(taskEndListener).toHaveBeenCalledWith(validTaskInput);
-      expect(errorListener).not.toHaveBeenCalled();
-    });
-
-    it('should emit error events', async () => {
-      mockProvider.clearResponses().mockError('Model error');
-      const agent = new Agent(validConfigWithProvider);
-      const errorListener = jest.fn();
-      
-      agent.on('error', errorListener);
-      
-      await agent.initialize();
-      try {
-        await agent.task(validTaskInput);
-      } catch (error) {
-        // Expected error
-      }
-      
-      expect(errorListener).toHaveBeenCalled();
-      const error = errorListener.mock.calls[0][0];
-      expect(error instanceof Error).toBe(true);
-      expect(error.message).toBe('Model error');
+      expect(mockTool.getCallCount()).toBe(0);
     });
   });
 });
