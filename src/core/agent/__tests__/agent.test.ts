@@ -1,9 +1,8 @@
 import { Agent } from '..';
 import { AgentConfig, TaskInput, Thread } from '../types/config';
 import { UnifiedTool } from '../../../lib/types';
-import { ModelProvider } from '../../../api';
 import { z } from 'zod';
-import { Anthropic } from '@anthropic-ai/sdk';
+import { MockProvider } from '../../../lib/testing/MockProvider';
 
 describe('Agent', () => {
   // Create a mock tool for testing
@@ -42,30 +41,16 @@ describe('Agent', () => {
     initialize: async () => { /* mock initialization */ }
   };
 
-  // Create a mock model provider
-  const mockModelProvider: ModelProvider = {
-    createMessage: jest.fn().mockImplementation((systemPrompt: string, messages: Anthropic.Messages.MessageParam[]) => {
-      const mockAsyncGenerator = {
-        async *[Symbol.asyncIterator]() {
-          yield { type: 'text', text: 'test response' };
-        },
-        [Symbol.asyncDispose]: async () => {},
-        next: jest.fn(),
-        return: jest.fn(),
-        throw: jest.fn(),
-      };
-      return mockAsyncGenerator;
-    }),
-    getModel: jest.fn().mockReturnValue({ 
-      id: 'test-model', 
-      info: { contextWindow: 4096, supportsPromptCache: false } 
-    })
-  };
+  let mockProvider: MockProvider;
+  let validConfigWithProvider: AgentConfig;
 
-  const validConfigWithProvider: AgentConfig = {
-    model: mockModelProvider,
-    tools: [mockTool, mockToolWithInit],
-  };
+  beforeEach(() => {
+    mockProvider = new MockProvider();
+    validConfigWithProvider = {
+      model: mockProvider,
+      tools: [mockTool, mockToolWithInit],
+    };
+  });
 
   const validConfigWithModelConfig: AgentConfig = {
     model: {
@@ -85,7 +70,7 @@ describe('Agent', () => {
       const agent = new Agent(validConfigWithProvider);
       expect(agent).toBeInstanceOf(Agent);
       expect(agent.getConfig()).toEqual(validConfigWithProvider);
-      expect(agent.getModelProvider()).toBe(mockModelProvider);
+      expect(agent.getModelProvider()).toBe(mockProvider);
     });
 
     it('should create an instance with ModelConfiguration', () => {
@@ -109,32 +94,23 @@ describe('Agent', () => {
   describe('initialize', () => {
     it('should initialize successfully with ModelProvider', async () => {
       const agent = new Agent(validConfigWithProvider);
-      const initSpy = jest.spyOn(agent, 'initialize');
-      
       await agent.initialize();
-      expect(initSpy).toHaveBeenCalled();
       expect(agent.getLoadedTools()).toContain('mock_tool');
       expect(agent.getLoadedTools()).toContain('mock_tool_init');
     });
 
     it('should initialize successfully with ModelConfiguration', async () => {
       const agent = new Agent(validConfigWithModelConfig);
-      const initSpy = jest.spyOn(agent, 'initialize');
-      
       await agent.initialize();
-      expect(initSpy).toHaveBeenCalled();
       expect(agent.getLoadedTools()).toContain('mock_tool');
       expect(agent.getLoadedTools()).toContain('mock_tool_init');
     });
 
     it('should only initialize once', async () => {
       const agent = new Agent(validConfigWithProvider);
-      const initSpy = jest.spyOn(agent, 'initialize');
-      
       await agent.initialize();
       await agent.initialize();
-      expect(initSpy).toHaveBeenCalledTimes(2);
-      expect(initSpy.mock.results[1].value).resolves.toBeUndefined();
+      expect(agent.getLoadedTools()).toContain('mock_tool');
     });
   });
 
@@ -144,10 +120,22 @@ describe('Agent', () => {
       await expect(agent.task(validTaskInput)).rejects.toThrow('Agent must be initialized');
     });
 
-    it('should throw not implemented error for regular task', async () => {
+    it('should execute task successfully', async () => {
+      mockProvider.clearResponses().mockResponse('test response');
       const agent = new Agent(validConfigWithProvider);
       await agent.initialize();
-      await expect(agent.task(validTaskInput)).rejects.toThrow('Task execution not implemented yet');
+      
+      const result = await agent.task(validTaskInput);
+      expect(result).toBe('test response');
+      expect(mockProvider.getCallCount()).toBe(1);
+      
+      const call = mockProvider.getCall(0)!;
+      expect(call.systemPrompt).toContain('test task');
+      expect(call.messages).toHaveLength(1);
+      expect(call.messages[0]).toEqual({
+        role: 'user',
+        content: 'test task'
+      });
     });
 
     it('should throw not implemented error for streaming task', async () => {
@@ -158,16 +146,34 @@ describe('Agent', () => {
     });
 
     it('should handle task with thread context', async () => {
+      mockProvider.clearResponses().mockResponse('test response');
       const agent = new Agent(validConfigWithProvider);
       const thread = new Thread();
       thread.addContext({ key: 'test', content: { value: 'test' } });
 
       await agent.initialize();
-      await expect(agent.task({ ...validTaskInput, thread }))
-        .rejects.toThrow('Task execution not implemented yet');
+      const result = await agent.task({ ...validTaskInput, thread });
+      expect(result).toBe('test response');
+      
+      const call = mockProvider.getCall(0)!;
+      expect(call.messages).toHaveLength(2); // Context message + task message
+      expect(call.messages[0].content).toContain('test'); // Context included
     });
 
     it('should handle task with output schema', async () => {
+      mockProvider.clearResponses().mockResponse('{"result": "test"}');
+      const agent = new Agent(validConfigWithProvider);
+      const outputSchema = z.object({
+        result: z.string(),
+      });
+
+      await agent.initialize();
+      const result = await agent.task({ ...validTaskInput, outputSchema });
+      expect(result).toEqual({ result: 'test' });
+    });
+
+    it('should throw error for invalid output schema', async () => {
+      mockProvider.clearResponses().mockResponse('invalid json');
       const agent = new Agent(validConfigWithProvider);
       const outputSchema = z.object({
         result: z.string(),
@@ -175,7 +181,16 @@ describe('Agent', () => {
 
       await agent.initialize();
       await expect(agent.task({ ...validTaskInput, outputSchema }))
-        .rejects.toThrow('Task execution not implemented yet');
+        .rejects.toThrow('Failed to parse response with schema');
+    });
+
+    it('should handle model errors', async () => {
+      mockProvider.clearResponses().mockError('Model error');
+      const agent = new Agent(validConfigWithProvider);
+      await agent.initialize();
+      
+      await expect(agent.task(validTaskInput))
+        .rejects.toThrow('Model error');
     });
   });
 
@@ -195,6 +210,7 @@ describe('Agent', () => {
     });
 
     it('should emit task events', async () => {
+      mockProvider.clearResponses().mockResponse('test response');
       const agent = new Agent(validConfigWithProvider);
       const taskStartListener = jest.fn();
       const taskEndListener = jest.fn();
@@ -205,16 +221,31 @@ describe('Agent', () => {
       agent.on('error', errorListener);
       
       await agent.initialize();
+      await agent.task(validTaskInput);
       
+      expect(taskStartListener).toHaveBeenCalledWith(validTaskInput);
+      expect(taskEndListener).toHaveBeenCalledWith(validTaskInput);
+      expect(errorListener).not.toHaveBeenCalled();
+    });
+
+    it('should emit error events', async () => {
+      mockProvider.clearResponses().mockError('Model error');
+      const agent = new Agent(validConfigWithProvider);
+      const errorListener = jest.fn();
+      
+      agent.on('error', errorListener);
+      
+      await agent.initialize();
       try {
         await agent.task(validTaskInput);
       } catch (error) {
         // Expected error
       }
       
-      expect(taskStartListener).toHaveBeenCalledWith(validTaskInput);
-      expect(taskEndListener).toHaveBeenCalledWith(validTaskInput);
       expect(errorListener).toHaveBeenCalled();
+      const error = errorListener.mock.calls[0][0];
+      expect(error instanceof Error).toBe(true);
+      expect(error.message).toBe('Model error');
     });
   });
 });

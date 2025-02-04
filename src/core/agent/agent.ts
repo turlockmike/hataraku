@@ -4,6 +4,7 @@ import { agentConfigSchema } from './schemas/config';
 import { UnifiedTool } from '../../lib/types';
 import { ModelProvider, modelProviderFromConfig } from '../../api';
 import { ModelConfiguration } from '../../shared/api';
+import { Anthropic } from '@anthropic-ai/sdk';
 
 /**
  * Core Agent class that serves as the primary entry point for the Hataraku SDK.
@@ -105,9 +106,56 @@ export class Agent extends EventEmitter {
    * @private
    */
   private async executeTask<TOutput>(input: TaskInput<TOutput>): Promise<TOutput> {
-    const error = new Error('Task execution not implemented yet');
-    this.emit('error', error);
-    throw error;
+    // Create system prompt
+    const systemPrompt = `You are an AI assistant. Your task is: ${input.content}`;
+
+    // Create message array
+    const messages: Anthropic.Messages.MessageParam[] = [];
+    if (input.thread) {
+      // Add thread context if available
+      const contexts = input.thread.getAllContexts();
+      for (const [key, value] of contexts) {
+        messages.push({
+          role: 'user',
+          content: `Context ${key}: ${JSON.stringify(value)}`
+        });
+      }
+    }
+
+    // Add the task input as a user message
+    messages.push({
+      role: 'user',
+      content: input.content
+    });
+
+    // Get response from model provider
+    const stream = this.modelProvider.createMessage(systemPrompt, messages);
+    let response = '';
+
+    try {
+      for await (const chunk of stream) {
+        if (chunk.type === 'text' && chunk.text) {
+          response += chunk.text;
+        }
+      }
+
+      // If output schema is provided, validate and parse response
+      if (input.outputSchema) {
+        try {
+          const parsed = input.outputSchema.parse(JSON.parse(response));
+          return parsed as TOutput;
+        } catch (error) {
+          const parseError = new Error(`Failed to parse response with schema: ${error.message}`);
+          this.emit('error', parseError);
+          throw parseError;
+        }
+      }
+
+      return response as TOutput;
+    } catch (error) {
+      this.emit('error', error);
+      throw error;
+    }
   }
 
   /**
