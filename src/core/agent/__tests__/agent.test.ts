@@ -15,10 +15,9 @@ describe('Agent', () => {
     mockProvider = new MockProvider();
     mockTool = MockTool.createBasic('mock_tool');
     mockToolWithInit = MockTool.createBasic('mock_tool_init');
-    mockToolWithInit.initialize = async () => {
-      mockToolWithInit.initializeCalls++;
+    mockToolWithInit.setInitialize(async () => {
       /* mock initialization */
-    };
+    });
 
     validConfigWithProvider = {
       model: mockProvider as ModelProvider,
