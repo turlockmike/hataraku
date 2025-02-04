@@ -1,9 +1,9 @@
-import { OpenAiHandler } from "./openai"
-import { ApiHandlerOptions, ModelInfo } from "../../shared/api"
+import { OpenAiProvider } from "./openai"
+import { ModelProviderOptions, ModelInfo } from "../../shared/api"
 import { deepSeekModels, deepSeekDefaultModelId } from "../../shared/api"
 
-export class DeepSeekHandler extends OpenAiHandler {
-    constructor(options: ApiHandlerOptions) {
+export class DeepSeekProvider extends OpenAiProvider {
+    constructor(options: ModelProviderOptions) {
         if (!options.deepSeekApiKey) {
             throw new Error("DeepSeek API key is required. Please provide it in the settings.")
         }

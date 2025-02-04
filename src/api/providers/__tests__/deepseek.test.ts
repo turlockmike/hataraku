@@ -1,5 +1,5 @@
-import { DeepSeekHandler } from '../deepseek';
-import { ApiHandlerOptions, deepSeekDefaultModelId } from '../../../shared/api';
+import { DeepSeekProvider } from '../deepseek';
+import { ModelProviderOptions, deepSeekDefaultModelId } from '../../../shared/api';
 import OpenAI from 'openai';
 import { Anthropic } from '@anthropic-ai/sdk';
 
@@ -59,8 +59,8 @@ jest.mock('openai', () => {
 });
 
 describe('DeepSeekHandler', () => {
-    let handler: DeepSeekHandler;
-    let mockOptions: ApiHandlerOptions;
+    let handler: DeepSeekProvider;
+    let mockOptions: ModelProviderOptions;
 
     beforeEach(() => {
         mockOptions = {
@@ -68,19 +68,19 @@ describe('DeepSeekHandler', () => {
             deepSeekModelId: 'deepseek-chat',
             deepSeekBaseUrl: 'https://api.deepseek.com/v1'
         };
-        handler = new DeepSeekHandler(mockOptions);
+        handler = new DeepSeekProvider(mockOptions);
         mockCreate.mockClear();
     });
 
     describe('constructor', () => {
         it('should initialize with provided options', () => {
-            expect(handler).toBeInstanceOf(DeepSeekHandler);
+            expect(handler).toBeInstanceOf(DeepSeekProvider);
             expect(handler.getModel().id).toBe(mockOptions.deepSeekModelId);
         });
 
         it('should throw error if API key is missing', () => {
             expect(() => {
-                new DeepSeekHandler({
+                new DeepSeekProvider({
                     ...mockOptions,
                     deepSeekApiKey: undefined
                 });
@@ -88,7 +88,7 @@ describe('DeepSeekHandler', () => {
         });
 
         it('should use default model ID if not provided', () => {
-            const handlerWithoutModel = new DeepSeekHandler({
+            const handlerWithoutModel = new DeepSeekProvider({
                 ...mockOptions,
                 deepSeekModelId: undefined
             });
@@ -96,11 +96,11 @@ describe('DeepSeekHandler', () => {
         });
 
         it('should use default base URL if not provided', () => {
-            const handlerWithoutBaseUrl = new DeepSeekHandler({
+            const handlerWithoutBaseUrl = new DeepSeekProvider({
                 ...mockOptions,
                 deepSeekBaseUrl: undefined
             });
-            expect(handlerWithoutBaseUrl).toBeInstanceOf(DeepSeekHandler);
+            expect(handlerWithoutBaseUrl).toBeInstanceOf(DeepSeekProvider);
             // The base URL is passed to OpenAI client internally
             expect(OpenAI).toHaveBeenCalledWith(expect.objectContaining({
                 baseURL: 'https://api.deepseek.com/v1'
@@ -109,11 +109,11 @@ describe('DeepSeekHandler', () => {
 
         it('should use custom base URL if provided', () => {
             const customBaseUrl = 'https://custom.deepseek.com/v1';
-            const handlerWithCustomUrl = new DeepSeekHandler({
+            const handlerWithCustomUrl = new DeepSeekProvider({
                 ...mockOptions,
                 deepSeekBaseUrl: customBaseUrl
             });
-            expect(handlerWithCustomUrl).toBeInstanceOf(DeepSeekHandler);
+            expect(handlerWithCustomUrl).toBeInstanceOf(DeepSeekProvider);
             // The custom base URL is passed to OpenAI client
             expect(OpenAI).toHaveBeenCalledWith(expect.objectContaining({
                 baseURL: customBaseUrl
@@ -122,7 +122,7 @@ describe('DeepSeekHandler', () => {
 
         it('should set includeMaxTokens to true', () => {
             // Create a new handler and verify OpenAI client was called with includeMaxTokens
-            new DeepSeekHandler(mockOptions);
+            new DeepSeekProvider(mockOptions);
             expect(OpenAI).toHaveBeenCalledWith(expect.objectContaining({
                 apiKey: mockOptions.deepSeekApiKey
             }));
@@ -141,7 +141,7 @@ describe('DeepSeekHandler', () => {
         });
 
         it('should return provided model ID with default model info if model does not exist', () => {
-            const handlerWithInvalidModel = new DeepSeekHandler({
+            const handlerWithInvalidModel = new DeepSeekProvider({
                 ...mockOptions,
                 deepSeekModelId: 'invalid-model'
             });
@@ -152,7 +152,7 @@ describe('DeepSeekHandler', () => {
         });
 
         it('should return default model if no model ID is provided', () => {
-            const handlerWithoutModel = new DeepSeekHandler({
+            const handlerWithoutModel = new DeepSeekProvider({
                 ...mockOptions,
                 deepSeekModelId: undefined
             });

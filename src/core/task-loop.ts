@@ -8,11 +8,11 @@ import type { ModelInfo } from '../shared/api';
 import { CliToolExecutor } from '../lib/tools/CliToolExecutor';
 import { McpClient } from '../lib/mcp/McpClient';
 import { formatToolResponse } from '../utils/format';
-import { ApiHandler } from '../api';
+import { ModelProvider } from '../api';
 import * as path from 'path';
 
 interface TaskLoopOptions {
-    apiHandler: ApiHandler;
+    apiHandler: ModelProvider;
     toolExecutor: CliToolExecutor;
     mcpClient: McpClient;
     messageParser: MessageParser;
@@ -78,7 +78,7 @@ export class TaskLoop {
     private totalCost: number = 0;
 
     constructor(
-        private apiHandler: ApiHandler,
+        private apiHandler: ModelProvider,
         private toolExecutor: CliToolExecutor,
         private mcpClient: McpClient,
         private messageParser: MessageParser,
@@ -135,7 +135,7 @@ export class TaskLoop {
                     '<param2><item>value1</item><item>value2</item></param2>',
                     '</tool_name>',
                     '',
-                    getToolDocs(),
+                    getToolDocs(AVAILABLE_TOOLS),
                     '',
                     ...mcpTools,
                     '',

@@ -1,4 +1,4 @@
-import { GeminiHandler } from '../gemini';
+import { GeminiProvider } from '../gemini';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -17,10 +17,10 @@ jest.mock('@google/generative-ai', () => ({
 }));
 
 describe('GeminiHandler', () => {
-    let handler: GeminiHandler;
+    let handler: GeminiProvider;
 
     beforeEach(() => {
-        handler = new GeminiHandler({
+        handler = new GeminiProvider({
             apiKey: 'test-key',
             apiModelId: 'gemini-2.0-flash-thinking-exp-1219',
             geminiApiKey: 'test-key'
@@ -35,7 +35,7 @@ describe('GeminiHandler', () => {
 
         it('should throw if API key is missing', () => {
             expect(() => {
-                new GeminiHandler({
+                new GeminiProvider({
                     apiModelId: 'gemini-2.0-flash-thinking-exp-1219',
                     geminiApiKey: ''
                 });
@@ -201,7 +201,7 @@ describe('GeminiHandler', () => {
         });
 
         it('should return default model if invalid model specified', () => {
-            const invalidHandler = new GeminiHandler({
+            const invalidHandler = new GeminiProvider({
                 apiModelId: 'invalid-model',
                 geminiApiKey: 'test-key'
             });

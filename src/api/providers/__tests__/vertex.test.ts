@@ -1,4 +1,4 @@
-import { VertexHandler } from '../vertex';
+import { VertexProvider } from '../vertex';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { AnthropicVertex } from '@anthropic-ai/vertex-sdk';
 
@@ -47,10 +47,10 @@ jest.mock('@anthropic-ai/vertex-sdk', () => ({
 }));
 
 describe('VertexHandler', () => {
-    let handler: VertexHandler;
+    let handler: VertexProvider;
 
     beforeEach(() => {
-        handler = new VertexHandler({
+        handler = new VertexProvider({
             apiModelId: 'claude-3-5-sonnet-v2@20241022',
             vertexProjectId: 'test-project',
             vertexRegion: 'us-central1'
@@ -284,7 +284,7 @@ describe('VertexHandler', () => {
         });
 
         it('should return default model if invalid model specified', () => {
-            const invalidHandler = new VertexHandler({
+            const invalidHandler = new VertexProvider({
                 apiModelId: 'invalid-model',
                 vertexProjectId: 'test-project',
                 vertexRegion: 'us-central1'

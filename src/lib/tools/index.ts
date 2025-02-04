@@ -11,31 +11,52 @@ import { accessMcpResourceTool } from './access-mcp-resource';
 import { waitForUserTool } from './wait-for-user';
 import { showImageTool } from './show-image';
 import { playAudioTool } from './play-audio';
-// import { browserActionTool } from './browser-action'; // TODO: add this back in with a headless browser.
 import { fetchTool } from './fetch';
 import { toGraphTool } from './to-graph';
 
-// Export all tools for backward compatibility
-export const AVAILABLE_TOOLS: UnifiedTool[] = [
+// Tool Sets
+export const FileSystemTools: UnifiedTool[] = [
     writeToFileTool,
     readFileTool,
     listFilesTool,
-    searchFilesTool,
+    searchFilesTool
+];
+
+export const CodingTools: UnifiedTool[] = [
+    ...FileSystemTools,
     executeCommandTool,
-    attemptCompletionTool,
-    listCodeDefinitionsTool,
+    listCodeDefinitionsTool
+];
+
+export const McpTools: UnifiedTool[] = [
     useMcpTool,
-    accessMcpResourceTool,
+    accessMcpResourceTool
+];
+
+export const BrowserTools: UnifiedTool[] = [
+    fetchTool,
+    showImageTool
+];
+
+export const UtilityTools: UnifiedTool[] = [
+    attemptCompletionTool,
     waitForUserTool,
-    showImageTool,
     playAudioTool,
-    toGraphTool,
-    // fetchTool // TODO: add this back in
+    toGraphTool
+];
+
+// All available tools
+export const AVAILABLE_TOOLS: UnifiedTool[] = [
+    ...FileSystemTools,
+    ...CodingTools,
+    ...McpTools,
+    ...BrowserTools,
+    ...UtilityTools
 ];
 
 // Tool documentation generator
-export function getToolDocs(): string {
-    return AVAILABLE_TOOLS.map(tool => {
+export function getToolDocs(tools: UnifiedTool[]): string {
+    return tools.map(tool => {
         const params = Object.entries(tool.parameters)
             .map(([name, param]) =>
                 `- ${name}: (${param.required ? 'required' : 'optional'}) ${typeof param.description === 'function' ? param.description(process.cwd()) : param.description}`

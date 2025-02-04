@@ -1,5 +1,5 @@
-import { GlamaHandler } from '../glama';
-import { ApiHandlerOptions } from '../../../shared/api';
+import { GlamaProvider } from '../glama';
+import { ModelProviderOptions } from '../../../shared/api';
 import OpenAI from 'openai';
 import { Anthropic } from '@anthropic-ai/sdk';
 import axios from 'axios';
@@ -59,8 +59,8 @@ jest.mock('openai', () => {
 });
 
 describe('GlamaHandler', () => {
-    let handler: GlamaHandler;
-    let mockOptions: ApiHandlerOptions;
+    let handler: GlamaProvider;
+    let mockOptions: ModelProviderOptions;
 
     beforeEach(() => {
         mockOptions = {
@@ -68,7 +68,7 @@ describe('GlamaHandler', () => {
             glamaModelId: 'anthropic/claude-3-5-sonnet',
             glamaApiKey: 'test-api-key'
         };
-        handler = new GlamaHandler(mockOptions);
+        handler = new GlamaProvider(mockOptions);
         mockCreate.mockClear();
         mockWithResponse.mockClear();
 
@@ -90,7 +90,7 @@ describe('GlamaHandler', () => {
 
     describe('constructor', () => {
         it('should initialize with provided options', () => {
-            expect(handler).toBeInstanceOf(GlamaHandler);
+            expect(handler).toBeInstanceOf(GlamaProvider);
             expect(handler.getModel().id).toBe(mockOptions.apiModelId);
         });
     });
@@ -202,7 +202,7 @@ describe('GlamaHandler', () => {
                     supportsPromptCache: false
                 }
             };
-            const nonAnthropicHandler = new GlamaHandler(nonAnthropicOptions);
+            const nonAnthropicHandler = new GlamaProvider(nonAnthropicOptions);
 
             await nonAnthropicHandler.completePrompt('Test prompt');
             expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({

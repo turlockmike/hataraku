@@ -1,5 +1,5 @@
-import { AnthropicHandler } from '../anthropic';
-import { ApiHandlerOptions } from '../../../shared/api';
+import { AnthropicProvider } from '../anthropic';
+import { ModelProviderOptions } from '../../../shared/api';
 import { ApiStream } from '../../transform/stream';
 import { Anthropic } from '@anthropic-ai/sdk';
 
@@ -88,41 +88,41 @@ jest.mock('@anthropic-ai/sdk', () => {
 });
 
 describe('AnthropicHandler', () => {
-    let handler: AnthropicHandler;
-    let mockOptions: ApiHandlerOptions;
+    let handler: AnthropicProvider;
+    let mockOptions: ModelProviderOptions;
 
     beforeEach(() => {
         mockOptions = {
             apiKey: 'test-api-key',
             apiModelId: 'claude-3-5-sonnet-20241022'
         };
-        handler = new AnthropicHandler(mockOptions);
+        handler = new AnthropicProvider(mockOptions);
         mockBetaCreate.mockClear();
         mockCreate.mockClear();
     });
 
     describe('constructor', () => {
         it('should initialize with provided options', () => {
-            expect(handler).toBeInstanceOf(AnthropicHandler);
+            expect(handler).toBeInstanceOf(AnthropicProvider);
             expect(handler.getModel().id).toBe(mockOptions.apiModelId);
         });
 
         it('should initialize with undefined API key', () => {
             // The SDK will handle API key validation, so we just verify it initializes
-            const handlerWithoutKey = new AnthropicHandler({
+            const handlerWithoutKey = new AnthropicProvider({
                 ...mockOptions,
                 apiKey: undefined
             });
-            expect(handlerWithoutKey).toBeInstanceOf(AnthropicHandler);
+            expect(handlerWithoutKey).toBeInstanceOf(AnthropicProvider);
         });
 
         it('should use custom base URL if provided', () => {
             const customBaseUrl = 'https://custom.anthropic.com';
-            const handlerWithCustomUrl = new AnthropicHandler({
+            const handlerWithCustomUrl = new AnthropicProvider({
                 ...mockOptions,
                 anthropicBaseUrl: customBaseUrl
             });
-            expect(handlerWithCustomUrl).toBeInstanceOf(AnthropicHandler);
+            expect(handlerWithCustomUrl).toBeInstanceOf(AnthropicProvider);
         });
     });
 
@@ -217,7 +217,7 @@ describe('AnthropicHandler', () => {
 
     describe('getModel', () => {
         it('should return default model if no model ID is provided', () => {
-            const handlerWithoutModel = new AnthropicHandler({
+            const handlerWithoutModel = new AnthropicProvider({
                 ...mockOptions,
                 apiModelId: undefined
             });

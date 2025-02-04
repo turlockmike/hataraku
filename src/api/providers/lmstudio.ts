@@ -1,15 +1,15 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
-import { ApiHandler, SingleCompletionHandler } from "../"
-import { ApiHandlerOptions, ModelInfo, openAiModelInfoSaneDefaults } from "../../shared/api"
+import { ModelProvider, SingleCompletionHandler } from "../"
+import { ModelProviderOptions, ModelInfo, openAiModelInfoSaneDefaults } from "../../shared/api"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 
-export class LmStudioHandler implements ApiHandler, SingleCompletionHandler {
-	private options: ApiHandlerOptions
+export class LmStudioProvider implements ModelProvider, SingleCompletionHandler {
+	private options: ModelProviderOptions
 	private client: OpenAI
 
-	constructor(options: ApiHandlerOptions) {
+	constructor(options: ModelProviderOptions) {
 		this.options = options
 		this.client = new OpenAI({
 			baseURL: (this.options.lmStudioBaseUrl || "http://localhost:1234") + "/v1",

@@ -1,8 +1,8 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import axios from "axios"
 import OpenAI from "openai"
-import { ApiHandler } from "../"
-import { ApiHandlerOptions, ModelInfo, openRouterDefaultModelId, openRouterDefaultModelInfo } from "../../shared/api"
+import { ModelProvider } from "../"
+import { ModelProviderOptions, ModelInfo, openRouterDefaultModelId, openRouterDefaultModelInfo } from "../../shared/api"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStreamChunk, ApiStreamUsageChunk } from "../transform/stream"
 import delay from "delay"
@@ -19,11 +19,11 @@ interface OpenRouterApiStreamUsageChunk extends ApiStreamUsageChunk {
 
 import { SingleCompletionHandler } from ".."
 
-export class OpenRouterHandler implements ApiHandler, SingleCompletionHandler {
-	private options: ApiHandlerOptions
+export class OpenRouterProvider implements ModelProvider, SingleCompletionHandler {
+	private options: ModelProviderOptions
 	private client: OpenAI
 
-	constructor(options: ApiHandlerOptions) {
+	constructor(options: ModelProviderOptions) {
 		this.options = options
 		this.client = new OpenAI({
 			baseURL: "https://openrouter.ai/api/v1",

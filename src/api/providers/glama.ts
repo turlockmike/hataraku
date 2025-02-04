@@ -1,17 +1,17 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import axios from "axios"
 import OpenAI from "openai"
-import { ApiHandler, SingleCompletionHandler } from "../"
-import { ApiHandlerOptions, ModelInfo, glamaDefaultModelId, glamaDefaultModelInfo } from "../../shared/api"
+import { ModelProvider, SingleCompletionHandler } from "../"
+import { ModelProviderOptions, ModelInfo, glamaDefaultModelId, glamaDefaultModelInfo } from "../../shared/api"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 import delay from "delay"
 
-export class GlamaHandler implements ApiHandler, SingleCompletionHandler {
-	private options: ApiHandlerOptions
+export class GlamaProvider implements ModelProvider, SingleCompletionHandler {
+	private options: ModelProviderOptions
 	private client: OpenAI
 
-	constructor(options: ApiHandlerOptions) {
+	constructor(options: ModelProviderOptions) {
 		this.options = options
 		this.client = new OpenAI({
 			baseURL: "https://glama.ai/api/gateway/openai/v1",

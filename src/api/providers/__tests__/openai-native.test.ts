@@ -1,5 +1,5 @@
-import { OpenAiNativeHandler } from '../openai-native';
-import { ApiHandlerOptions } from '../../../shared/api';
+import { OpenAiNativeProvider } from '../openai-native';
+import { ModelProviderOptions } from '../../../shared/api';
 import OpenAI from 'openai';
 import { Anthropic } from '@anthropic-ai/sdk';
 
@@ -58,8 +58,8 @@ jest.mock('openai', () => {
 });
 
 describe('OpenAiNativeHandler', () => {
-    let handler: OpenAiNativeHandler;
-    let mockOptions: ApiHandlerOptions;
+    let handler: OpenAiNativeProvider;
+    let mockOptions: ModelProviderOptions;
     const systemPrompt = 'You are a helpful assistant.';
     const messages: Anthropic.Messages.MessageParam[] = [
         {
@@ -73,22 +73,22 @@ describe('OpenAiNativeHandler', () => {
             apiModelId: 'gpt-4o',
             openAiNativeApiKey: 'test-api-key'
         };
-        handler = new OpenAiNativeHandler(mockOptions);
+        handler = new OpenAiNativeProvider(mockOptions);
         mockCreate.mockClear();
     });
 
     describe('constructor', () => {
         it('should initialize with provided options', () => {
-            expect(handler).toBeInstanceOf(OpenAiNativeHandler);
+            expect(handler).toBeInstanceOf(OpenAiNativeProvider);
             expect(handler.getModel().id).toBe(mockOptions.apiModelId);
         });
 
         it('should initialize with empty API key', () => {
-            const handlerWithoutKey = new OpenAiNativeHandler({
+            const handlerWithoutKey = new OpenAiNativeProvider({
                 apiModelId: 'gpt-4o',
                 openAiNativeApiKey: ''
             });
-            expect(handlerWithoutKey).toBeInstanceOf(OpenAiNativeHandler);
+            expect(handlerWithoutKey).toBeInstanceOf(OpenAiNativeProvider);
         });
     });
 
@@ -118,7 +118,7 @@ describe('OpenAiNativeHandler', () => {
 
         it('should handle missing content in response for o1 model', async () => {
             // Use o1 model which supports developer role
-            handler = new OpenAiNativeHandler({
+            handler = new OpenAiNativeProvider({
                 ...mockOptions,
                 apiModelId: 'o1'
             });
@@ -156,7 +156,7 @@ describe('OpenAiNativeHandler', () => {
 
     describe('streaming models', () => {
         beforeEach(() => {
-            handler = new OpenAiNativeHandler({
+            handler = new OpenAiNativeProvider({
                 ...mockOptions,
                 apiModelId: 'gpt-4o',
             });
@@ -242,7 +242,7 @@ describe('OpenAiNativeHandler', () => {
         });
 
         it('should complete prompt successfully with o1 model', async () => {
-            handler = new OpenAiNativeHandler({
+            handler = new OpenAiNativeProvider({
                 apiModelId: 'o1',
                 openAiNativeApiKey: 'test-api-key'
             });
@@ -256,7 +256,7 @@ describe('OpenAiNativeHandler', () => {
         });
 
         it('should complete prompt successfully with o1-preview model', async () => {
-            handler = new OpenAiNativeHandler({
+            handler = new OpenAiNativeProvider({
                 apiModelId: 'o1-preview',
                 openAiNativeApiKey: 'test-api-key'
             });
@@ -270,7 +270,7 @@ describe('OpenAiNativeHandler', () => {
         });
 
         it('should complete prompt successfully with o1-mini model', async () => {
-            handler = new OpenAiNativeHandler({
+            handler = new OpenAiNativeProvider({
                 apiModelId: 'o1-mini',
                 openAiNativeApiKey: 'test-api-key'
             });
@@ -308,7 +308,7 @@ describe('OpenAiNativeHandler', () => {
         });
 
         it('should handle undefined model ID', () => {
-            const handlerWithoutModel = new OpenAiNativeHandler({
+            const handlerWithoutModel = new OpenAiNativeProvider({
                 openAiNativeApiKey: 'test-api-key'
             });
             const modelInfo = handlerWithoutModel.getModel();

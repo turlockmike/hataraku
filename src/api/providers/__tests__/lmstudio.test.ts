@@ -1,5 +1,5 @@
-import { LmStudioHandler } from '../lmstudio';
-import { ApiHandlerOptions } from '../../../shared/api';
+import { LmStudioProvider } from '../lmstudio';
+import { ModelProviderOptions } from '../../../shared/api';
 import OpenAI from 'openai';
 import { Anthropic } from '@anthropic-ai/sdk';
 
@@ -58,8 +58,8 @@ jest.mock('openai', () => {
 });
 
 describe('LmStudioHandler', () => {
-    let handler: LmStudioHandler;
-    let mockOptions: ApiHandlerOptions;
+    let handler: LmStudioProvider;
+    let mockOptions: ModelProviderOptions;
 
     beforeEach(() => {
         mockOptions = {
@@ -67,22 +67,22 @@ describe('LmStudioHandler', () => {
             lmStudioModelId: 'local-model',
             lmStudioBaseUrl: 'http://localhost:1234/v1'
         };
-        handler = new LmStudioHandler(mockOptions);
+        handler = new LmStudioProvider(mockOptions);
         mockCreate.mockClear();
     });
 
     describe('constructor', () => {
         it('should initialize with provided options', () => {
-            expect(handler).toBeInstanceOf(LmStudioHandler);
+            expect(handler).toBeInstanceOf(LmStudioProvider);
             expect(handler.getModel().id).toBe(mockOptions.lmStudioModelId);
         });
 
         it('should use default base URL if not provided', () => {
-            const handlerWithoutUrl = new LmStudioHandler({
+            const handlerWithoutUrl = new LmStudioProvider({
                 apiModelId: 'local-model',
                 lmStudioModelId: 'local-model'
             });
-            expect(handlerWithoutUrl).toBeInstanceOf(LmStudioHandler);
+            expect(handlerWithoutUrl).toBeInstanceOf(LmStudioProvider);
         });
     });
 

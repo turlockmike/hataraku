@@ -1,6 +1,6 @@
-import { ApiConfiguration } from "../shared/api";
+import { ModelConfiguration } from "../shared/api";
 
-export function checkExistKey(config: ApiConfiguration | undefined) {
+export function checkExistKey(config: ModelConfiguration | undefined) {
 	return config
 		? [
 			config.apiKey,

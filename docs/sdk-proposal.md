@@ -370,13 +370,22 @@ hataraku task run --context '{"key": "value"}'                # Add custom conte
 hataraku task run --disable-mcp                               # Disable MCP server connections
 hataraku task run --disable-parallelization                   # Disable tool parallelization
 hataraku task run --watcher *.ts                              # Watch files and rerun on changes
-hataraku task run --with-parallelism 3                        # Set tool parallelism level
+hataraku task run --max-parallelism 3                        # Set tool parallelism level
 
 # Task Management
 hataraku task list                                            # List running tasks
 hataraku task show <task-id>                                  # Show task details
 hataraku task logs <task-id> [--follow]                       # Show task output
 hataraku task cancel <task-id>                                # Cancel scheduled task
+```
+
+# Templates
+
+Hataraku comes with a set of templates for common agentic tasks.
+
+```bash
+hataraku template list
+hataraku template use <template-name>
 ```
 
 ### MCP Server Management

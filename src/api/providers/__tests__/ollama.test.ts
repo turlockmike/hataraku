@@ -1,5 +1,5 @@
-import { OllamaHandler } from '../ollama';
-import { ApiHandlerOptions } from '../../../shared/api';
+import { OllamaProvider } from '../ollama';
+import { ModelProviderOptions } from '../../../shared/api';
 import OpenAI from 'openai';
 import { Anthropic } from '@anthropic-ai/sdk';
 
@@ -58,8 +58,8 @@ jest.mock('openai', () => {
 });
 
 describe('OllamaHandler', () => {
-    let handler: OllamaHandler;
-    let mockOptions: ApiHandlerOptions;
+    let handler: OllamaProvider;
+    let mockOptions: ModelProviderOptions;
 
     beforeEach(() => {
         mockOptions = {
@@ -67,22 +67,22 @@ describe('OllamaHandler', () => {
             ollamaModelId: 'llama2',
             ollamaBaseUrl: 'http://localhost:11434/v1'
         };
-        handler = new OllamaHandler(mockOptions);
+        handler = new OllamaProvider(mockOptions);
         mockCreate.mockClear();
     });
 
     describe('constructor', () => {
         it('should initialize with provided options', () => {
-            expect(handler).toBeInstanceOf(OllamaHandler);
+            expect(handler).toBeInstanceOf(OllamaProvider);
             expect(handler.getModel().id).toBe(mockOptions.ollamaModelId);
         });
 
         it('should use default base URL if not provided', () => {
-            const handlerWithoutUrl = new OllamaHandler({
+            const handlerWithoutUrl = new OllamaProvider({
                 apiModelId: 'llama2',
                 ollamaModelId: 'llama2'
             });
-            expect(handlerWithoutUrl).toBeInstanceOf(OllamaHandler);
+            expect(handlerWithoutUrl).toBeInstanceOf(OllamaProvider);
         });
     });
 

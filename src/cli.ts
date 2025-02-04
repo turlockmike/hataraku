@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { buildApiHandler } from './api';
+import { modelProviderFromConfig } from './api';
 import { CliToolExecutor } from './lib/tools/CliToolExecutor';
 import { CliMessageParser } from './lib/parser/CliMessageParser';
 import { openRouterDefaultModelInfo, deepSeekModels } from './shared/api';
@@ -150,7 +150,7 @@ async function main(task?: string) {
         }
 
         // Initialize components
-        const apiHandler = buildApiHandler({
+        const apiHandler = modelProviderFromConfig({
             apiProvider: options.provider.toLowerCase(),
             [`${options.provider}ApiKey`]: apiKey,
             ...(options.model && {

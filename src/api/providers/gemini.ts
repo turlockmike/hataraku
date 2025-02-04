@@ -1,15 +1,15 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { GoogleGenerativeAI } from "@google/generative-ai"
-import { ApiHandler, SingleCompletionHandler } from "../"
-import { ApiHandlerOptions, geminiDefaultModelId, GeminiModelId, geminiModels, ModelInfo } from "../../shared/api"
+import { ModelProvider, SingleCompletionHandler } from "../"
+import { ModelProviderOptions, geminiDefaultModelId, GeminiModelId, geminiModels, ModelInfo } from "../../shared/api"
 import { convertAnthropicMessageToGemini } from "../transform/gemini-format"
 import { ApiStream } from "../transform/stream"
 
-export class GeminiHandler implements ApiHandler, SingleCompletionHandler {
-	private options: ApiHandlerOptions
+export class GeminiProvider implements ModelProvider, SingleCompletionHandler {
+	private options: ModelProviderOptions
 	private client: GoogleGenerativeAI
 
-	constructor(options: ApiHandlerOptions) {
+	constructor(options: ModelProviderOptions) {
 		if (!options.geminiApiKey) {
 			throw new Error("API key is required for Google Gemini")
 		}
