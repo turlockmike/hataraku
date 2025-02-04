@@ -2,14 +2,6 @@ import { Agent } from '../core/agent';
 import { AgentConfig, TaskInput } from '../core/agent/types/config';
 
 async function main() {
-  // Get query from command line arguments
-  const query = process.argv.slice(2).join(' ');
-  
-  if (!query) {
-    console.error('Please provide a query. Usage: npm run example -- your query here');
-    process.exit(1);
-  }
-
   // Create agent config with OpenRouter/Sonnet model
   const config: AgentConfig = {
     model: {
@@ -23,16 +15,24 @@ async function main() {
   const agent = new Agent(config);
   await agent.initialize();
 
-  // Create task input with query from command line
+  // Set up streaming event listener
+  agent.on('streamChunk', (chunk) => {
+    // Print chunk without newline to show streaming effect
+    process.stdout.write(chunk);
+  });
+
+  // Create task input with streaming enabled
   const task: TaskInput = {
     role: 'user',
-    content: query
+    content: 'Write a detailed epic poem (at least 20 lines) about a programmer\'s journey through learning artificial intelligence, with rich metaphors comparing coding concepts to natural phenomena. Include specific mentions of neural networks, machine learning algorithms, and the emotional journey of discovery.',
+    stream: true // Enable streaming
   };
 
   try {
-    // Execute task and log response
+    // Execute task
+    console.log('\nGenerating poem...\n');
     const response = await agent.task(task);
-    console.log('Response:', response);
+    console.log('\n\nTask completed!');
   } catch (error) {
     console.error('Error:', error);
   }

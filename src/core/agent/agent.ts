@@ -96,9 +96,59 @@ export class Agent extends EventEmitter {
    * @private
    */
   private async executeStreamingTask<TOutput>(input: TaskInput<TOutput>): Promise<TOutput> {
-    const error = new Error('Streaming task execution not implemented yet');
-    this.emit('error', error);
-    throw error;
+    // Create system prompt
+    const systemPrompt = `You are an AI assistant. Your task is: ${input.content}`;
+
+    // Create message array
+    const messages: Anthropic.Messages.MessageParam[] = [];
+    if (input.thread) {
+      // Add thread context if available
+      const contexts = input.thread.getAllContexts();
+      for (const [key, value] of contexts) {
+        messages.push({
+          role: 'user',
+          content: `Context ${key}: ${JSON.stringify(value)}`
+        });
+      }
+    }
+
+    // Add the task input as a user message
+    messages.push({
+      role: 'user',
+      content: input.content
+    });
+
+    // Get response stream from model provider
+    const stream = this.modelProvider.createMessage(systemPrompt, messages);
+    let response = '';
+
+    try {
+      // Process stream chunks
+      for await (const chunk of stream) {
+        if (chunk.type === 'text' && chunk.text) {
+          response += chunk.text;
+          // Emit streaming chunk
+          this.emit('streamChunk', chunk.text);
+        }
+      }
+
+      // If output schema is provided, validate and parse response
+      if (input.outputSchema) {
+        try {
+          const parsed = input.outputSchema.parse(JSON.parse(response));
+          return parsed as TOutput;
+        } catch (error) {
+          const parseError = new Error(`Failed to parse response with schema: ${error.message}`);
+          this.emit('error', parseError);
+          throw parseError;
+        }
+      }
+
+      return response as TOutput;
+    } catch (error) {
+      this.emit('error', error);
+      throw error;
+    }
   }
 
   /**
@@ -133,9 +183,11 @@ export class Agent extends EventEmitter {
     let response = '';
 
     try {
-      const result = await stream.next();
-      if (result.value?.type === 'text' && result.value.text) {
-        response = result.value.text;
+      // Process all stream chunks
+      for await (const chunk of stream) {
+        if (chunk.type === 'text' && chunk.text) {
+          response += chunk.text;
+        }
       }
 
       // If output schema is provided, validate and parse response
