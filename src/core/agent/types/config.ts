@@ -30,7 +30,7 @@ export interface AgentConfig {
   /** Model configuration - can be either a ModelProvider instance or a ModelConfiguration */
   model: ModelConfig;
   /** List of tools to use - must be UnifiedTool instances */
-  tools: UnifiedTool[];
+  tools?: UnifiedTool[];
   /** Streaming configuration */
   streaming?: StreamingConfig;
   /** Maximum number of retries for failed operations */

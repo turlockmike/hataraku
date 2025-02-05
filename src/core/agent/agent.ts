@@ -6,6 +6,8 @@ import { ModelProvider, modelProviderFromConfig } from '../../api';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { SystemPromptBuilder } from '../prompts/prompt-builder';
 import * as z from 'zod';
+import { attemptCompletionTool, getToolDocs } from '../../lib';
+import chalk from 'chalk';
 
 /**
  * Core Agent class that serves as the primary entry point for the Hataraku SDK.
@@ -76,6 +78,13 @@ export class Agent {
     } catch (error) {
       throw error;
     }
+
+    this.systemPromptBuilder.addSection({
+      name: 'tool_list',
+      content: getToolDocs(Array.from(this.tools.values())),
+      order: 45, // After tool-use-guidelines
+      enabled: true
+    })
   }
 
   /**
@@ -94,6 +103,9 @@ export class Agent {
     }
 
     if (input.stream) {
+      if (input.outputSchema) {
+        throw new Error("Output schemas are not supported with streaming responses");
+      }
       return this.executeStreamingTask(input) as any;
     }
 
@@ -105,7 +117,6 @@ export class Agent {
    * @private
    */
   private async executeTask<TOutput>(input: TaskInput<TOutput>): Promise<TOutput> {
-    // Create system prompt
     const systemPrompt = await this.systemPromptBuilder.build();
 
     // Create message array
@@ -154,10 +165,17 @@ export class Agent {
         }
       }
 
+      // Extract content from attempt_completion tag
+      const completionMatch = fullResponse.match(/<attempt_completion>[\s\S]*?<result>([\s\S]*?)<\/result>[\s\S]*?<\/attempt_completion>/);
+      if (!completionMatch) {
+        throw new Error('No attempt_completion with result tag found in response');
+      }
+      const completionContent = completionMatch[1].trim();
+
       // If output schema is provided, validate and parse response
       if (input.outputSchema) {
         try {
-          const parsed = input.outputSchema.parse(JSON.parse(fullResponse));
+          const parsed = input.outputSchema.parse(JSON.parse(completionContent));
           return parsed as TOutput;
         } catch (error) {
           const parseError = new Error(`Failed to parse response with schema: ${error.message}`);
@@ -165,7 +183,7 @@ export class Agent {
         }
       }
 
-      return fullResponse as TOutput;
+      return completionContent as TOutput;
     } catch (error) {
       throw error;
     }
@@ -178,75 +196,101 @@ export class Agent {
   private async *executeStreamingTask<TOutput>(
     input: TaskInput<TOutput>
   ): AsyncGenerator<TOutput> {
-    // Create system prompt
     const systemPrompt = await this.systemPromptBuilder.build();
-
-    // Create message array
     const messages: Anthropic.Messages.MessageParam[] = [];
     if (input.thread) {
-      // Add thread context if available
-      const contexts = input.thread.getAllContexts();
-      for (const [key, value] of contexts) {
+      for (const [key, value] of input.thread.getAllContexts()) {
         messages.push({
           role: 'user',
           content: `Context ${key}: ${JSON.stringify(value)}`
         });
       }
     }
-
-    // Format task content with schema if provided
     let messageContent = `<task>${input.content}</task>`;
     if (input.outputSchema) {
       const schemaStr = this.serializeZodSchema(input.outputSchema);
       messageContent += `<output_schema>${schemaStr}</output_schema>`;
     }
-
-    // Add the task input as a user message
     messages.push({
       role: 'user',
       content: messageContent
     });
-
+  
+    // Set up our state for streaming
+    let buffer = '';
+    let inResultMode = false;
+    let tagBuffer = ''; // For collecting potential tag characters
+  
     try {
-      // Get response stream from model provider
       const stream = this.modelProvider.createMessage(systemPrompt, messages);
-      let currentChunk = '';
-
-      // Process stream chunks
+  
       for await (const chunk of stream) {
         if (chunk.type === 'text' && chunk.text) {
-          if (input.outputSchema) {
-            currentChunk += chunk.text;
-            try {
-              // Try to parse as JSON and validate
-              const parsed = input.outputSchema.parse(JSON.parse(currentChunk));
-              yield parsed as TOutput;
-              currentChunk = ''; // Reset after successful parse
-            } catch {
-              // If parsing fails, continue accumulating chunks
+          // Process the chunk character by character
+          for (const char of chunk.text) {
+            // If we haven't entered result mode yet, look for opening tags
+            if (!inResultMode) {
+              buffer += char;
+              const attemptIndex = buffer.indexOf('<attempt_completion>');
+              if (attemptIndex !== -1) {
+                const resultIndex = buffer.indexOf('<result>', attemptIndex);
+                if (resultIndex !== -1) {
+                  // Found the result tag, discard everything before it
+                  buffer = buffer.slice(resultIndex + '<result>'.length);
+                  inResultMode = true;
+                }
+              }
               continue;
             }
-          } else {
-            // If no schema, yield the text directly
-            yield chunk.text as TOutput;
+            
+            // In result mode - handle each character carefully
+            if (char === '<') {
+              // First yield any content we've accumulated before the tag
+              if (buffer.length > 0) {
+                yield buffer as TOutput;
+                buffer = '';
+              }
+              // Start collecting a potential tag
+              tagBuffer = char;
+            } else if (tagBuffer.length > 0) {
+              // We're in the middle of collecting a potential tag
+              tagBuffer += char;
+              
+              // Check if we've found a closing tag
+              if (tagBuffer === '</result>') {
+                // Found the closing tag, stop processing
+                return;
+              }
+              
+              // If we can confirm this isn't a closing tag, yield it
+              if (tagBuffer.length >= 2 && !tagBuffer.startsWith('</')) {
+                buffer += tagBuffer;
+                tagBuffer = '';
+              }
+              // Otherwise keep collecting the tag
+            } else {
+              // Normal character outside of any tag
+              buffer += char;
+              
+              // Yield the buffer periodically
+              if (buffer.length >= 4) {
+                yield buffer as TOutput;
+                buffer = '';
+              }
+            }
           }
         }
       }
-
-      // Handle any remaining chunk
-      if (currentChunk && input.outputSchema) {
-        try {
-          const parsed = input.outputSchema.parse(JSON.parse(currentChunk));
-          yield parsed as TOutput;
-        } catch (error) {
-          const parseError = new Error(`Failed to parse response with schema: ${error.message}`);
-          throw parseError;
-        }
+      
+      // Yield any remaining content if we haven't hit a closing tag
+      if (buffer.length > 0 && tagBuffer.length === 0) {
+        yield buffer as TOutput;
       }
     } catch (error) {
       throw error;
     }
   }
+  
 
   /**
    * Gets a tool by name
@@ -266,8 +310,11 @@ export class Agent {
    * Loads and initializes the configured tools
    * @private
    */
+  // TODO: Need to handle duplication of tools and tool name collisions
   private async loadTools(): Promise<void> {
-    for (const tool of this.config.tools) {
+    const tools = this.config.tools || [];
+    tools.push(attemptCompletionTool);
+    for (const tool of tools) {
       // Store the tool
       this.tools.set(tool.name, tool);
       

@@ -1,7 +1,7 @@
 import { ModelProvider } from '../../api';
 import { ModelInfo } from '../../shared/api';
 import { Anthropic } from '@anthropic-ai/sdk';
-import { ApiStreamChunk } from '../../api/transform/stream';
+import { ApiStream, ApiStreamChunk } from '../../api/transform/stream';
 
 interface Call {
   systemPrompt: string;
@@ -50,33 +50,48 @@ export class MockProvider implements ModelProvider {
     return [...this.calls];
   }
 
-  createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): AsyncGenerator<ApiStreamChunk, any, unknown> {
+  async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): AsyncGenerator<ApiStreamChunk> {
     this.calls.push({ systemPrompt, messages });
 
-    const self = this;
-    return {
-      async next() {
-        if (self.responses.length === 0) {
-          return { value: { type: 'text', text: 'mock response' }, done: true };
-        }
+    if (this.responses.length === 0) {
+      throw new Error('No mocked responses available');
+    }
 
-        const response = self.responses.shift()!;
-        if (response.type === 'error') {
-          throw new Error(response.content);
-        }
+    const response = this.responses.shift();
+    if (!response) {
+      throw new Error('No mocked responses available');
+    }
 
-        return { value: { type: 'text', text: response.content }, done: true };
-      },
-      async return(value: any) {
-        return { value, done: true };
-      },
-      async throw(error: any) {
-        throw error;
-      },
-      [Symbol.asyncIterator]() {
-        return this;
-      },
-      [Symbol.asyncDispose]: async () => {}
+    if (response.type === 'error') {
+      throw new Error(response.content);
+    }
+
+    // First yield a usage chunk to simulate the message_start behavior
+    yield {
+      type: 'usage',
+      inputTokens: 100, // Mock values
+      outputTokens: 0,
+      cacheWriteTokens: undefined,
+      cacheReadTokens: undefined,
+    };
+
+    // Split the response into smaller chunks to simulate streaming
+    const chunks = response.content.match(/.{1,4}/g) || [];
+    for (const chunk of chunks) {
+      yield {
+        type: 'text',
+        text: chunk,
+      };
+
+      // Simulate some delay between chunks
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+
+    // Final usage chunk to update output tokens
+    yield {
+      type: 'usage',
+      inputTokens: 0,
+      outputTokens: response.content.length, // Approximate token count
     };
   }
 

@@ -76,8 +76,6 @@ export class SystemPromptBuilder {
       ['schema-validation',  getSchemaValidationSection()],
       ['rules',  getRulesSection(
         this.cwd,
-        config.sections?.capabilities?.computerUse ?? true,
-        config.sections?.capabilities?.diffStrategy
       )],
       ['custom-instructions', getCustomInstructionsSection(config.sections?.customInstructions)],
       ['objective',  getObjectiveSection()]

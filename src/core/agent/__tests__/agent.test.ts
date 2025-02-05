@@ -3,6 +3,7 @@ import { AgentConfig, TaskInput, Thread } from "../types/config"
 import { z } from "zod"
 import { MockProvider, MockTool } from "../../../lib/testing"
 import { ModelProvider } from "../../../api"
+import { Readable } from 'stream'
 
 describe("Agent", () => {
 	let mockProvider: MockProvider
@@ -99,21 +100,20 @@ describe("Agent", () => {
 
 	describe("task", () => {
 		it("should include role and custom instructions in system prompt", async () => {
-			mockProvider.clearResponses().mockResponse("test response")
+			mockProvider.clearResponses().mockResponse("<attempt_completion><result>test response</result></attempt_completion>")
 			const agent = new Agent(validConfigWithProvider)
 			await agent.initialize()
 
 			await agent.task(validTaskInput)
 			const call = mockProvider.getCall(0)!
 			expect(call).toBeTruthy()
-			console.log("call", call)
 
 			// Verify system prompt content
 			expect(call.systemPrompt).toMatchSnapshot()
 		})
 
 		it("should execute task successfully", async () => {
-			mockProvider.clearResponses().mockResponse("test response")
+			mockProvider.clearResponses().mockResponse("<attempt_completion><result>test response</result></attempt_completion>")
 			mockTool.mockResponse({ result: "tool success" })
 
 			const agent = new Agent(validConfigWithProvider)
@@ -133,7 +133,7 @@ describe("Agent", () => {
 		})
 
 		it("should handle streaming task", async () => {
-			mockProvider.clearResponses().mockResponse("test response")
+			mockProvider.clearResponses().mockResponse("<attempt_completion><result>test response</result></attempt_completion>")
 			const agent = new Agent(validConfigWithProvider)
 			await agent.initialize()
 
@@ -149,7 +149,7 @@ describe("Agent", () => {
 		})
 
 		it("should handle task with thread context", async () => {
-			mockProvider.clearResponses().mockResponse("test response")
+			mockProvider.clearResponses().mockResponse("<attempt_completion><result>test response</result></attempt_completion>")
 			const agent = new Agent(validConfigWithProvider)
 			const thread = new Thread()
 			thread.addContext({ key: "test", content: { value: "test" } })
@@ -164,7 +164,7 @@ describe("Agent", () => {
 		})
 
 		it("should handle task with output schema", async () => {
-			mockProvider.clearResponses().mockResponse('{"result": "test"}')
+			mockProvider.clearResponses().mockResponse('<attempt_completion><result>{"result": "test"}</result></attempt_completion>')
 			const agent = new Agent(validConfigWithProvider)
 			const outputSchema = z.object({
 				result: z.string(),
@@ -176,7 +176,7 @@ describe("Agent", () => {
 		})
 
 		it("should throw error for invalid output schema", async () => {
-			mockProvider.clearResponses().mockResponse("invalid json")
+			mockProvider.clearResponses().mockResponse("<attempt_completion><result>invalid json</result></attempt_completion>")
 			const agent = new Agent(validConfigWithProvider)
 			const outputSchema = z.object({
 				result: z.string(),
@@ -197,7 +197,7 @@ describe("Agent", () => {
 		})
 
 		it("should handle tool errors", async () => {
-			mockProvider.clearResponses().mockResponse("test response")
+			mockProvider.clearResponses().mockResponse("<attempt_completion><result>test response</result></attempt_completion>")
 			mockTool.mockError(new Error("Tool error"))
 
 			const agent = new Agent(validConfigWithProvider)
@@ -209,7 +209,7 @@ describe("Agent", () => {
 		})
 
 		it("should include schema validation instructions in system prompt when output schema is provided", async () => {
-			mockProvider.clearResponses().mockResponse('{"result": "test"}')
+			mockProvider.clearResponses().mockResponse('<attempt_completion><result>{"result": "test"}</result></attempt_completion>')
 			const agent = new Agent(validConfigWithProvider)
 			const outputSchema = z.object({
 				result: z.string(),
@@ -220,7 +220,6 @@ describe("Agent", () => {
 			expect(result).toEqual({ result: "test" })
 			
 			const call = mockProvider.getCall(0)!
-      console.log('last Message', call.messages[call.messages.length - 1])
 			expect(call.systemPrompt).toContain("Schema Validation and Output Formatting")
 			expect(call.systemPrompt).toContain("Your response must be valid JSON that matches the schema exactly")
 			expect(call.systemPrompt).toContain("Do not include any additional text, explanations, or formatting around the JSON")
@@ -228,24 +227,96 @@ describe("Agent", () => {
 			expect(call.systemPrompt).toContain("Only include fields that are defined in the schema")
 			expect(call.systemPrompt).toContain("Use the correct data types for each field as specified in the schema")
 			expect(call.systemPrompt).toContain("For streaming responses, each chunk must be valid JSON that matches the schema")
-      expect(call.systemPrompt).toContain('You will be given a task in a <task></task> tag. You will also be optionally given an output schema in a <output_schema></output_schema> tag.')
-      expect(call.systemPrompt).toContain("When calling attempt_completion, ensure the result is valid JSON that matches the schema")
-      expect(call.messages[0].content).toEqual('<task>test task</task><output_schema>{"result": z.string()}</output_schema>')
+			expect(call.systemPrompt).toContain('You will be given a task in a <task></task> tag. You will also be optionally given an output schema in a <output_schema></output_schema> tag.')
+			expect(call.systemPrompt).toContain("When calling attempt_completion, ensure the result is valid JSON that matches the schema")
+			expect(call.messages[0].content).toEqual('<task>test task</task><output_schema>{"result": z.string()}</output_schema>')
 		})
 
-    it('with a slightly more complex schema', async () => {
-      mockProvider.clearResponses().mockResponse('{"foo": 123}')
-      const agent = new Agent(validConfigWithProvider)
-      const outputSchema = z.object({
-        foo: z.number(),
-      })
+		it("should include tool list in system prompt", async () => {
+			mockProvider.clearResponses().mockResponse('<attempt_completion><result>test response</result></attempt_completion>')
+			const agent = new Agent(validConfigWithProvider)
+			await agent.initialize()
 
-      await agent.initialize()
-      const result = await agent.task({ ...validTaskInput, outputSchema })
-      expect(result).toEqual({ foo: 123 })
+			await agent.task(validTaskInput)
+			const call = mockProvider.getCall(0)!
+			
+			// Verify tool list content
+			expect(call.systemPrompt).toContain("TOOL_LIST")
+			expect(call.systemPrompt).toContain("mock_tool") // From mockTool
+			expect(call.systemPrompt).toContain("mock_tool_init") // From mockToolWithInit
+			expect(call.systemPrompt).toContain("attempt_completion") // From attemptCompletionTool
+		})
 
-      const call = mockProvider.getCall(0)!
-      expect(call.messages[0].content).toEqual('<task>test task</task><output_schema>{"foo": z.number()}</output_schema>')
-    })
+		it("should stream content between result tags immediately using a native async buffer", async () => {
+			const agent = new Agent(validConfigWithProvider)
+			await agent.initialize()
+
+			// Mock a single response that will be split into chunks by the provider
+			mockProvider.clearResponses()
+				.mockResponse("<thinking>Processing your request...</thinking><attempt_completion><result>Here is the streamed content that will be split into chunks automatically by the mock provider</result></attempt_completion>");
+
+			const streamingInput: TaskInput & { stream: true } = {
+				role: "user",
+				content: "test streaming task",
+				stream: true
+			}
+
+			// Execute streaming task
+			const streamResult = await agent.task(streamingInput)
+
+			// Collect the streamed results
+			const receivedChunks: string[] = []
+			for await (const chunk of streamResult) {
+				receivedChunks.push(chunk as string)
+			}
+
+			// Verify we get enough chunks to demonstrate streaming
+			expect(receivedChunks.length).toBeGreaterThanOrEqual(10);
+
+			// Combine chunks and verify the complete content
+			const fullContent = receivedChunks.join('');
+			expect(fullContent).toBe(
+				"Here is the streamed content that will be split into chunks automatically by the mock provider"
+			);
+
+			// Verify no closing tags are included
+			expect(fullContent).not.toContain('</result>');
+			expect(fullContent).not.toContain('</attempt_completion>');
+
+			// Verify the correct message was sent
+			const call = mockProvider.getCall(0)!
+			expect(call.messages[0].content).toEqual('<task>test streaming task</task>')
+		})
+
+		it("should throw error when trying to use output schema with streaming", async () => {
+			const agent = new Agent(validConfigWithProvider)
+			await agent.initialize()
+
+			const streamingInput: TaskInput & { stream: true } = {
+				role: "user",
+				content: "test task",
+				stream: true,
+				outputSchema: z.object({ result: z.string() })
+			}
+
+			await expect(agent.task(streamingInput)).rejects.toThrow(
+				"Output schemas are not supported with streaming responses"
+			)
+		})
+
+		it('with a slightly more complex schema', async () => {
+			mockProvider.clearResponses().mockResponse('<attempt_completion><result>{"foo": 123}</result></attempt_completion>')
+			const agent = new Agent(validConfigWithProvider)
+			const outputSchema = z.object({
+				foo: z.number(),
+			})
+
+			await agent.initialize()
+			const result = await agent.task({ ...validTaskInput, outputSchema })
+			expect(result).toEqual({ foo: 123 })
+
+			const call = mockProvider.getCall(0)!
+			expect(call.messages[0].content).toEqual('<task>test task</task><output_schema>{"foo": z.number()}</output_schema>')
+		})
 	})
 })
