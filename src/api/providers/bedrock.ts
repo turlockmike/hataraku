@@ -1,7 +1,7 @@
 import { BedrockRuntimeClient, ConverseStreamCommand, ConverseCommand, BedrockRuntimeClientConfig } from "@aws-sdk/client-bedrock-runtime"
 import { Anthropic } from "@anthropic-ai/sdk"
-import { ApiHandler, SingleCompletionHandler } from "../"
-import { ApiHandlerOptions, BedrockModelId, ModelInfo, bedrockDefaultModelId, bedrockModels } from "../../shared/api"
+import { ModelProvider, SingleCompletionHandler } from "../"
+import { ModelProviderOptions, BedrockModelId, ModelInfo, bedrockDefaultModelId, bedrockModels } from "../../shared/api"
 import { ApiStream } from "../transform/stream"
 import { convertToBedrockConverseMessages, convertToAnthropicMessage } from "../transform/bedrock-converse-format"
 
@@ -38,11 +38,11 @@ export interface StreamEvent {
     };
 }
 
-export class AwsBedrockHandler implements ApiHandler, SingleCompletionHandler {
-    private options: ApiHandlerOptions
+export class AwsBedrockProvider implements ModelProvider, SingleCompletionHandler {
+    private options: ModelProviderOptions
     private client: BedrockRuntimeClient
 
-    constructor(options: ApiHandlerOptions) {
+    constructor(options: ModelProviderOptions) {
         this.options = options
         
         // Only include credentials if they actually exist

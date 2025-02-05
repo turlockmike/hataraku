@@ -1,12 +1,12 @@
 import { ExtensionContext } from 'vscode'
-import { ApiConfiguration } from '../../shared/api'
+import { ModelConfiguration } from '../../shared/api'
 import { Mode } from '../prompts/types'
 import { ApiConfigMeta } from '../../shared/ExtensionMessage'
 
 export interface ApiConfigData {
   currentApiConfigName: string
   apiConfigs: {
-    [key: string]: ApiConfiguration
+    [key: string]: ModelConfiguration
   }
   modeApiConfigs?: Partial<Record<Mode, string>>
 }
@@ -80,7 +80,7 @@ export class ConfigManager {
   /**
    * Save a config with the given name
    */
-  async SaveConfig(name: string, config: ApiConfiguration): Promise<void> {
+  async SaveConfig(name: string, config: ModelConfiguration): Promise<void> {
     try {
       const currentConfig = await this.readConfig()
       const existingConfig = currentConfig.apiConfigs[name]
@@ -97,7 +97,7 @@ export class ConfigManager {
   /**
    * Load a config by name
    */
-  async LoadConfig(name: string): Promise<ApiConfiguration> {
+  async LoadConfig(name: string): Promise<ModelConfiguration> {
     try {
       const config = await this.readConfig()
       const apiConfig = config.apiConfigs[name]

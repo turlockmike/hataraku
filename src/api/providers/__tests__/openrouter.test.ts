@@ -1,5 +1,5 @@
-import { OpenRouterHandler } from '../openrouter'
-import { ApiHandlerOptions, ModelInfo } from '../../../shared/api'
+import { OpenRouterProvider } from '../openrouter'
+import { ModelProviderOptions, ModelInfo } from '../../../shared/api'
 import OpenAI from 'openai'
 import axios from 'axios'
 import { Anthropic } from '@anthropic-ai/sdk'
@@ -10,7 +10,7 @@ jest.mock('axios')
 jest.mock('delay', () => jest.fn(() => Promise.resolve()))
 
 describe('OpenRouterHandler', () => {
-    const mockOptions: ApiHandlerOptions = {
+    const mockOptions: ModelProviderOptions = {
         openRouterApiKey: 'test-key',
         openRouterModelId: 'test-model',
         openRouterModelInfo: {
@@ -39,8 +39,8 @@ describe('OpenRouterHandler', () => {
     })
 
     test('constructor initializes with correct options', () => {
-        const handler = new OpenRouterHandler(mockOptions)
-        expect(handler).toBeInstanceOf(OpenRouterHandler)
+        const handler = new OpenRouterProvider(mockOptions)
+        expect(handler).toBeInstanceOf(OpenRouterProvider)
         expect(OpenAI).toHaveBeenCalledWith({
             baseURL: 'https://openrouter.ai/api/v1',
             apiKey: mockOptions.openRouterApiKey,
@@ -52,7 +52,7 @@ describe('OpenRouterHandler', () => {
     })
 
     test('getModel returns correct model info when options are provided', () => {
-        const handler = new OpenRouterHandler(mockOptions)
+        const handler = new OpenRouterProvider(mockOptions)
         const result = handler.getModel()
         
         expect(result).toEqual({
@@ -62,7 +62,7 @@ describe('OpenRouterHandler', () => {
     })
 
     test('getModel returns default model info when options are not provided', () => {
-        const handler = new OpenRouterHandler({})
+        const handler = new OpenRouterProvider({})
         const result = handler.getModel()
         
         expect(result.id).toBe('anthropic/claude-3.5-sonnet:beta')
@@ -70,7 +70,7 @@ describe('OpenRouterHandler', () => {
     })
 
     test('createMessage generates correct stream chunks', async () => {
-        const handler = new OpenRouterHandler(mockOptions)
+        const handler = new OpenRouterProvider(mockOptions)
         const mockStream = {
             async *[Symbol.asyncIterator]() {
                 yield {
@@ -138,7 +138,7 @@ describe('OpenRouterHandler', () => {
     })
 
     test('createMessage with middle-out transform enabled', async () => {
-        const handler = new OpenRouterHandler({
+        const handler = new OpenRouterProvider({
             ...mockOptions,
             openRouterUseMiddleOutTransform: true
         })
@@ -169,7 +169,7 @@ describe('OpenRouterHandler', () => {
     })
 
     test('createMessage with Claude model adds cache control', async () => {
-        const handler = new OpenRouterHandler({
+        const handler = new OpenRouterProvider({
             ...mockOptions,
             openRouterModelId: 'anthropic/claude-3.5-sonnet'
         })
@@ -215,7 +215,7 @@ describe('OpenRouterHandler', () => {
     })
 
     test('createMessage handles API errors', async () => {
-        const handler = new OpenRouterHandler(mockOptions)
+        const handler = new OpenRouterProvider(mockOptions)
         const mockStream = {
             async *[Symbol.asyncIterator]() {
                 yield {
@@ -237,7 +237,7 @@ describe('OpenRouterHandler', () => {
     })
 
     test('completePrompt returns correct response', async () => {
-        const handler = new OpenRouterHandler(mockOptions)
+        const handler = new OpenRouterProvider(mockOptions)
         const mockResponse = {
             choices: [{
                 message: {
@@ -263,7 +263,7 @@ describe('OpenRouterHandler', () => {
     })
 
     test('completePrompt handles API errors', async () => {
-        const handler = new OpenRouterHandler(mockOptions)
+        const handler = new OpenRouterProvider(mockOptions)
         const mockError = {
             error: {
                 message: 'API Error',
@@ -281,7 +281,7 @@ describe('OpenRouterHandler', () => {
     })
 
     test('completePrompt handles unexpected errors', async () => {
-        const handler = new OpenRouterHandler(mockOptions)
+        const handler = new OpenRouterProvider(mockOptions)
         const mockCreate = jest.fn().mockRejectedValue(new Error('Unexpected error'))
         ;(OpenAI as jest.MockedClass<typeof OpenAI>).prototype.chat = {
             completions: { create: mockCreate }

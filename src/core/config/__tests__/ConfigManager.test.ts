@@ -1,6 +1,6 @@
 import { ExtensionContext } from 'vscode'
 import { ConfigManager, ApiConfigData } from '../ConfigManager'
-import { ApiConfiguration } from '../../../shared/api'
+import { ModelConfiguration } from '../../../shared/api'
 
 // Mock VSCode ExtensionContext
 const mockSecrets = {
@@ -149,7 +149,7 @@ describe('ConfigManager', () => {
         }
       }))
 
-      const newConfig: ApiConfiguration = {
+      const newConfig: ModelConfiguration = {
         apiProvider: 'anthropic',
         apiKey: 'test-key'
       }
@@ -196,7 +196,7 @@ describe('ConfigManager', () => {
 
       mockSecrets.get.mockResolvedValue(JSON.stringify(existingConfig))
 
-      const updatedConfig: ApiConfiguration = {
+      const updatedConfig: ModelConfiguration = {
         apiProvider: 'anthropic',
         apiKey: 'new-key'
       }

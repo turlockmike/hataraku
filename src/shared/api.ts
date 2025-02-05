@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-export type ApiProvider =
+export type ModelProvider =
 	| "anthropic"
 	| "glama"
 	| "openrouter"
@@ -14,7 +14,7 @@ export type ApiProvider =
 	| "deepseek"
 	| "vscode-lm"
 
-export interface ApiHandlerOptions {
+export interface ModelProviderOptions {
 	apiModelId?: string
 	apiKey?: string // anthropic
 	anthropicBaseUrl?: string
@@ -54,8 +54,8 @@ export interface ApiHandlerOptions {
 	includeMaxTokens?: boolean
 }
 
-export type ApiConfiguration = ApiHandlerOptions & {
-	apiProvider?: ApiProvider
+export type ModelConfiguration = ModelProviderOptions & {
+	apiProvider?: ModelProvider
 	id?: string // stable unique identifier
 }
 

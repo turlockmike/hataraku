@@ -1,53 +1,53 @@
 import { Anthropic } from "@anthropic-ai/sdk"
-import { GlamaHandler } from "./providers/glama"
-import { ApiConfiguration, ModelInfo } from "../shared/api"
-import { AnthropicHandler } from "./providers/anthropic"
-import { AwsBedrockHandler } from "./providers/bedrock"
-import { OpenRouterHandler } from "./providers/openrouter"
-import { VertexHandler } from "./providers/vertex"
-import { OpenAiHandler } from "./providers/openai"
-import { OllamaHandler } from "./providers/ollama"
-import { LmStudioHandler } from "./providers/lmstudio"
-import { GeminiHandler } from "./providers/gemini"
-import { OpenAiNativeHandler } from "./providers/openai-native"
-import { DeepSeekHandler } from "./providers/deepseek"
-import { MistralHandler } from "./providers/mistral"
+import { GlamaProvider } from "./providers/glama"
+import { ModelConfiguration as ModelConfiguration, ModelInfo } from "../shared/api"
+import { AnthropicProvider } from "./providers/anthropic"
+import { AwsBedrockProvider } from "./providers/bedrock"
+import { OpenRouterProvider } from "./providers/openrouter"
+import { VertexProvider } from "./providers/vertex"
+import { OpenAiProvider } from "./providers/openai"
+import { OllamaProvider } from "./providers/ollama"
+import { LmStudioProvider } from "./providers/lmstudio"
+import { GeminiProvider } from "./providers/gemini"
+import { OpenAiNativeProvider } from "./providers/openai-native"
+import { DeepSeekProvider } from "./providers/deepseek"
+import { MistralProvider } from "./providers/mistral"
 import { ApiStream } from "./transform/stream"
 
 export interface SingleCompletionHandler {
 	completePrompt(prompt: string): Promise<string>
 }
 
-export interface ApiHandler {
+export interface ModelProvider {
 	createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream
 	getModel(): { id: string; info: ModelInfo }
 }
 
-export function buildApiHandler(configuration: ApiConfiguration): ApiHandler {
+export function modelProviderFromConfig(configuration: ModelConfiguration): ModelProvider {
 	const { apiProvider, ...options } = configuration
 	switch (apiProvider) {
 		case "anthropic":
-			return new AnthropicHandler(options)
+			return new AnthropicProvider(options)
 		case "glama":
-			return new GlamaHandler(options)
+			return new GlamaProvider(options)
 		case "openrouter":
-			return new OpenRouterHandler(options)
+			return new OpenRouterProvider(options)
 		case "bedrock":
-			return new AwsBedrockHandler(options)
+			return new AwsBedrockProvider(options)
 		case "vertex":
-			return new VertexHandler(options)
+			return new VertexProvider(options)
 		case "openai":
-			return new OpenAiHandler(options)
+			return new OpenAiProvider(options)
 		case "ollama":
-			return new OllamaHandler(options)
+			return new OllamaProvider(options)
 		case "lmstudio":
-			return new LmStudioHandler(options)
+			return new LmStudioProvider(options)
 		case "gemini":
-			return new GeminiHandler(options)
+			return new GeminiProvider(options)
 		case "openai-native":
-			return new OpenAiNativeHandler(options)
+			return new OpenAiNativeProvider(options)
 		case "deepseek":
-			return new DeepSeekHandler(options)
+			return new DeepSeekProvider(options)
 		default:
 			throw new Error(`Unsupported API provider: ${apiProvider}`)
 	}

@@ -1,64 +1,12 @@
-import { DiffStrategy } from "../../diff/DiffStrategy"
-import { McpHub } from "../../../services/mcp/McpHub"
-
-export async function getMcpServersSection(mcpHub?: McpHub, diffStrategy?: DiffStrategy): Promise<string> {
-    if (!mcpHub) {
-        return '';
-    }
-
-    const connectedServers = mcpHub.getServers().length > 0
-        ? `${mcpHub
-            .getServers()
-            .filter((server) => server.status === "connected")
-            .map((server) => {
-                const tools = server.tools
-                    ?.map((tool) => {
-                        const schemaStr = tool.inputSchema
-                            ? `    Input Schema:
-    ${JSON.stringify(tool.inputSchema, null, 2).split("\n").join("\n    ")}`
-                            : ""
-
-                        return `- ${tool.name}: ${tool.description}\n${schemaStr}`
-                    })
-                    .join("\n\n")
-
-                const templates = server.resourceTemplates
-                    ?.map((template) => `- ${template.uriTemplate} (${template.name}): ${template.description}`)
-                    .join("\n")
-
-                const resources = server.resources
-                    ?.map((resource) => `- ${resource.uri} (${resource.name}): ${resource.description}`)
-                    .join("\n")
-
-                const config = JSON.parse(server.config)
-
-                return (
-                    `## ${server.name} (\`${config.command}${config.args && Array.isArray(config.args) ? ` ${config.args.join(" ")}` : ""}\`)` +
-                    (tools ? `\n\n### Available Tools\n${tools}` : "") +
-                    (templates ? `\n\n### Resource Templates\n${templates}` : "") +
-                    (resources ? `\n\n### Direct Resources\n${resources}` : "")
-                )
-            })
-            .join("\n\n")}`
-        : "(No MCP servers currently connected)";
-
-    return `MCP SERVERS
-
+export function getMcpServersSection( ): string {
+    return `
 The Model Context Protocol (MCP) enables communication between the system and locally running MCP servers that provide additional tools and resources to extend your capabilities.
-
-# Connected MCP Servers
-
-When a server is connected, you can use the server's tools via the \`use_mcp_tool\` tool, and access the server's resources via the \`access_mcp_resource\` tool.
-
-${connectedServers}
 
 ## Creating an MCP Server
 
 The user may ask you something along the lines of "add a tool" that does some function, in other words to create an MCP server that provides tools and resources that may connect to external APIs for example. You have the ability to create an MCP server and add it to a configuration file that will then expose the tools and resources for you to use with \`use_mcp_tool\` and \`access_mcp_resource\`.
 
 When creating MCP servers, it's important to understand that they operate in a non-interactive environment. The server cannot initiate OAuth flows, open browser windows, or prompt for user input during runtime. All credentials and authentication tokens must be provided upfront through environment variables in the MCP settings configuration. For example, Spotify's API uses OAuth to get a refresh token for the user, but the MCP server cannot initiate this flow. While you can walk the user through obtaining an application client ID and secret, you may have to create a separate one-time setup script (like get-refresh-token.js) that captures and logs the final piece of the puzzle: the user's refresh token (i.e. you might run the script using execute_command which would open a browser for authentication, and then log the refresh token so that you can see it in the command output for you to use in the MCP settings configuration).
-
-Unless the user specifies otherwise, new MCP servers should be created in: ${await mcpHub.getMcpServersPath()}
 
 ### Example MCP Server
 
@@ -69,7 +17,7 @@ The following example demonstrates how to build an MCP server that provides weat
 1. Use the \`create-typescript-server\` tool to bootstrap a new project in the default MCP servers directory:
 
 \`\`\`bash
-cd ${await mcpHub.getMcpServersPath()}
+cd <mcp-servers-directory>
 npx @modelcontextprotocol/create-server weather-server
 cd weather-server
 # Install dependencies
@@ -369,7 +317,7 @@ npm run build
 
 4. Whenever you need an environment variable such as an API key to configure the MCP server, walk the user through the process of getting the key. For example, they may need to create an account and go to a developer dashboard to generate the key. Provide step-by-step instructions and URLs to make it easy for the user to retrieve the necessary information. Then use the ask_followup_question tool to ask the user for the key, in this case the OpenWeather API key.
 
-5. Install the MCP Server by adding the MCP server configuration to the settings file located at '${await mcpHub.getMcpSettingsFilePath()}'. The settings file may have other MCP servers already configured, so you would read it first and then add your new server to the existing \`mcpServers\` object.
+5. Install the MCP Server by adding the MCP server configuration to the settings file. The location of this file will vary and the user may have already configured other MCP servers. Inform the user of the new configuration to be added and ask them to confirm. The settings file may have other MCP servers already configured, so you would read it first and then add your new server to the existing \`mcpServers\` object.
 
 IMPORTANT: Regardless of what else you see in the MCP settings file, you must default any new MCP servers you create to disabled=false and alwaysAllow=[].
 
@@ -393,17 +341,6 @@ IMPORTANT: Regardless of what else you see in the MCP settings file, you must de
 6. After you have edited the MCP settings configuration file, the system will automatically run all the servers and expose the available tools and resources in the 'Connected MCP Servers' section.
 
 7. Now that you have access to these new tools and resources, you may suggest ways the user can command you to invoke them - for example, with this new weather tool now available, you can invite the user to ask "what's the weather in San Francisco?"
-
-## Editing MCP Servers
-
-The user may ask to add tools or resources that may make sense to add to an existing MCP server (listed under 'Connected MCP Servers' above: ${
-    mcpHub
-        .getServers()
-        .map((server) => server.name)
-        .join(", ") || "(None running currently)"
-}, e.g. if it would use the same API. This would be possible if you can locate the MCP server repository on the user's system by looking at the server arguments for a filepath. You might then use list_files and read_file to explore the files in the repository, and use write_to_file${diffStrategy ? " or apply_diff" : ""} to make changes to the files.
-
-However some MCP servers may be running from installed packages rather than a local repository, in which case it may make more sense to create a new MCP server.
 
 # MCP Servers Are Not Always Necessary
 

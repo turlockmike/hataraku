@@ -1,8 +1,8 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { Mistral } from "@mistralai/mistralai"
-import { ApiHandler } from "../"
+import { ModelProvider } from "../"
 import {
-	ApiHandlerOptions,
+	ModelProviderOptions,
 	mistralDefaultModelId,
 	MistralModelId,
 	mistralModels,
@@ -11,11 +11,11 @@ import {
 import { convertToMistralMessages } from "../transform/mistral-format"
 import { ApiStream } from "../transform/stream"
 
-export class MistralHandler implements ApiHandler {
-	private options: ApiHandlerOptions
+export class MistralProvider implements ModelProvider {
+	private options: ModelProviderOptions
 	private client: Mistral
 
-	constructor(options: ApiHandlerOptions) {
+	constructor(options: ModelProviderOptions) {
 		this.options = options
 		this.client = new Mistral({
 			serverURL: "https://codestral.mistral.ai",

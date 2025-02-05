@@ -1,5 +1,5 @@
-import { OpenAiHandler } from '../openai';
-import { ApiHandlerOptions } from '../../../shared/api';
+import { OpenAiProvider } from '../openai';
+import { ModelProviderOptions } from '../../../shared/api';
 import { ApiStream } from '../../transform/stream';
 import OpenAI from 'openai';
 import { Anthropic } from '@anthropic-ai/sdk';
@@ -59,8 +59,8 @@ jest.mock('openai', () => {
 });
 
 describe('OpenAiHandler', () => {
-    let handler: OpenAiHandler;
-    let mockOptions: ApiHandlerOptions;
+    let handler: OpenAiProvider;
+    let mockOptions: ModelProviderOptions;
 
     beforeEach(() => {
         mockOptions = {
@@ -68,23 +68,23 @@ describe('OpenAiHandler', () => {
             openAiModelId: 'gpt-4',
             openAiBaseUrl: 'https://api.openai.com/v1'
         };
-        handler = new OpenAiHandler(mockOptions);
+        handler = new OpenAiProvider(mockOptions);
         mockCreate.mockClear();
     });
 
     describe('constructor', () => {
         it('should initialize with provided options', () => {
-            expect(handler).toBeInstanceOf(OpenAiHandler);
+            expect(handler).toBeInstanceOf(OpenAiProvider);
             expect(handler.getModel().id).toBe(mockOptions.openAiModelId);
         });
 
         it('should use custom base URL if provided', () => {
             const customBaseUrl = 'https://custom.openai.com/v1';
-            const handlerWithCustomUrl = new OpenAiHandler({
+            const handlerWithCustomUrl = new OpenAiProvider({
                 ...mockOptions,
                 openAiBaseUrl: customBaseUrl
             });
-            expect(handlerWithCustomUrl).toBeInstanceOf(OpenAiHandler);
+            expect(handlerWithCustomUrl).toBeInstanceOf(OpenAiProvider);
         });
     });
 
@@ -101,7 +101,7 @@ describe('OpenAiHandler', () => {
         ];
 
         it('should handle non-streaming mode', async () => {
-            const handler = new OpenAiHandler({
+            const handler = new OpenAiProvider({
                 ...mockOptions,
                 openAiStreamingEnabled: false
             });
@@ -212,7 +212,7 @@ describe('OpenAiHandler', () => {
         });
 
         it('should handle undefined model ID', () => {
-            const handlerWithoutModel = new OpenAiHandler({
+            const handlerWithoutModel = new OpenAiProvider({
                 ...mockOptions,
                 openAiModelId: undefined
             });

@@ -5,7 +5,7 @@ IMPORTANT NOTE: This tool CANNOT be used until you've confirmed from the user th
 Parameters:
 - result: (required) The result of the task. Formulate this result in a way that is final and does not require further input from the user. Don't end your result with questions or offers for further assistance.
 - command: (optional) A CLI command to execute to show a live demo of the result to the user. For example, use \`open index.html\` to display a created html website, or \`open localhost:3000\` to display a locally running development server. But DO NOT use commands like \`echo\` or \`cat\` that merely print text. This command should be valid for the current operating system. Ensure the command is properly formatted and does not contain any harmful instructions.
-- follow_up_tasks: (optional) An array of up to 3 suggested follow-up tasks based on the current task and its result. These should be relevant improvements, extensions, or related tasks that would enhance the current work.
+- follow_up_tasks: (optional) An array of up to 3 short suggested follow-up tasks based on the current task and its result. These should be relevant improvements, extensions, or related tasks that would enhance the current work.
 Usage:
 <attempt_completion>
 <result>

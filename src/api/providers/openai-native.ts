@@ -1,8 +1,8 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
-import { ApiHandler, SingleCompletionHandler } from "../"
+import { ModelProvider, SingleCompletionHandler } from "../"
 import {
-	ApiHandlerOptions,
+	ModelProviderOptions,
 	ModelInfo,
 	openAiNativeDefaultModelId,
 	OpenAiNativeModelId,
@@ -11,11 +11,11 @@ import {
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 
-export class OpenAiNativeHandler implements ApiHandler, SingleCompletionHandler {
-	private options: ApiHandlerOptions
+export class OpenAiNativeProvider implements ModelProvider, SingleCompletionHandler {
+	private options: ModelProviderOptions
 	private client: OpenAI
 
-	constructor(options: ApiHandlerOptions) {
+	constructor(options: ModelProviderOptions) {
 		this.options = options
 		this.client = new OpenAI({
 			apiKey: this.options.openAiNativeApiKey,

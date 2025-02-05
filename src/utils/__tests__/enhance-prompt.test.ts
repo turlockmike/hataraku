@@ -1,15 +1,16 @@
 import { enhancePrompt } from '../enhance-prompt'
-import { ApiConfiguration } from '../../shared/api'
-import { buildApiHandler, SingleCompletionHandler } from '../../api'
+import { ModelConfiguration } from '../../shared/api'
+import { modelProviderFromConfig, SingleCompletionHandler } from '../../api'
 import { defaultPrompts } from '../../shared/modes'
 
-// Mock the API handler
+// Mock the API module
 jest.mock('../../api', () => ({
+  modelProviderFromConfig: jest.fn(),
   buildApiHandler: jest.fn()
 }))
 
 describe('enhancePrompt', () => {
-  const mockApiConfig: ApiConfiguration = {
+  const mockApiConfig: ModelConfiguration = {
     apiProvider: 'openai',
     openAiApiKey: 'test-key',
     openAiBaseUrl: 'https://api.openai.com/v1'
@@ -19,7 +20,7 @@ describe('enhancePrompt', () => {
     jest.clearAllMocks()
     
     // Mock the API handler with a completePrompt method
-    ;(buildApiHandler as jest.Mock).mockReturnValue({
+    ;(modelProviderFromConfig as jest.Mock).mockReturnValue({
       completePrompt: jest.fn().mockResolvedValue('Enhanced prompt'),
       createMessage: jest.fn(),
       getModel: jest.fn().mockReturnValue({ 
@@ -37,7 +38,7 @@ describe('enhancePrompt', () => {
     const result = await enhancePrompt(mockApiConfig, 'Test prompt')
     
     expect(result).toBe('Enhanced prompt')
-    const handler = buildApiHandler(mockApiConfig)
+    const handler = modelProviderFromConfig(mockApiConfig)
     expect((handler as any).completePrompt).toHaveBeenCalledWith(
       `${defaultPrompts.enhance}\n\nTest prompt`
     )
@@ -49,7 +50,7 @@ describe('enhancePrompt', () => {
     const result = await enhancePrompt(mockApiConfig, 'Test prompt', customEnhancePrompt)
     
     expect(result).toBe('Enhanced prompt')
-    const handler = buildApiHandler(mockApiConfig)
+    const handler = modelProviderFromConfig(mockApiConfig)
     expect((handler as any).completePrompt).toHaveBeenCalledWith(
       `${customEnhancePrompt}\n\nTest prompt`
     )
@@ -60,11 +61,11 @@ describe('enhancePrompt', () => {
   })
 
   it('throws error for missing API configuration', async () => {
-    await expect(enhancePrompt({} as ApiConfiguration, 'Test prompt')).rejects.toThrow('No valid API configuration provided')
+    await expect(enhancePrompt({} as ModelConfiguration, 'Test prompt')).rejects.toThrow('No valid API configuration provided')
   })
 
   it('throws error for API provider that does not support prompt enhancement', async () => {
-    (buildApiHandler as jest.Mock).mockReturnValue({
+    (modelProviderFromConfig as jest.Mock).mockReturnValue({
       // No completePrompt method
       createMessage: jest.fn(),
       getModel: jest.fn().mockReturnValue({ 
@@ -81,14 +82,14 @@ describe('enhancePrompt', () => {
   })
 
   it('uses appropriate model based on provider', async () => {
-    const openRouterConfig: ApiConfiguration = {
+    const openRouterConfig: ModelConfiguration = {
       apiProvider: 'openrouter',
       openRouterApiKey: 'test-key',
       openRouterModelId: 'test-model'
     }
 
     // Mock successful enhancement
-    ;(buildApiHandler as jest.Mock).mockReturnValue({
+    ;(modelProviderFromConfig as jest.Mock).mockReturnValue({
       completePrompt: jest.fn().mockResolvedValue('Enhanced prompt'),
       createMessage: jest.fn(),
       getModel: jest.fn().mockReturnValue({ 
@@ -103,12 +104,12 @@ describe('enhancePrompt', () => {
 
     const result = await enhancePrompt(openRouterConfig, 'Test prompt')
     
-    expect(buildApiHandler).toHaveBeenCalledWith(openRouterConfig)
+    expect(modelProviderFromConfig).toHaveBeenCalledWith(openRouterConfig)
     expect(result).toBe('Enhanced prompt')
   })
 
   it('propagates API errors', async () => {
-    (buildApiHandler as jest.Mock).mockReturnValue({
+    (modelProviderFromConfig as jest.Mock).mockReturnValue({
       completePrompt: jest.fn().mockRejectedValue(new Error('API Error')),
       createMessage: jest.fn(),
       getModel: jest.fn().mockReturnValue({ 

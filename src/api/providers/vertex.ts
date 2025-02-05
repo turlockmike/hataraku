@@ -1,15 +1,15 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { AnthropicVertex } from "@anthropic-ai/vertex-sdk"
-import { ApiHandler, SingleCompletionHandler } from "../"
-import { ApiHandlerOptions, ModelInfo, vertexDefaultModelId, VertexModelId, vertexModels } from "../../shared/api"
+import { ModelProvider, SingleCompletionHandler } from "../"
+import { ModelProviderOptions, ModelInfo, vertexDefaultModelId, VertexModelId, vertexModels } from "../../shared/api"
 import { ApiStream } from "../transform/stream"
 
 // https://docs.anthropic.com/en/api/claude-on-vertex-ai
-export class VertexHandler implements ApiHandler, SingleCompletionHandler {
-	private options: ApiHandlerOptions
+export class VertexProvider implements ModelProvider, SingleCompletionHandler {
+	private options: ModelProviderOptions
 	private client: AnthropicVertex
 
-	constructor(options: ApiHandlerOptions) {
+	constructor(options: ModelProviderOptions) {
 		this.options = options
 		this.client = new AnthropicVertex({
 			projectId: this.options.vertexProjectId,

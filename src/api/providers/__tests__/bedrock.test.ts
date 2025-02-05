@@ -1,13 +1,13 @@
-import { AwsBedrockHandler } from '../bedrock';
+import { AwsBedrockProvider } from '../bedrock';
 import { MessageContent } from '../../../shared/api';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { Anthropic } from '@anthropic-ai/sdk';
 
 describe('AwsBedrockHandler', () => {
-    let handler: AwsBedrockHandler;
+    let handler: AwsBedrockProvider;
 
     beforeEach(() => {
-        handler = new AwsBedrockHandler({
+        handler = new AwsBedrockProvider({
             apiModelId: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
             awsAccessKey: 'test-access-key',
             awsSecretKey: 'test-secret-key',
@@ -24,11 +24,11 @@ describe('AwsBedrockHandler', () => {
         });
 
         it('should initialize with missing AWS credentials', () => {
-            const handlerWithoutCreds = new AwsBedrockHandler({
+            const handlerWithoutCreds = new AwsBedrockProvider({
                 apiModelId: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
                 awsRegion: 'us-east-1'
             });
-            expect(handlerWithoutCreds).toBeInstanceOf(AwsBedrockHandler);
+            expect(handlerWithoutCreds).toBeInstanceOf(AwsBedrockProvider);
         });
     });
 
@@ -192,7 +192,7 @@ describe('AwsBedrockHandler', () => {
         });
 
         it('should handle cross-region inference', async () => {
-            handler = new AwsBedrockHandler({
+            handler = new AwsBedrockProvider({
                 apiModelId: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
                 awsAccessKey: 'test-access-key',
                 awsSecretKey: 'test-secret-key',
@@ -231,7 +231,7 @@ describe('AwsBedrockHandler', () => {
         });
 
         it('should return test model info for invalid model in test environment', () => {
-            const invalidHandler = new AwsBedrockHandler({
+            const invalidHandler = new AwsBedrockProvider({
                 apiModelId: 'invalid-model',
                 awsAccessKey: 'test-access-key',
                 awsSecretKey: 'test-secret-key',

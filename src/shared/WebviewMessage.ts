@@ -1,4 +1,4 @@
-import { ApiConfiguration, ApiProvider } from "./api"
+import { ModelConfiguration, ModelProvider } from "./api"
 import { Mode, PromptComponent } from "./modes"
 
 export type PromptMode = Mode | 'enhance'
@@ -75,7 +75,7 @@ export interface WebviewMessage {
 	text?: string
 	disabled?: boolean
 	askResponse?: ClineAskResponse
-	apiConfiguration?: ApiConfiguration
+	apiConfiguration?: ModelConfiguration
 	images?: string[]
 	bool?: boolean
 	value?: number

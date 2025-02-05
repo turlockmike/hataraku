@@ -4,18 +4,17 @@ import {
 	anthropicDefaultModelId,
 	AnthropicModelId,
 	anthropicModels,
-	ApiHandlerOptions,
+	ModelProviderOptions,
 	ModelInfo,
 } from "../../shared/api"
-import { ApiHandler, SingleCompletionHandler } from "../index"
+import { ModelProvider, SingleCompletionHandler } from "../index"
 import { ApiStream } from "../transform/stream"
 
-export class AnthropicHandler implements ApiHandler, SingleCompletionHandler {
-	private options: ApiHandlerOptions
+export class AnthropicProvider implements ModelProvider, SingleCompletionHandler {
+	private options: ModelProviderOptions
 	private client: Anthropic
 
-	constructor(options: ApiHandlerOptions) {
-		console.log('anthropic options,', options)
+	constructor(options: ModelProviderOptions) {
 		this.options = options
 		this.client = new Anthropic({
 			apiKey: this.options.apiKey,

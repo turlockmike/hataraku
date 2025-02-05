@@ -3,14 +3,14 @@ import { TaskLoop } from './core/task-loop';
 import { CliToolExecutor } from './lib/tools/CliToolExecutor';
 import { CliMessageParser } from './lib/parser/CliMessageParser';
 import { McpClient } from './lib/mcp/McpClient';
-import { buildApiHandler } from './api';
-import { ApiProvider } from './shared/api';
+import { modelProviderFromConfig } from './api';
+import { ModelProvider } from './shared/api';
 
-export async function startServer(port: number = 3000, apiKey: string, provider: ApiProvider = 'openrouter', model: string = 'anthropic/claude-3.5-sonnet') {
+export async function startServer(port: number = 3000, apiKey: string, provider: ModelProvider = 'openrouter', model: string = 'anthropic/claude-3.5-sonnet') {
     const app = express();
     
     // Initialize components
-    const apiHandler = buildApiHandler({
+    const apiHandler = modelProviderFromConfig({
         apiProvider: provider,
         [`${provider}ApiKey`]: apiKey,
         [`${provider}ModelId`]: model
@@ -128,7 +128,7 @@ export async function startServer(port: number = 3000, apiKey: string, provider:
             );
 
             // Modify the query to request HTML output
-            const taskQuery = `${query} (Return the result as HTML that can be displayed in a web page. DO NOT ATTEMPT TO OPEN OR DISPLAY IT, ONLY RETURN THE HTML in the result of the attempt_completion call)`;
+            const taskQuery = `${query} (Return the result as HTML that can be displayed in a web page. DO NOT ATTEMPT TO OPEN OR DISPLAY IT, ONLY RETURN THE HTML in the result of the attempt_completion call). Always embed videos and images in the HTML.`;
 
             // Run the task and get the result
             const result = await taskLoop.run(taskQuery);

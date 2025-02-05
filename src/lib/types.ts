@@ -69,6 +69,8 @@ export interface UnifiedTool<TInput = any, TOutput = any> extends Tool {
         additionalProperties: boolean;
     };
     execute: (params: TInput, cwd: string) => Promise<TOutput>;
+    // Optional initialization method for tools that need setup
+    initialize?: () => Promise<void>;
 }
 
 export interface ToolExecutor {

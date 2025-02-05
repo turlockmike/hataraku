@@ -3,10 +3,7 @@ import os from "os"
 import osName from "os-name"
 
 export function getSystemInfoSection(cwd: string): string {
-    return `====
-
-SYSTEM INFORMATION
-
+    return `
 Operating System: ${osName()}
 Default Shell: ${defaultShell}
 Home Directory: ${os.homedir().toPosix()}

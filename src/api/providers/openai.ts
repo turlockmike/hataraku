@@ -1,20 +1,20 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI, { AzureOpenAI } from "openai"
 import {
-	ApiHandlerOptions,
+	ModelProviderOptions,
 	azureOpenAiDefaultApiVersion,
 	ModelInfo,
 	openAiModelInfoSaneDefaults,
 } from "../../shared/api"
-import { ApiHandler, SingleCompletionHandler } from "../index"
+import { ModelProvider, SingleCompletionHandler } from "../index"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 
-export class OpenAiHandler implements ApiHandler, SingleCompletionHandler {
-	protected options: ApiHandlerOptions
+export class OpenAiProvider implements ModelProvider, SingleCompletionHandler {
+	protected options: ModelProviderOptions
 	private client: OpenAI
 
-	constructor(options: ApiHandlerOptions) {
+	constructor(options: ModelProviderOptions) {
 		this.options = options
 		// Azure API shape slightly differs from the core API shape: https://github.com/openai/openai-node?tab=readme-ov-file#microsoft-azure-openai
 		const urlHost = new URL(this.options.openAiBaseUrl ?? "").host;

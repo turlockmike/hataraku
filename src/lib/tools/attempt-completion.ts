@@ -24,10 +24,6 @@ export const attemptCompletionTool: UnifiedTool<AttemptCompletionInput, AttemptC
             required: true,
             description: 'The result of the task. Formulate this result in a way that is final and does not require further input from the user.'
         },
-        command: {
-            required: false,
-            description: 'Optional command to execute to demonstrate the result'
-        },
         follow_up_tasks: {
             required: false,
             description: 'Optional array of up to 3 suggested follow-up tasks based on the current task and its result'
@@ -40,10 +36,6 @@ export const attemptCompletionTool: UnifiedTool<AttemptCompletionInput, AttemptC
             result: {
                 type: 'string',
                 description: 'The result of the task. Formulate this result in a way that is final and does not require further input from the user. Don\'t end your result with questions or offers for further assistance.'
-            },
-            command: {
-                type: 'string',
-                description: 'A CLI command to execute to show a live demo of the result to the user. For example, use `open index.html` to display a created html website. This command should be valid for the current operating system.'
             },
             follow_up_tasks: {
                 type: 'array',
@@ -67,11 +59,7 @@ export const attemptCompletionTool: UnifiedTool<AttemptCompletionInput, AttemptC
             },
             message: {
                 type: 'string',
-                description: 'A message describing the result of the operation'
-            },
-            commandOutput: {
-                type: 'string',
-                description: 'Output from the demonstration command if one was provided and executed'
+                description: 'A message describing the result of the operation to display to the user'
             },
             error: {
                 type: 'string',
