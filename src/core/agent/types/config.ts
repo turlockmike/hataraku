@@ -3,6 +3,7 @@ import { UnifiedTool } from '../../../lib/types';
 import { ModelConfiguration, ModelProvider as ApiModelProvider } from '../../../shared/api';
 import { ModelProvider } from '../../../api';
 import { SystemPromptConfig } from '../../prompts/prompt-builder';
+import { Thread } from '../../thread/thread';
 
 /**
  * Model configuration for the agent - can be either a ModelProvider instance or a ModelConfiguration
@@ -75,27 +76,4 @@ export interface TaskInput<TOutput = unknown> {
   context?: Record<string, unknown> | FileContext[];
   /** Schema for validating the output */
   outputSchema?: z.ZodSchema<TOutput>;
-}
-
-/**
- * Thread for maintaining conversation context
- */
-export class Thread {
-  private contexts: Map<string, unknown> = new Map();
-
-  public addContext(context: { key: string; content: unknown }): void {
-    this.contexts.set(context.key, context.content);
-  }
-
-  public addFileContext(file: FileContext): void {
-    this.contexts.set(`file:${file.name}`, file);
-  }
-
-  public getContext(key: string): unknown {
-    return this.contexts.get(key);
-  }
-
-  public getAllContexts(): Map<string, unknown> {
-    return new Map(this.contexts);
-  }
 }
