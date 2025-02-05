@@ -1,7 +1,20 @@
 import { SystemPromptBuilder, SystemPromptConfig } from '../prompt-builder';
+import os from 'os'
+import process from 'node:process'
 
 describe('SystemPromptBuilder', () => {
   const testCwd = '/test/path';
+
+  beforeEach(() => {
+    jest.spyOn(os, 'homedir').mockReturnValue('/test/home')
+    jest.spyOn(process, 'cwd').mockReturnValue('/test/cwd')
+    jest.spyOn(os, 'platform').mockReturnValue('linux')
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+  
 
   describe('constructor', () => {
     it('should initialize with default sections', () => {
