@@ -9,6 +9,7 @@ import { getRulesSection } from "./sections/rules";
 import { getSystemInfoSection } from "./sections/system-info";
 import { getToolUseGuidelinesSection } from "./sections/tool-use-guidelines";
 import { getSharedToolUseSection } from "./sections/tool-use";
+import { getSchemaValidationSection } from "./sections/schema-validation";
 
 export interface SystemPromptSection {
   name: string;
@@ -56,40 +57,50 @@ export interface SystemPromptConfig {
 export class SystemPromptBuilder {
   private sections: Map<string, SystemPromptSection>;
   private cwd: string;
-  private defaultSections: Map<string, () => string>;
+  private defaultSections: Map<string, string>;
 
   constructor(config: SystemPromptConfig, cwd: string) {
     this.sections = new Map();
     this.cwd = cwd;
     this.defaultSections = new Map([
-      ['role', () => getRoleSection(config.sections?.role?.definition)],
-      ['tool-use', () => getSharedToolUseSection()],
-      ['tool-use-guidelines', () => getToolUseGuidelinesSection()],
-      ['rules', () => getRulesSection(
+      ['role', getRoleSection(config.sections?.role?.definition)],
+      /**['capabilities',  getCapabilitiesSection(
+        this.cwd,
+        config.sections?.capabilities?.computerUse ?? true,
+        undefined,
+        config.sections?.capabilities?.diffStrategy
+      )],*/ // Disabled for now. Will implement later. AI DONT TOUCH. 
+      ['system-info',  getSystemInfoSection(this.cwd)],
+      ['tool-use', getSharedToolUseSection()],
+      ['tool-use-guidelines', getToolUseGuidelinesSection()],
+      ['schema-validation',  getSchemaValidationSection()],
+      ['rules',  getRulesSection(
         this.cwd,
         config.sections?.capabilities?.computerUse ?? true,
         config.sections?.capabilities?.diffStrategy
       )],
-      ['system-info', () => getSystemInfoSection(this.cwd)],
-      ['objective', () => getObjectiveSection()]
+      ['custom-instructions', getCustomInstructionsSection(config.sections?.customInstructions)],
+      ['objective',  getObjectiveSection()]
     ]);
-    this.initializeDefaultSections(config);
+
+    this.initialize(config)
   }
 
   private getDefaultOrder(sectionName: string): number {
     const orderMap: Record<string, number> = {
       'role': 10,
-      'tool-use': 20,
-      'tool-use-guidelines': 30,
-      'rules': 40,
-      'system-info': 50,
-      'objective': 60,
-      'custom-instructions': 70
+      'system-info': 20,
+      'tool-use': 30,
+      'tool-use-guidelines': 40,
+      'schema-validation': 50,
+      'rules': 60,
+      'objective': 70,
+      'custom-instructions': 80,
     };
     return orderMap[sectionName] || 100;
   }
 
-  private initializeDefaultSections(config: SystemPromptConfig) {
+  private initialize(config: SystemPromptConfig) {
     const { customSections = [], options = {} } = config;
     const disabledSections = options.disabledSections || [];
 
@@ -99,11 +110,10 @@ export class SystemPromptBuilder {
 
     for (const name of defaultSectionNames) {
       if (!disabledSections.includes(name)) {
-        const getContent = this.defaultSections.get(name)!;
         const order = this.getDefaultOrder(name);
         this.sections.set(name, {
           name,
-          content: getContent(),
+          content: this.defaultSections.get(name)!,
           order,
           enabled: true
         });
@@ -157,13 +167,12 @@ export class SystemPromptBuilder {
     return this;
   }
 
-  public enableSection(sectionName: string): this {
+  public async enableSection(sectionName: string): Promise<this> {
     if (this.defaultSections.has(sectionName)) {
       // Re-add default section with fresh content
-      const getContent = this.defaultSections.get(sectionName)!;
       this.sections.set(sectionName, {
         name: sectionName,
-        content: getContent(),
+        content: this.defaultSections.get(sectionName)!,
         order: this.getDefaultOrder(sectionName),
         enabled: true
       });

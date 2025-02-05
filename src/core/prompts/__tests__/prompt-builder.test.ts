@@ -12,12 +12,13 @@ describe('SystemPromptBuilder', () => {
       // Check for unique content from each section
       const sections = prompt.split('====').filter(Boolean);
       expect(sections[0]).toContain('ROLE');
-      expect(sections[1]).toContain('TOOL USE');
-      expect(sections[2]).toContain('TOOL USE GUIDELINES');
-      expect(sections[3]).toContain('RULES');
-      expect(sections[4]).toContain('SYSTEM INFO');
-      expect(sections[5]).toContain('OBJECTIVE');
-      expect(sections[6]).toContain('CUSTOM INSTRUCTIONS');
+      expect(sections[1]).toContain('SYSTEM INFO');
+      expect(sections[2]).toContain('TOOL USE');
+      expect(sections[3]).toContain('TOOL USE GUIDELINES');
+      expect(sections[4]).toContain('SCHEMA VALIDATION');
+      expect(sections[5]).toContain('RULES');
+      expect(sections[6]).toContain('OBJECTIVE');
+      expect(sections[7]).toContain('CUSTOM INSTRUCTIONS');
     });
 
     it('should initialize with role and custom instructions', () => {

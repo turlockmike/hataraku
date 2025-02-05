@@ -5,6 +5,7 @@ import { UnifiedTool } from '../../lib/types';
 import { ModelProvider, modelProviderFromConfig } from '../../api';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { SystemPromptBuilder } from '../prompts/prompt-builder';
+import * as z from 'zod';
 
 /**
  * Core Agent class that serves as the primary entry point for the Hataraku SDK.
@@ -105,7 +106,7 @@ export class Agent {
    */
   private async executeTask<TOutput>(input: TaskInput<TOutput>): Promise<TOutput> {
     // Create system prompt
-    const systemPrompt = this.systemPromptBuilder.build();
+    const systemPrompt = await this.systemPromptBuilder.build();
 
     // Create message array
     const messages: Anthropic.Messages.MessageParam[] = [];
@@ -120,10 +121,17 @@ export class Agent {
       }
     }
 
+    // Format task content with schema if provided
+    let messageContent = `<task>${input.content}</task>`;
+    if (input.outputSchema) {
+      const schemaStr = this.serializeZodSchema(input.outputSchema);
+      messageContent += `<output_schema>${schemaStr}</output_schema>`;
+    }
+
     // Add the task input as a user message
     messages.push({
       role: 'user',
-      content: input.content
+      content: messageContent
     });
 
     try {
@@ -171,7 +179,7 @@ export class Agent {
     input: TaskInput<TOutput>
   ): AsyncGenerator<TOutput> {
     // Create system prompt
-    const systemPrompt = this.systemPromptBuilder.build();
+    const systemPrompt = await this.systemPromptBuilder.build();
 
     // Create message array
     const messages: Anthropic.Messages.MessageParam[] = [];
@@ -186,10 +194,17 @@ export class Agent {
       }
     }
 
+    // Format task content with schema if provided
+    let messageContent = `<task>${input.content}</task>`;
+    if (input.outputSchema) {
+      const schemaStr = this.serializeZodSchema(input.outputSchema);
+      messageContent += `<output_schema>${schemaStr}</output_schema>`;
+    }
+
     // Add the task input as a user message
     messages.push({
       role: 'user',
-      content: input.content
+      content: messageContent
     });
 
     try {
@@ -285,5 +300,24 @@ export class Agent {
    */
   public getModelProvider(): ModelProvider {
     return this.modelProvider;
+  }
+
+  private serializeZodSchema(schema: z.ZodType<any>): string {
+    if (schema instanceof z.ZodObject) {
+      const shape = schema._def.shape();
+      const shapeEntries = Object.entries(shape).map(([key, value]) => {
+        if (value instanceof z.ZodString) {
+          return `"${key}": z.string()`;
+        }
+        if (value instanceof z.ZodNumber) {
+          return `"${key}": z.number()`;
+        }
+        // Add more types as needed
+        return `"${key}": z.unknown()`;
+      });
+      return `{${shapeEntries.join(', ')}}`;
+    }
+    // Handle other schema types as needed
+    return 'z.unknown()';
   }
 }
