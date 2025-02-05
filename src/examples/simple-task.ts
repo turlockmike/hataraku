@@ -12,6 +12,7 @@ async function main() {
 
   // Create agent config with OpenRouter/Sonnet model
   const config: AgentConfig = {
+    name: 'Simple Task Agent',
     model: {
       apiProvider: 'openrouter',
       apiModelId: 'anthropic/claude-3-sonnet-20240229'

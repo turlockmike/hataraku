@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { UnifiedTool } from '../../../lib/types';
 import { ModelConfiguration, ModelProvider as ApiModelProvider } from '../../../shared/api';
 import { ModelProvider } from '../../../api';
-import { SystemPromptConfig } from '../../prompts/SystemPromptBuilder';
+import { SystemPromptConfig } from '../../prompts/prompt-builder';
 
 /**
  * Model configuration for the agent - can be either a ModelProvider instance or a ModelConfiguration
@@ -25,6 +25,8 @@ export interface StreamingConfig {
  * Main configuration interface for the Agent
  */
 export interface AgentConfig {
+  /** The name of the agent */
+  name: string;
   /** Model configuration - can be either a ModelProvider instance or a ModelConfiguration */
   model: ModelConfig;
   /** List of tools to use - must be UnifiedTool instances */
@@ -35,8 +37,12 @@ export interface AgentConfig {
   maxRetries?: number;
   /** Timeout for operations in milliseconds */
   timeout?: number;
-  /** System prompt configuration */
-  systemPrompt?: SystemPromptConfig;
+  /** The role of the agent to be used in the system prompt */
+  role?: string;
+  /** The custom instructions for the agent to be used in the system prompt */
+  customInstructions?: string;
+  /** The system prompt configuration. By default, the system prompt will be generated using the role and custom instructions and a minimal set of rules for tool use. */
+  systemPromptConfig?: SystemPromptConfig;
 }
 
 /**

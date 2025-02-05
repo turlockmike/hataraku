@@ -4,6 +4,7 @@ import { AgentConfig } from '../core/agent/types/config';
 async function main() {
   // Create agent config with OpenRouter/Sonnet model
   const config: AgentConfig = {
+    name: 'Streaming Task Agent',
     model: {
       apiProvider: 'openrouter',
       apiModelId: 'anthropic/claude-3-sonnet-20240229'

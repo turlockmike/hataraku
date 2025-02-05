@@ -7,10 +7,7 @@ export function getCapabilitiesSection(
     mcpHub?: McpHub,
     diffStrategy?: DiffStrategy,
 ): string {
-    return `====
-
-CAPABILITIES
-
+    return `
 - You have access to tools that let you execute CLI commands on the user's computer, list files, view source code definitions, regex search${
     supportsComputerUse ? ", use the browser" : ""
 }, read and write files, and ask follow-up questions. These tools help you effectively accomplish a wide range of tasks, such as writing code, making edits or improvements to existing files, understanding the current state of a project, performing system operations, and much more.

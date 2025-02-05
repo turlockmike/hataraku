@@ -4,7 +4,7 @@ import { agentConfigSchema } from './schemas/config';
 import { UnifiedTool } from '../../lib/types';
 import { ModelProvider, modelProviderFromConfig } from '../../api';
 import { Anthropic } from '@anthropic-ai/sdk';
-import { SystemPromptBuilder } from '../prompts/SystemPromptBuilder';
+import { SystemPromptBuilder } from '../prompts/prompt-builder';
 
 /**
  * Core Agent class that serves as the primary entry point for the Hataraku SDK.
@@ -16,6 +16,8 @@ export class Agent {
   private tools: Map<string, UnifiedTool> = new Map();
   private modelProvider: ModelProvider;
   private systemPromptBuilder: SystemPromptBuilder;
+  private role: string;
+  private customInstructions: string;
 
   /**
    * Creates a new Agent instance with the provided configuration
@@ -40,9 +42,20 @@ export class Agent {
       this.modelProvider = modelProviderFromConfig(config.model);
     }
 
+    this.role = config.role || ''; 
+    this.customInstructions = config.customInstructions || '';
     // Initialize system prompt builder with default config
     this.systemPromptBuilder = new SystemPromptBuilder({
-      ...config.systemPrompt,
+      ...config.systemPromptConfig,
+      sections: {
+        ...config.systemPromptConfig?.sections,
+        role: {
+          definition: this.role
+        },
+        customInstructions: {
+          instructions: this.customInstructions
+        }
+      }
     }, process.cwd());
   }
 
@@ -91,15 +104,8 @@ export class Agent {
    * @private
    */
   private async executeTask<TOutput>(input: TaskInput<TOutput>): Promise<TOutput> {
-    // Create system prompt using builder with task content
-    const systemPrompt = this.systemPromptBuilder
-      .addSection({
-        name: 'task',
-        content: input.content,
-        order: 0,  // Place at the beginning
-        enabled: true
-      })
-      .build();
+    // Create system prompt
+    const systemPrompt = this.systemPromptBuilder.build();
 
     // Create message array
     const messages: Anthropic.Messages.MessageParam[] = [];
@@ -164,15 +170,8 @@ export class Agent {
   private async *executeStreamingTask<TOutput>(
     input: TaskInput<TOutput>
   ): AsyncGenerator<TOutput> {
-    // Create system prompt using builder with task content
-    const systemPrompt = this.systemPromptBuilder
-      .addSection({
-        name: 'task',
-        content: input.content,
-        order: 0,  // Place at the beginning
-        enabled: true
-      })
-      .build();
+    // Create system prompt
+    const systemPrompt = this.systemPromptBuilder.build();
 
     // Create message array
     const messages: Anthropic.Messages.MessageParam[] = [];

@@ -1,8 +1,5 @@
 export function getObjectiveSection(): string {
-    return `====
-
-OBJECTIVE
-
+    return `
 You accomplish a given task iteratively, breaking it down into clear steps and working through them methodically.
 
 1. Analyze the user's task and set clear, achievable goals to accomplish it. Prioritize these goals in a logical order.

@@ -7,10 +7,7 @@ export function getRulesSection(
     supportsComputerUse: boolean,
     diffStrategy?: DiffStrategy
 ): string {
-    return `====
-
-RULES
-
+    return `
 - Your current working directory is: ${cwd.toPosix()}
 - You cannot \`cd\` into a different directory to complete a task. You are stuck operating from '${cwd.toPosix()}', so be sure to pass in the correct 'path' parameter when using tools that require a path.
 - Do not use the ~ character or $HOME to refer to the home directory.

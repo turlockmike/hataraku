@@ -15,7 +15,6 @@ export class AnthropicProvider implements ModelProvider, SingleCompletionHandler
 	private client: Anthropic
 
 	constructor(options: ModelProviderOptions) {
-		console.log('anthropic options,', options)
 		this.options = options
 		this.client = new Anthropic({
 			apiKey: this.options.apiKey,

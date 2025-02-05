@@ -1,6 +1,5 @@
 import * as fs from 'fs/promises';
 import { TaskHistory, HistoryEntry } from './TaskHistory';
-import { input, select } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { MessageParser, ToolResponse } from '../lib/types';
 import { AVAILABLE_TOOLS, getToolDocs } from '../lib/tools';
@@ -10,15 +9,6 @@ import { McpClient } from '../lib/mcp/McpClient';
 import { formatToolResponse } from '../utils/format';
 import { ModelProvider } from '../api';
 import * as path from 'path';
-
-interface TaskLoopOptions {
-    apiHandler: ModelProvider;
-    toolExecutor: CliToolExecutor;
-    mcpClient: McpClient;
-    messageParser: MessageParser;
-    initialPrompt?: string;
-    maxAttempts?: number;
-}
 
 interface TaskMessage {
     role: 'assistant' | 'user';
