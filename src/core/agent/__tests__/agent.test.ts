@@ -4,6 +4,8 @@ import { z } from "zod"
 import { MockProvider, MockTool } from "../../../lib/testing"
 import { ModelProvider } from "../../../api"
 import { Readable } from 'stream'
+import os from "os"
+import process from "node:process"
 
 describe("Agent", () => {
 	let mockProvider: MockProvider
@@ -99,6 +101,17 @@ describe("Agent", () => {
 	})
 
 	describe("task", () => {
+		beforeEach(() => {
+			// Mock the cwd and the os.homedir() for snapshot testing
+			jest.spyOn(os, 'homedir').mockReturnValue('/test/home')
+			jest.spyOn(process, 'cwd').mockReturnValue('/test/cwd')
+			jest.spyOn(os, 'platform').mockReturnValue('linux')
+		})
+
+		afterEach(() => {
+			jest.restoreAllMocks()
+		})
+
 		it("should include role and custom instructions in system prompt", async () => {
 			mockProvider.clearResponses().mockResponse("<attempt_completion><result>test response</result></attempt_completion>")
 			const agent = new Agent(validConfigWithProvider)

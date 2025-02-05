@@ -8,6 +8,7 @@ import { SystemPromptBuilder } from '../prompts/prompt-builder';
 import * as z from 'zod';
 import { attemptCompletionTool, getToolDocs } from '../../lib';
 import chalk from 'chalk';
+import process from 'node:process';
 
 /**
  * Core Agent class that serves as the primary entry point for the Hataraku SDK.
