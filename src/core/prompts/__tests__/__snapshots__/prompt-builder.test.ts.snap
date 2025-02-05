@@ -91,11 +91,13 @@ When a task includes an output schema:
 7. If you cannot produce valid output matching the schema, throw an error explaining why
 8. When calling attempt_completion, ensure the result is valid JSON that matches the schema
 
-Example with schema requiring { "result": string, "success": boolean }:
-{
-  "result": "Task completed successfully",
-  "success": true
-}
+Example with schema requiring { "foo": string, "num": number }:
+<attempt_completion>
+  <result>{
+    "foo": "bar",
+    "num": 123
+  }</result>
+</attempt_completion>
 
 Remember:
 - The JSON output must be parseable - use proper quotes and escape special characters
