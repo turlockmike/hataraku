@@ -9,6 +9,8 @@ import * as z from 'zod';
 import { attemptCompletionTool, getToolDocs } from '../../lib';
 import chalk from 'chalk';
 import process from 'node:process';
+import { Thread } from '../thread/thread';
+import { formatResponse } from '../prompts/responses';
 
 /**
  * Core Agent class that serves as the primary entry point for the Hataraku SDK.
@@ -120,18 +122,8 @@ export class Agent {
   private async executeTask<TOutput>(input: TaskInput<TOutput>): Promise<TOutput> {
     const systemPrompt = await this.systemPromptBuilder.build();
 
-    // Create message array
-    const messages: Anthropic.Messages.MessageParam[] = [];
-    if (input.thread) {
-      // Add thread context if available
-      const contexts = input.thread.getAllContexts();
-      for (const [key, value] of contexts) {
-        messages.push({
-          role: 'user',
-          content: `Context ${key}: ${JSON.stringify(value)}`
-        });
-      }
-    }
+    // Create or use existing thread
+    const thread = input.thread || new Thread();
 
     // Format task content with schema if provided
     let messageContent = `<task>${input.content}</task>`;
@@ -140,12 +132,12 @@ export class Agent {
       messageContent += `<output_schema>${schemaStr}</output_schema>`;
     }
 
-    // Add the task input as a user message
-    messages.push({
-      role: 'user',
-      content: messageContent
-    });
+    // Add the user's message to the thread
+    thread.addMessage('user', messageContent);
 
+    // Convert thread messages to model provider format
+    const messages = thread.getFormattedMessages(true);
+    
     try {
       // Get response from model provider
       const stream = this.modelProvider.createMessage(systemPrompt, messages);
@@ -169,16 +161,50 @@ export class Agent {
       // Extract content from attempt_completion tag
       const completionMatch = fullResponse.match(/<attempt_completion>[\s\S]*?<result>([\s\S]*?)<\/result>[\s\S]*?<\/attempt_completion>/);
       if (!completionMatch) {
-        throw new Error('No attempt_completion with result tag found in response');
+        // Retry with noToolsUsed message
+        messages.push({
+          role: 'user',
+          content: formatResponse.noToolsUsed()
+        });
+        
+        const retryStream = this.modelProvider.createMessage(systemPrompt, messages);
+        let retryResponse = '';
+
+        // Get first chunk of retry
+        const { value: firstRetryChunk, done: firstRetryDone } = await retryStream.next();
+        if (firstRetryChunk?.type === 'text' && firstRetryChunk.text) {
+          retryResponse = firstRetryChunk.text;
+        }
+
+        // If not done, accumulate remaining chunks
+        if (!firstRetryDone) {
+          for await (const chunk of retryStream) {
+            if (chunk.type === 'text' && chunk.text) {
+              retryResponse += chunk.text;
+            }
+          }
+        }
+
+        // Check retry response for attempt_completion tag
+        const retryMatch = retryResponse.match(/<attempt_completion>[\s\S]*?<result>([\s\S]*?)<\/result>[\s\S]*?<\/attempt_completion>/);
+        if (!retryMatch) {
+          throw new Error('No attempt_completion with result tag found in response after retry');
+        }
+        const completionContent = retryMatch[1].trim();
+        thread.addMessage('assistant', completionContent);
+        return completionContent as TOutput;
       }
       const completionContent = completionMatch[1].trim();
+
+      // Add the assistant's response to the thread
+      thread.addMessage('assistant', completionContent);
 
       // If output schema is provided, validate and parse response
       if (input.outputSchema) {
         try {
           const parsed = input.outputSchema.parse(JSON.parse(completionContent));
           return parsed as TOutput;
-        } catch (error) {
+      } catch (error) {
           const parseError = new Error(`Failed to parse response with schema: ${error.message}`);
           throw parseError;
         }
@@ -198,27 +224,26 @@ export class Agent {
     input: TaskInput<TOutput>
   ): AsyncGenerator<TOutput> {
     const systemPrompt = await this.systemPromptBuilder.build();
-    const messages: Anthropic.Messages.MessageParam[] = [];
-    if (input.thread) {
-      for (const [key, value] of input.thread.getAllContexts()) {
-        messages.push({
-          role: 'user',
-          content: `Context ${key}: ${JSON.stringify(value)}`
-        });
-      }
-    }
+    
+    // Create or use existing thread
+    const thread = input.thread || new Thread();
+
+    // Format task content with schema if provided
     let messageContent = `<task>${input.content}</task>`;
     if (input.outputSchema) {
       const schemaStr = this.serializeZodSchema(input.outputSchema);
       messageContent += `<output_schema>${schemaStr}</output_schema>`;
     }
-    messages.push({
-      role: 'user',
-      content: messageContent
-    });
+
+    // Add the user's message to the thread
+    thread.addMessage('user', messageContent);
+
+    // Convert thread messages to model provider format
+    const messages = thread.getFormattedMessages(true);
   
     // Set up our state for streaming
     let buffer = '';
+    let completeResponse = ''; // To store the complete response
     let inResultMode = false;
     let tagBuffer = ''; // For collecting potential tag characters
   
@@ -249,6 +274,7 @@ export class Agent {
               // First yield any content we've accumulated before the tag
               if (buffer.length > 0) {
                 yield buffer as TOutput;
+                completeResponse += buffer;
                 buffer = '';
               }
               // Start collecting a potential tag
@@ -259,19 +285,22 @@ export class Agent {
               
               // Check if we've found a closing tag
               if (tagBuffer === '</result>') {
-                // Found the closing tag, stop processing
+                // Found the closing tag, add response to thread and stop processing
+                thread.addMessage('assistant', completeResponse.trim());
                 return;
               }
               
               // If we can confirm this isn't a closing tag, yield it
               if (tagBuffer.length >= 2 && !tagBuffer.startsWith('</')) {
                 buffer += tagBuffer;
+                completeResponse += tagBuffer;
                 tagBuffer = '';
               }
               // Otherwise keep collecting the tag
             } else {
               // Normal character outside of any tag
               buffer += char;
+              completeResponse += char;
               
               // Yield the buffer periodically
               if (buffer.length >= 4) {
@@ -283,9 +312,74 @@ export class Agent {
         }
       }
       
+      // If we haven't found a result tag by now, retry with noToolsUsed message
+      if (!inResultMode) {
+        messages.push({
+          role: 'user',
+          content: formatResponse.noToolsUsed()
+        });
+        
+        const retryStream = this.modelProvider.createMessage(systemPrompt, messages);
+        buffer = '';
+        completeResponse = '';
+        inResultMode = false;
+        tagBuffer = '';
+
+        for await (const chunk of retryStream) {
+          if (chunk.type === 'text' && chunk.text) {
+            for (const char of chunk.text) {
+              if (!inResultMode) {
+                buffer += char;
+                const attemptIndex = buffer.indexOf('<attempt_completion>');
+                if (attemptIndex !== -1) {
+                  const resultIndex = buffer.indexOf('<result>', attemptIndex);
+                  if (resultIndex !== -1) {
+                    buffer = buffer.slice(resultIndex + '<result>'.length);
+                    inResultMode = true;
+                  }
+                }
+                continue;
+              }
+
+              if (char === '<') {
+                if (buffer.length > 0) {
+                  yield buffer as TOutput;
+                  completeResponse += buffer;
+                  buffer = '';
+                }
+                tagBuffer = char;
+              } else if (tagBuffer.length > 0) {
+                tagBuffer += char;
+                if (tagBuffer === '</result>') {
+                  thread.addMessage('assistant', completeResponse.trim());
+                  return;
+                }
+                if (tagBuffer.length >= 2 && !tagBuffer.startsWith('</')) {
+                  buffer += tagBuffer;
+                  completeResponse += tagBuffer;
+                  tagBuffer = '';
+                }
+              } else {
+                buffer += char;
+                completeResponse += char;
+                if (buffer.length >= 4) {
+                  yield buffer as TOutput;
+                  buffer = '';
+                }
+              }
+            }
+          }
+        }
+
+        // If we still haven't found a result tag after retry, throw error
+        throw new Error('No attempt_completion with result tag found in response after retry');
+      }
+
       // Yield any remaining content if we haven't hit a closing tag
       if (buffer.length > 0 && tagBuffer.length === 0) {
         yield buffer as TOutput;
+        completeResponse += buffer;
+        thread.addMessage('assistant', completeResponse.trim());
       }
     } catch (error) {
       throw error;

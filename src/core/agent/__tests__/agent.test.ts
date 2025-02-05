@@ -1,5 +1,6 @@
 import { Agent } from ".."
-import { AgentConfig, TaskInput, Thread } from "../types/config"
+import { AgentConfig, TaskInput } from "../types/config"
+import { Thread } from "../../thread/thread"
 import { z } from "zod"
 import { MockProvider, MockTool } from "../../../lib/testing"
 import { ModelProvider } from "../../../api"
@@ -165,7 +166,7 @@ describe("Agent", () => {
 			mockProvider.clearResponses().mockResponse("<attempt_completion><result>test response</result></attempt_completion>")
 			const agent = new Agent(validConfigWithProvider)
 			const thread = new Thread()
-			thread.addContext({ key: "test", content: { value: "test" } })
+			thread.addContext("test", "test", { metadata: "test" })
 
 			await agent.initialize()
 			const result = await agent.task({ ...validTaskInput, thread })
@@ -330,6 +331,99 @@ describe("Agent", () => {
 
 			const call = mockProvider.getCall(0)!
 			expect(call.messages[0].content).toEqual('<task>test task</task><output_schema>{"foo": z.number()}</output_schema>')
+		})
+
+		describe('thread management', () => {
+			it('should create a new thread for each task by default', async () => {
+				mockProvider.clearResponses()
+					.mockResponse('<attempt_completion><result>response 1</result></attempt_completion>')
+					.mockResponse('<attempt_completion><result>response 2</result></attempt_completion>')
+				
+				const agent = new Agent(validConfigWithProvider)
+				await agent.initialize()
+
+				// Execute two tasks
+				await agent.task(validTaskInput)
+				await agent.task(validTaskInput)
+
+				// Each task should have created a new thread (no message history)
+				const firstCall = mockProvider.getCall(0)!
+				const secondCall = mockProvider.getCall(1)!
+				expect(firstCall.messages).toHaveLength(1)
+				expect(secondCall.messages).toHaveLength(1)
+			})
+
+			it('should allow reusing a thread across multiple tasks', async () => {
+				mockProvider.clearResponses()
+					.mockResponse('<attempt_completion><result>response 1</result></attempt_completion>')
+					.mockResponse('<attempt_completion><result>response 2</result></attempt_completion>')
+				
+				const agent = new Agent(validConfigWithProvider)
+				await agent.initialize()
+
+				// Create a custom thread
+				const thread = new Thread()
+
+				// Execute two tasks with the same thread
+				await agent.task({ ...validTaskInput, thread })
+				expect(thread.getMessages()).toHaveLength(2)
+				expect(thread.getMessages()[0].content).toEqual('<task>test task</task>')
+				expect(thread.getMessages()[1].content).toEqual('response 1')
+				
+				// Execute second task with the same thread
+				await agent.task({ ...validTaskInput, thread })
+				expect(thread.getMessages()).toHaveLength(4)
+				expect(thread.getMessages()[0].content).toEqual('<task>test task</task>')
+				expect(thread.getMessages()[1].content).toEqual('response 1')
+				expect(thread.getMessages()[2].content).toEqual('<task>test task</task>')
+				expect(thread.getMessages()[3].content).toEqual('response 2')
+
+				// Second task should include history from first task
+				const firstCall = mockProvider.getCall(0)!
+				const secondCall = mockProvider.getCall(1)!
+				expect(secondCall.messages).toHaveLength(3)
+				expect(secondCall.messages[0].content).toEqual('<task>test task</task>')
+				expect(secondCall.messages[1].content).toEqual('response 1')
+				expect(secondCall.messages[2].content).toEqual('<task>test task</task>')
+			})
+
+			it('should preserve context between tasks using the same thread', async () => {
+				mockProvider.clearResponses()
+					.mockResponse('<attempt_completion><result>response 1</result></attempt_completion>')
+					.mockResponse('<attempt_completion><result>response 2</result></attempt_completion>')
+				
+				const agent = new Agent(validConfigWithProvider)
+				await agent.initialize()
+
+				const thread = new Thread()
+				thread.addContext('testKey', { value: 'test' })
+
+				// Execute tasks with the thread
+				await agent.task({ ...validTaskInput, thread })
+				await agent.task({ ...validTaskInput, thread })
+
+				// Both calls should include the context
+				const firstCall = mockProvider.getCall(0)!
+				const secondCall = mockProvider.getCall(1)!
+				expect(firstCall.messages[0].content).toContain('testKey')
+				expect(secondCall.messages[0].content).toContain('testKey')
+			})
+
+			it('should not modify the original thread when creating a default thread', async () => {
+				mockProvider.clearResponses()
+					.mockResponse('<attempt_completion><result>test response</result></attempt_completion>')
+				
+				const agent = new Agent(validConfigWithProvider)
+				await agent.initialize()
+
+				// Execute task without a thread
+				await agent.task(validTaskInput)
+
+				// Create a new thread and verify it's empty
+				const newThread = new Thread()
+				expect(newThread.getMessages()).toHaveLength(0)
+				expect(Array.from(newThread.getAllContexts().entries())).toHaveLength(0)
+			})
 		})
 	})
 })
