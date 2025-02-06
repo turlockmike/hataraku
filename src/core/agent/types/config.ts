@@ -63,7 +63,7 @@ export interface FileContext {
 /**
  * Task input configuration
  */
-export interface TaskInput<TOutput = unknown> {
+export interface TaskInput<TOutput = string> {
   /** The role of the message sender */
   role: TaskRole;
   /** The content of the task */

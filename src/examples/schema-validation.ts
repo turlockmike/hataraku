@@ -1,3 +1,4 @@
+import assert from 'node:assert';
 import { Agent } from '../core/agent';
 import { z } from 'zod';
 
@@ -12,9 +13,7 @@ async function main() {
     tools: [], // No tools needed for this example
     role: 'You are a helpful assistant that provides structured data.',
   });
-
-  // Initialize the agent
-  await agent.initialize();
+  
 
   const simpleSchema = z.object({
     firstName: z.string(),
@@ -24,14 +23,19 @@ async function main() {
     phone: z.string().optional(),
   });
 
-  const simpleResult = await agent.task({
+  const {content} = await agent.task({
     role: 'user',
     content: 'Generate a mock user profile',
     outputSchema: simpleSchema,
   });
+  assert(typeof content.age === 'number');
+  assert(typeof content.email === 'string');
+  assert(typeof content.firstName === 'string');
+  assert(typeof content.lastName === 'string');
+  assert(content.phone === undefined || typeof content.phone === 'string');
 
   // Generate a pretty print of the result
-  console.log(JSON.stringify(simpleResult, null, 2));
+  console.log(JSON.stringify(content, null, 2));
 
 }
 

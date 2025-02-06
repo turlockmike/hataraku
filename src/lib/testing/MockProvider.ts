@@ -66,7 +66,6 @@ export class MockProvider implements ModelProvider {
       throw new Error(response.content);
     }
 
-    console.log('MockProvider response content:', response.content);
 
     // First yield a usage chunk to simulate the message_start behavior
     yield {
