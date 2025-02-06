@@ -14,7 +14,6 @@ async function main() {
 
   // Create and initialize agent
   const agent = new Agent(config);
-  await agent.initialize();
 
   // Create task input with streaming enabled
   const task = {
@@ -28,13 +27,14 @@ async function main() {
     console.log('\nGenerating poem...\n');
     
     // Use for-await-of to process the stream
-    const stream = await agent.task(task);
-    for await (const chunk of stream) {
+    const result = await agent.task(task);
+    for await (const chunk of result.stream) {
       // Print chunk without newline to show streaming effect
-      process.stdout.write(chunk as string);
+      process.stdout.write(chunk);
     }
     
     console.log('\n\nTask completed!');
+    console.log('metadata:', await result.metadata);
   } catch (error) {
     console.error('Error:', error);
   }

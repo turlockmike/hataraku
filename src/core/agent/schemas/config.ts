@@ -82,7 +82,7 @@ export const agentConfigSchema = z.object({
       apiModelId: z.string()
     })
   ]),
-  tools: z.array(z.any()),
+  tools: z.array(z.any()).optional(),
   role: z.string().optional(),
   customInstructions: z.string().optional(),
   systemPromptConfig: z.any().optional(),

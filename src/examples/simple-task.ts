@@ -22,7 +22,6 @@ async function main() {
 
   // Create and initialize agent
   const agent = new Agent(config);
-  await agent.initialize();
 
   // Create task input
   const task = {
@@ -34,7 +33,8 @@ async function main() {
     // Execute task and get complete response
     console.log('\nResponse:\n');
     const response = await agent.task(task);
-    console.log(response);
+    console.log(await response.content);
+    console.log('metadata:', await response.metadata);
     console.log(); // Add newline at end
   } catch (error) {
     console.error('Error:', error);

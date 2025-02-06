@@ -21,7 +21,7 @@ export class MockTool implements UnifiedTool {
   private responses: Array<{ type: 'success' | 'error'; value: any }> = [];
   private calls: Call[] = [];
   private initializeCalls: number = 0;
-  private customInitialize?: () => Promise<void>;
+  private customInitialize?: () => void;
 
   constructor(
     public name: string = 'mock_tool',
@@ -113,10 +113,10 @@ export class MockTool implements UnifiedTool {
   /**
    * Implementation of UnifiedTool.initialize (optional)
    */
-  async initialize(): Promise<void> {
+  initialize() {
     this.initializeCalls++;
     if (this.customInitialize) {
-      await this.customInitialize();
+      this.customInitialize();
     }
   }
 

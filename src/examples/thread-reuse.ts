@@ -15,7 +15,6 @@ async function main() {
 
   // Create and initialize agent
   const agent = new Agent(config);
-  await agent.initialize();
 
   // Create a thread that will be reused across tasks
   const thread = new Thread();
@@ -35,7 +34,7 @@ async function main() {
       content: 'What is 2 + 2?',
       thread // Reuse the same thread
     });
-    console.log('Response:', response1);
+    console.log('Response:', response1.content);
 
     // Second task - follow up question using context from first answer
     console.log('\nSecond Task - Following up on the explanation: Now add 5 to the result\n');
@@ -44,7 +43,7 @@ async function main() {
       content: 'Now add 5 to the result',
       thread // Same thread maintains conversation context
     });
-    console.log('Response:', response2);
+    console.log('Response:', response2.content);
 
     // Third task - another follow up
     console.log('\nThird Task - One more follow up: Now multiply the result by 3\n');
@@ -53,7 +52,7 @@ async function main() {
       content: 'Now multiply the result by 3',
       thread
     });
-    console.log('Response:', response3);
+    console.log('Response:', response3.content);
 
     // Show the conversation history
     console.log('\nFull Conversation History:');
