@@ -8,7 +8,7 @@ async function main() {
     name: 'Thread Reuse Example',
     model: {
       apiProvider: 'openrouter',
-      apiModelId: 'deepseek/deepseek-chat'
+      apiModelId: 'anthropic/claude-3.5-sonnet'
     },
     tools: [] // No tools needed for this example
   };
@@ -29,7 +29,7 @@ async function main() {
 
   try {
     // First task - ask about a programming concept
-    console.log('\nFirst Task - Asking a basic math question');
+    console.log('\nFirst Task - Asking a basic math question. What is 2 + 2?');
     const response1 = await agent.task({
       role: 'user',
       content: 'What is 2 + 2?',
@@ -38,7 +38,7 @@ async function main() {
     console.log('Response:', response1);
 
     // Second task - follow up question using context from first answer
-    console.log('\nSecond Task - Following up on the explanation:\n');
+    console.log('\nSecond Task - Following up on the explanation: Now add 5 to the result\n');
     const response2 = await agent.task({
       role: 'user',
       content: 'Now add 5 to the result',
@@ -47,7 +47,7 @@ async function main() {
     console.log('Response:', response2);
 
     // Third task - another follow up
-    console.log('\nThird Task - One more follow up:\n');
+    console.log('\nThird Task - One more follow up: Now multiply the result by 3\n');
     const response3 = await agent.task({
       role: 'user',
       content: 'Now multiply the result by 3',
