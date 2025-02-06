@@ -1,16 +1,13 @@
-import { EventEmitter } from 'events';
 import { AgentConfig, TaskInput } from './types/config';
 import { agentConfigSchema } from './schemas/config';
 import { UnifiedTool } from '../../lib/types';
 import { ModelProvider, modelProviderFromConfig } from '../../api';
-import { Anthropic } from '@anthropic-ai/sdk';
 import { SystemPromptBuilder } from '../prompts/prompt-builder';
-import * as z from 'zod';
 import { attemptCompletionTool, getToolDocs } from '../../lib';
-import chalk from 'chalk';
 import process from 'node:process';
 import { Thread } from '../thread/thread';
-import { formatResponse } from '../prompts/responses';
+import { serializeZodSchema } from '../../utils/schema';
+import { processResponseStream } from '../../utils/stream-processor';
 
 /**
  * Core Agent class that serves as the primary entry point for the Hataraku SDK.
@@ -105,287 +102,47 @@ export class Agent {
       await this.initialize();
     }
 
-    if (input.stream) {
-      if (input.outputSchema) {
-        throw new Error("Output schemas are not supported with streaming responses");
-      }
-      return this.executeStreamingTask(input) as any;
+    if (input.stream && input.outputSchema) {
+      throw new Error("Output schemas are not supported with streaming responses");
     }
 
-    return this.executeTask(input) as any;
-  }
-
-  /**
-   * Executes a task with regular response
-   * @private
-   */
-  private async executeTask<TOutput>(input: TaskInput<TOutput>): Promise<TOutput> {
     const systemPrompt = await this.systemPromptBuilder.build();
-
-    // Create or use existing thread
     const thread = input.thread || new Thread();
-
-    // Format task content with schema if provided
     let messageContent = `<task>${input.content}</task>`;
     if (input.outputSchema) {
-      const schemaStr = this.serializeZodSchema(input.outputSchema);
+      const schemaStr = serializeZodSchema(input.outputSchema);
       messageContent += `<output_schema>${schemaStr}</output_schema>`;
     }
-
-    // Add the user's message to the thread
     thread.addMessage('user', messageContent);
-
-    // Convert thread messages to model provider format
     const messages = thread.getFormattedMessages(true);
-    
-    try {
-      // Get response from model provider
-      const stream = this.modelProvider.createMessage(systemPrompt, messages);
-      let fullResponse = '';
 
-      // Get first chunk
-      const { value: firstChunk, done: firstDone } = await stream.next();
-      if (firstChunk?.type === 'text' && firstChunk.text) {
-        fullResponse = firstChunk.text;
+    const stream = this.modelProvider.createMessage(systemPrompt, messages);
+    const gen = processResponseStream(stream, thread);
+
+    if (input.stream) {
+      return (async function* (): AsyncGenerator<TOutput> {
+        for await (const chunk of gen) {
+          yield chunk as TOutput;
+        }
+      })() as TStream extends true ? AsyncIterable<TOutput> : TOutput;
+    } else {
+      // For non-streaming mode, accumulate chunks into the final result
+      let finalAccumulated = '';
+      for await (const part of gen) {
+        finalAccumulated += part;
       }
 
-      // If not done, accumulate remaining chunks
-      if (!firstDone) {
-        for await (const chunk of stream) {
-          if (chunk.type === 'text' && chunk.text) {
-            fullResponse += chunk.text;
-          }
-        }
-      }
-
-      // Extract content from attempt_completion tag
-      const completionMatch = fullResponse.match(/<attempt_completion>[\s\S]*?<result>([\s\S]*?)<\/result>[\s\S]*?<\/attempt_completion>/);
-      if (!completionMatch) {
-        // Retry with noToolsUsed message
-        messages.push({
-          role: 'user',
-          content: formatResponse.noToolsUsed()
-        });
-        
-        const retryStream = this.modelProvider.createMessage(systemPrompt, messages);
-        let retryResponse = '';
-
-        // Get first chunk of retry
-        const { value: firstRetryChunk, done: firstRetryDone } = await retryStream.next();
-        if (firstRetryChunk?.type === 'text' && firstRetryChunk.text) {
-          retryResponse = firstRetryChunk.text;
-        }
-
-        // If not done, accumulate remaining chunks
-        if (!firstRetryDone) {
-          for await (const chunk of retryStream) {
-            if (chunk.type === 'text' && chunk.text) {
-              retryResponse += chunk.text;
-            }
-          }
-        }
-
-        // Check retry response for attempt_completion tag
-        const retryMatch = retryResponse.match(/<attempt_completion>[\s\S]*?<result>([\s\S]*?)<\/result>[\s\S]*?<\/attempt_completion>/);
-        if (!retryMatch) {
-          throw new Error('No attempt_completion with result tag found in response after retry');
-        }
-        const completionContent = retryMatch[1].trim();
-        thread.addMessage('assistant', completionContent);
-        return completionContent as TOutput;
-      }
-      const completionContent = completionMatch[1].trim();
-
-      // Add the assistant's response to the thread
-      thread.addMessage('assistant', completionContent);
-
-      // If output schema is provided, validate and parse response
       if (input.outputSchema) {
         try {
-          const parsed = input.outputSchema.parse(JSON.parse(completionContent));
-          return parsed as TOutput;
-      } catch (error) {
-          const parseError = new Error(`Failed to parse response with schema: ${error.message}`);
-          throw parseError;
+          const parsed = input.outputSchema.parse(JSON.parse(finalAccumulated));
+          return parsed as TStream extends true ? AsyncIterable<TOutput> : TOutput;
+        } catch (error: any) {
+          throw new Error(`Failed to parse response with schema: ${error.message}`);
         }
       }
-
-      return completionContent as TOutput;
-    } catch (error) {
-      throw error;
+      return finalAccumulated as TStream extends true ? AsyncIterable<TOutput> : TOutput;
     }
   }
-
-  /**
-   * Executes a task with streaming response
-   * @private
-   */
-  private async *executeStreamingTask<TOutput>(
-    input: TaskInput<TOutput>
-  ): AsyncGenerator<TOutput> {
-    const systemPrompt = await this.systemPromptBuilder.build();
-    
-    // Create or use existing thread
-    const thread = input.thread || new Thread();
-
-    // Format task content with schema if provided
-    let messageContent = `<task>${input.content}</task>`;
-    if (input.outputSchema) {
-      const schemaStr = this.serializeZodSchema(input.outputSchema);
-      messageContent += `<output_schema>${schemaStr}</output_schema>`;
-    }
-
-    // Add the user's message to the thread
-    thread.addMessage('user', messageContent);
-
-    // Convert thread messages to model provider format
-    const messages = thread.getFormattedMessages(true);
-  
-    // Set up our state for streaming
-    let buffer = '';
-    let completeResponse = ''; // To store the complete response
-    let inResultMode = false;
-    let tagBuffer = ''; // For collecting potential tag characters
-  
-    try {
-      const stream = this.modelProvider.createMessage(systemPrompt, messages);
-  
-      for await (const chunk of stream) {
-        if (chunk.type === 'text' && chunk.text) {
-          // Process the chunk character by character
-          for (const char of chunk.text) {
-            // If we haven't entered result mode yet, look for opening tags
-            if (!inResultMode) {
-              buffer += char;
-              const attemptIndex = buffer.indexOf('<attempt_completion>');
-              if (attemptIndex !== -1) {
-                const resultIndex = buffer.indexOf('<result>', attemptIndex);
-                if (resultIndex !== -1) {
-                  // Found the result tag, discard everything before it
-                  buffer = buffer.slice(resultIndex + '<result>'.length);
-                  inResultMode = true;
-                }
-              }
-              continue;
-            }
-            
-            // In result mode - handle each character carefully
-            if (char === '<') {
-              // First yield any content we've accumulated before the tag
-              if (buffer.length > 0) {
-                yield buffer as TOutput;
-                completeResponse += buffer;
-                buffer = '';
-              }
-              // Start collecting a potential tag
-              tagBuffer = char;
-            } else if (tagBuffer.length > 0) {
-              // We're in the middle of collecting a potential tag
-              tagBuffer += char;
-              
-              // Check if we've found a closing tag
-              if (tagBuffer === '</result>') {
-                // Found the closing tag, add response to thread and stop processing
-                thread.addMessage('assistant', completeResponse.trim());
-                return;
-              }
-              
-              // If we can confirm this isn't a closing tag, yield it
-              if (tagBuffer.length >= 2 && !tagBuffer.startsWith('</')) {
-                buffer += tagBuffer;
-                completeResponse += tagBuffer;
-                tagBuffer = '';
-              }
-              // Otherwise keep collecting the tag
-            } else {
-              // Normal character outside of any tag
-              buffer += char;
-              completeResponse += char;
-              
-              // Yield the buffer periodically
-              if (buffer.length >= 4) {
-                yield buffer as TOutput;
-                buffer = '';
-              }
-            }
-          }
-        }
-      }
-      
-      // If we haven't found a result tag by now, retry with noToolsUsed message
-      if (!inResultMode) {
-        messages.push({
-          role: 'user',
-          content: formatResponse.noToolsUsed()
-        });
-        
-        const retryStream = this.modelProvider.createMessage(systemPrompt, messages);
-        buffer = '';
-        completeResponse = '';
-        inResultMode = false;
-        tagBuffer = '';
-
-        for await (const chunk of retryStream) {
-          if (chunk.type === 'text' && chunk.text) {
-            for (const char of chunk.text) {
-              if (!inResultMode) {
-                buffer += char;
-                const attemptIndex = buffer.indexOf('<attempt_completion>');
-                if (attemptIndex !== -1) {
-                  const resultIndex = buffer.indexOf('<result>', attemptIndex);
-                  if (resultIndex !== -1) {
-                    buffer = buffer.slice(resultIndex + '<result>'.length);
-                    inResultMode = true;
-                  }
-                }
-                continue;
-              }
-
-              if (char === '<') {
-                if (buffer.length > 0) {
-                  yield buffer as TOutput;
-                  completeResponse += buffer;
-                  buffer = '';
-                }
-                tagBuffer = char;
-              } else if (tagBuffer.length > 0) {
-                tagBuffer += char;
-                if (tagBuffer === '</result>') {
-                  thread.addMessage('assistant', completeResponse.trim());
-                  return;
-                }
-                if (tagBuffer.length >= 2 && !tagBuffer.startsWith('</')) {
-                  buffer += tagBuffer;
-                  completeResponse += tagBuffer;
-                  tagBuffer = '';
-                }
-              } else {
-                buffer += char;
-                completeResponse += char;
-                if (buffer.length >= 4) {
-                  yield buffer as TOutput;
-                  buffer = '';
-                }
-              }
-            }
-          }
-        }
-
-        // If we still haven't found a result tag after retry, throw error
-        throw new Error('No attempt_completion with result tag found in response after retry');
-      }
-
-      // Yield any remaining content if we haven't hit a closing tag
-      if (buffer.length > 0 && tagBuffer.length === 0) {
-        yield buffer as TOutput;
-        completeResponse += buffer;
-        thread.addMessage('assistant', completeResponse.trim());
-      }
-    } catch (error) {
-      throw error;
-    }
-  }
-  
 
   /**
    * Gets a tool by name
@@ -442,24 +199,5 @@ export class Agent {
    */
   public getModelProvider(): ModelProvider {
     return this.modelProvider;
-  }
-
-  private serializeZodSchema(schema: z.ZodType<any>): string {
-    if (schema instanceof z.ZodObject) {
-      const shape = schema._def.shape();
-      const shapeEntries = Object.entries(shape).map(([key, value]) => {
-        if (value instanceof z.ZodString) {
-          return `"${key}": z.string()`;
-        }
-        if (value instanceof z.ZodNumber) {
-          return `"${key}": z.number()`;
-        }
-        // Add more types as needed
-        return `"${key}": z.unknown()`;
-      });
-      return `{${shapeEntries.join(', ')}}`;
-    }
-    // Handle other schema types as needed
-    return 'z.unknown()';
   }
 }

@@ -15,9 +15,9 @@ async function main() {
     name: 'Simple Task Agent',
     model: {
       apiProvider: 'openrouter',
-      apiModelId: 'anthropic/claude-3-sonnet-20240229'
+      apiModelId: 'deepseek/deepseek-chat'
     },
-    tools: [] // No tools needed for this simple task
+    // No tools needed for this simple task
   };
 
   // Create and initialize agent
