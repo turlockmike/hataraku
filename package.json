@@ -101,7 +101,6 @@
     "isbinaryfile": "^5.0.2",
     "mammoth": "^1.8.0",
     "node-fetch": "^3.3.2",
-    "node-xml-stream-parser": "^1.0.12",
     "openai": "^4.78.1",
     "os-name": "^6.0.0",
     "p-wait-for": "^5.0.2",
