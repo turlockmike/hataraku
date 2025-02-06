@@ -101,3 +101,8 @@ export interface CliConfig {
     preferredLanguage?: string;
     customPrompts?: Record<string, string>;
 }
+
+export interface ToolDefinition {
+  name: string;
+  streamHandler?: (toolName: string, toolStream: AsyncGenerator<string, void, void>) => Promise<void>;
+}
