@@ -3,3 +3,5 @@ description: Rules when writing or running tests
 globs: *.test.ts
 ---
 If a snapshot test is failing, you MUST ask the user if the snapshot is correct or it needs to be updated.
+
+When implementing code, follow the TDD approach. Only attempt to fix 1 test at a time. 

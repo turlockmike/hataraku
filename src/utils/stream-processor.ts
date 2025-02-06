@@ -1,5 +1,4 @@
 import { Thread } from '../core/thread/thread';
-
 /**
  * Processes a model response stream and extracts content between <result> tags.
  * Yields partial outputs and returns the final complete response.
@@ -84,4 +83,4 @@ export async function* processResponseStream(
   const finalResponse = completeResponse.trim();
   thread.addMessage('assistant', finalResponse);
   return finalResponse;
-} 
+}
