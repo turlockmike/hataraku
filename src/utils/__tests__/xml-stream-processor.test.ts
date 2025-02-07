@@ -17,7 +17,9 @@ describe('XMLStreamParser', () => {
     // Streaming mode: the tool "liveTool" is defined in streamHandlers.
     parser.write('<liveTool>');
     parser.write('Hello, ');
+    expect(streamedData).toBe('Hello, ');
     parser.write('world!');
+    expect(streamedData).toBe('Hello, world!');
     parser.write('</liveTool>');
     parser.end();
 
@@ -299,7 +301,7 @@ describe('XMLStreamParser', () => {
         expect(thoughtContent).toBe('first thought;second thought;');
         expect(thinkingHandler.finalize).toHaveBeenCalledTimes(2);
         expect(streamingTool.finalize).toHaveBeenCalledTimes(1);
-        expect(onToolParsed).not.toHaveBeenCalled();
+        expect(onToolParsed).toHaveBeenCalledTimes(3);
       });
     });
   });
@@ -325,10 +327,16 @@ describe('XMLStreamParser', () => {
   });
 
   describe('onToolParsed behavior', () => {
-    it('should call onToolParsed for non-streaming tools with correct parameters', () => {
+    it('should call onToolParsed for streaming and non-streaming tools with correct parameters', () => {
       const onToolParsed = jest.fn();
+      const streamHandler = jest.fn();
       const parser = new XMLStreamParser({
-        streamHandlers: {},
+        streamHandlers: {
+          streaming_tool: {
+            stream: streamHandler,
+            finalize: jest.fn(),
+          },
+        },
         onToolParsed,
       });
 
@@ -352,6 +360,13 @@ describe('XMLStreamParser', () => {
       parser.write('<text_tool>direct text content</text_tool>');
       expect(onToolParsed).toHaveBeenCalledWith('text_tool', { content: 'direct text content' });
 
+      // Streaming tool
+      parser.write('<streaming_tool>some content</streaming_tool>');
+      expect(onToolParsed).toHaveBeenCalledWith('streaming_tool', { 
+        content: 'some content',
+      });
+      expect(streamHandler).toHaveBeenCalledWith('some content', undefined);
+
       // Mixed content and parameters
       parser.write('<mixed_tool>some text<param1>value1</param1>more text</mixed_tool>');
       expect(onToolParsed).toHaveBeenCalledWith('mixed_tool', { 
@@ -360,10 +375,10 @@ describe('XMLStreamParser', () => {
       });
 
       // Verify total number of calls
-      expect(onToolParsed).toHaveBeenCalledTimes(6);
+      expect(onToolParsed).toHaveBeenCalledTimes(7);
     });
 
-    it('should not call onToolParsed for streaming tools', () => {
+    it('should be called for streaming tools', () => {
       const onToolParsed = jest.fn();
       const streamHandler = {
         stream: jest.fn(),
@@ -376,7 +391,7 @@ describe('XMLStreamParser', () => {
       });
 
       parser.write('<streaming_tool>some content</streaming_tool>');
-      expect(onToolParsed).not.toHaveBeenCalled();
+      expect(onToolParsed).toHaveBeenCalledWith('streaming_tool', { content: 'some content' });
       expect(streamHandler.stream).toHaveBeenCalledWith('some content', undefined);
       expect(streamHandler.finalize).toHaveBeenCalled();
     });
@@ -397,9 +412,10 @@ describe('XMLStreamParser', () => {
       parser.write('<streaming_tool>stream content</streaming_tool>');
       parser.write('<non_streaming_tool><param2>value2</param2></non_streaming_tool>');
 
-      expect(onToolParsed).toHaveBeenCalledTimes(2);
+      expect(onToolParsed).toHaveBeenCalledTimes(3);
       expect(onToolParsed).toHaveBeenNthCalledWith(1, 'non_streaming_tool', { param1: 'value1' });
-      expect(onToolParsed).toHaveBeenNthCalledWith(2, 'non_streaming_tool', { param2: 'value2' });
+      expect(onToolParsed).toHaveBeenNthCalledWith(2, 'streaming_tool', { content: 'stream content' });
+      expect(onToolParsed).toHaveBeenNthCalledWith(3, 'non_streaming_tool', { param2: 'value2' });
       
       expect(streamHandler.stream).toHaveBeenCalledWith('stream content', undefined);
       expect(streamHandler.finalize).toHaveBeenCalled();
@@ -451,5 +467,23 @@ describe('XMLStreamParser', () => {
     expect(onToolParsed).toHaveBeenCalledWith('math_add', { a: '5', b: '3' });
     expect(onToolParsed).toHaveBeenCalledWith('attempt_completion', { content: 'The result is 8' });
     
+  })
+
+  test('onComplete callback', () => {
+    const onComplete = jest.fn();
+    const parser = new XMLStreamParser({
+      streamHandlers: {},
+      onToolParsed: jest.fn(),
+      onComplete,
+    });
+
+    parser.write('<thinking>Let me calculate that for you</thinking>');
+    parser.write('<math_add><');
+    parser.write('a>5</a');
+    parser.write('><b>3</b');
+    parser.write('></math_add>');
+    expect(onComplete).not.toHaveBeenCalled();
+    parser.end();
+    expect(onComplete).toHaveBeenCalled();
   })
 });

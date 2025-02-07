@@ -196,7 +196,6 @@ describe("Agent", () => {
 				errors: undefined,
 				taskId: expect.any(String),
 				input: expect.any(String),
-				thinking: expect.any(Array),
 				toolCalls: [
 					{
 						name: "attempt_completion",
@@ -247,7 +246,7 @@ describe("Agent", () => {
 			const agent = new Agent(validConfigWithProvider)
 			agent.initialize()
 			await expect(agent.task(validTaskInput)).rejects.toThrow(
-				"No attempt_completion with result tag found in response"
+				"No attempt_completion tag found in response"
 			);
 		})
 
@@ -255,7 +254,7 @@ describe("Agent", () => {
 			mockProvider.clearResponses().mockError("Model error")
 			const agent = new Agent(validConfigWithProvider)
 
-			await expect(agent.task(validTaskInput)).rejects.toThrow("No attempt_completion with result tag found in response");
+			await expect(agent.task(validTaskInput)).rejects.toThrow("No attempt_completion tag found in response");
 		})
 
 		it("if no tools are found, it should throw an error", async () => {
@@ -497,9 +496,6 @@ describe("Agent", () => {
 				}]
 			});
 			expect(metadata.toolCalls[2].name).toEqual('attempt_completion');
-
-			// Verify thinking chain
-			expect(metadata.thinking).toEqual(['Let me calculate that for you']);
 		});
 
 		it("should handle math_add tool with string to number conversion", async () => {

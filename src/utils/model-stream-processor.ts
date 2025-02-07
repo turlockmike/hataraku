@@ -28,24 +28,18 @@ export interface ExtendedTaskMetadata extends TaskMetadata {
   }[];
 }
 
-export interface StreamProcessorState {
-  thinkingChain: string[];
-}
-
 /**
  * Process a model stream and return metadata
  * @param modelStream - The raw model stream to process
  * @param taskId - Unique identifier for the task
  * @param input - Task input configuration
  * @param tools - Array of tools to use for processing
- * @param state - Stream processor state object
  */
 export async function processModelStream(
   modelStream: AsyncIterable<ApiStreamChunk>,
   taskId: string,
   input: TaskInput<unknown>,
-  tools: HatarakuTool[],
-  state: { thinkingChain: string[] }
+  tools: HatarakuTool[]
 ): Promise<ExtendedTaskMetadata> {
   // Create a promise that will resolve when attempt_completion is encountered
   let metadataResolve!: (value: ExtendedTaskMetadata) => void;
@@ -69,57 +63,20 @@ export async function processModelStream(
   const parser = new XMLStreamParser({
     streamHandlers: {
       ...handlers,
-      thinking: {
-        stream: (data: string) => {
-          handlers.thinking.stream(data);
-          toolCalls.push({ name: 'thinking', params: { content: data } });
-        },
-        finalize: handlers.thinking.finalize
-      },
-      attempt_completion: {
-        stream: (() => {
-          let content = '';
-          let lastStreamedLength = 0;
-          return (data: string) => {
-            // Remove any closing tag content from the data
-            const closingTagIndex = data.lastIndexOf("</attempt_completion");
-            const newData = closingTagIndex !== -1 ? data.slice(0, closingTagIndex) : data;
-            content = newData;
-            
-            // Only stream the new content
-            const newContent = content.slice(lastStreamedLength);
-            if (newContent) {
-              handlers.attempt_completion.stream(newContent);
-              lastStreamedLength = content.length;
-            }
-            
-            // Replace any existing attempt_completion call with the accumulated content
-            const existingIndex = toolCalls.findIndex(call => call.name === 'attempt_completion');
-            if (existingIndex >= 0) {
-              toolCalls[existingIndex] = { name: 'attempt_completion', params: { content } };
-            } else {
-              toolCalls.push({ name: 'attempt_completion', params: { content } });
-            }
-          };
-        })(),
-        finalize: handlers.attempt_completion.finalize
-      }
     },
     onToolParsed: (toolName: string, params: { [paramName: string]: string }) => {
       // Record all tool calls, both streaming and non-streaming
       toolCalls.push({ name: toolName, params });
-      
-      // When attempt_completion is encountered, resolve metadata
-      if (toolName === 'attempt_completion') {
-        metadataResolve({
-          taskId,
-          input: input.content,
-          thinking: state.thinkingChain,
-          toolCalls,
-          usage: { ...usageMetrics },
-          errors: errors.length > 0 ? errors : undefined
-        });
-      }
+    },
+    onComplete: () => {
+      // This callback fires only once all stream handling (including finalize calls) is done.
+      metadataResolve({
+        taskId,
+        input: input.content,
+        toolCalls,
+        usage: { ...usageMetrics },
+        errors: errors.length > 0 ? errors : undefined
+      });
     }
   });
 
@@ -174,7 +131,6 @@ export async function processModelStream(
   const metadata: ExtendedTaskMetadata = {
     taskId,
     input: input.content,
-    thinking: state.thinkingChain,
     toolCalls,
     usage: { ...usageMetrics },
     errors: errors.length > 0 ? errors : undefined

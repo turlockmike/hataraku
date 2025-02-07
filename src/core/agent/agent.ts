@@ -10,7 +10,7 @@ import { serializeZodSchema } from '../../utils/schema';
 import { ApiStreamChunk } from '../../api/transform/stream';
 import { AttemptCompletionTool } from '../../lib/tools/attempt-completion';
 import { ThinkingTool } from '../../lib/tools/thinking-tool';
-import { processModelStream, StreamProcessorState } from '../../utils/model-stream-processor';
+import { processModelStream } from '../../utils/model-stream-processor';
 import { z } from 'zod';
 
 /**
@@ -60,11 +60,7 @@ export class Agent {
 
   // Used to generate unique task ids.
   private taskCounter = 0;
-
-  // Stream processor state
-  private streamState: StreamProcessorState = {
-    thinkingChain: []
-  };
+  
 
   // First-class tools
   private thinkingTool: ThinkingTool;
@@ -108,8 +104,9 @@ export class Agent {
       }
     }, process.cwd());
 
+    const thinkingChain: string[] = [];
     // Initialize first-class tools
-    this.thinkingTool = new ThinkingTool(this.streamState.thinkingChain);
+    this.thinkingTool = new ThinkingTool(thinkingChain);
   }
 
   /**
@@ -227,8 +224,6 @@ public async task<TOutput = string>(
     thread.addMessage("user", messageContent);
     const messages = thread.getFormattedMessages(true);
 
-    // Reset the stream state.
-    this.streamState = { thinkingChain: [] };
 
     // Create an async stream that we will use for streaming output.
     const outputStream = this.createAsyncStream<string>();
@@ -242,14 +237,14 @@ public async task<TOutput = string>(
     try {
       modelStream = this.modelProvider.createMessage(systemPrompt, messages);
     } catch (err) {
-      throw new Error("No attempt_completion with result tag found in response");
+      throw new Error("No attempt_completion tag found in response");
     }
 
     // Combine all tools (first-class and others) into one array.
     const allTools = [this.thinkingTool, attemptCompletionTool, ...(this.config.tools || [])];
 
     // Process the model's stream concurrently; this returns a metadata promise.
-    const metadataPromise = processModelStream(modelStream, taskId, input, allTools, this.streamState);
+    const metadataPromise = processModelStream(modelStream, taskId, input, allTools);
 
     // Once the metadata (and processing) is complete, push final content and finish the stream.
     metadataPromise.then(() => {
@@ -315,7 +310,7 @@ public async task<TOutput = string>(
     
     // Ensure at least one tool call was made
     if (metadata.toolCalls.length === 0) {
-      throw new Error("No attempt_completion with result tag found in response");
+      throw new Error("No attempt_completion tag found in response");
     }
     
     // Execute all recorded tool calls

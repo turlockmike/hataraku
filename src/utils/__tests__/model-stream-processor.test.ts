@@ -90,7 +90,6 @@ describe('Model Stream Processor', () => {
       'test-task-1',
       input,
       tools,
-      state
     );
 
     const chunks: string[] = [];
@@ -100,7 +99,6 @@ describe('Model Stream Processor', () => {
     expect(chunks).toEqual(['result']);
     expect(metadata.taskId).toEqual('test-task-1');
     expect(metadata.input).toEqual('test task');
-    expect(metadata.thinking).toEqual(['analyzing']);
     expect(metadata.usage).toEqual({ tokensIn: 10, tokensOut: 5, cacheWrites: 0, cacheReads: 0, cost: 0 });
     expect(metadata.toolCalls.length).toBe(3);
     expect(metadata.toolCalls[0].name).toEqual('thinking');
@@ -120,7 +118,6 @@ describe('Model Stream Processor', () => {
       'test-task-2',
       input,
       tools,
-      state
     );
 
     attemptCompletionOutputStream.end();
@@ -131,7 +128,6 @@ describe('Model Stream Processor', () => {
     expect(chunks).toEqual([]);
     expect(metadata.taskId).toEqual('test-task-2');
     expect(metadata.input).toEqual('test task');
-    expect(metadata.thinking).toEqual([]);
     expect(metadata.toolCalls).toEqual([]);
     expect(metadata.usage).toEqual({ tokensIn: 0, tokensOut: 0, cacheWrites: 0, cacheReads: 0, cost: 0 });
   });
@@ -152,7 +148,6 @@ describe('Model Stream Processor', () => {
       'test-task-3',
       input,
       tools,
-      state
     );
 
     // Verify that the error was captured in metadata
@@ -162,7 +157,6 @@ describe('Model Stream Processor', () => {
 
     // Verify that other metadata is still present
     expect(metadata.taskId).toEqual('test-task-3');
-    expect(metadata.thinking).toEqual(['analyzing']);
     expect(metadata.toolCalls).toHaveLength(1);
     expect(metadata.toolCalls[0].name).toEqual('thinking');
   });
@@ -183,7 +177,6 @@ describe('Model Stream Processor', () => {
       'test-task-end-error',
       input,
       tools,
-      state
     );
 
     // Verify that the error was captured in metadata
@@ -196,7 +189,6 @@ describe('Model Stream Processor', () => {
     });
 
     // Verify that partial processing still occurred
-    expect(metadata.thinking).toEqual(['analyzing']);
     expect(metadata.toolCalls).toHaveLength(1);
     expect(metadata.toolCalls[0].name).toEqual('thinking');
   });
@@ -218,7 +210,6 @@ describe('Model Stream Processor', () => {
       'test-task-multiple-errors',
       input,
       tools,
-      state
     );
 
     // Verify that both errors were captured
@@ -236,7 +227,6 @@ describe('Model Stream Processor', () => {
     });
 
     // Verify that successful operations were still recorded
-    expect(metadata.thinking).toEqual(['analyzing']);
     expect(metadata.toolCalls).toHaveLength(1);
     expect(metadata.toolCalls[0].name).toEqual('thinking');
   });
@@ -257,14 +247,12 @@ describe('Model Stream Processor', () => {
       'test-task-no-errors',
       input,
       tools,
-      state
     );
 
     // Verify that no errors were recorded
     expect(metadata.errors).toBeUndefined();
     
     // Verify normal processing occurred
-    expect(metadata.thinking).toEqual(['analyzing']);
     expect(metadata.toolCalls).toHaveLength(2);
     expect(metadata.toolCalls[0].name).toEqual('thinking');
     expect(metadata.toolCalls[1].name).toEqual('attempt_completion');
@@ -289,7 +277,6 @@ describe('Model Stream Processor', () => {
       'test-task-4',
       input,
       tools,
-      state
     );
 
     const chunks: string[] = [];
@@ -299,7 +286,6 @@ describe('Model Stream Processor', () => {
     expect(chunks).toEqual(['final result']);
     expect(metadata.taskId).toEqual('test-task-4');
     expect(metadata.input).toEqual('test task');
-    expect(metadata.thinking).toEqual(['step 1', 'step 2']);
     expect(metadata.toolCalls.length).toBe(5);
     expect(metadata.toolCalls[0].name).toEqual('thinking');
     expect(metadata.toolCalls[1].name).toEqual('foo');
@@ -326,7 +312,6 @@ describe('Model Stream Processor', () => {
         'test-task-completion',
         input,
         tools,
-        state
       );
 
       const chunks: string[] = [];
@@ -336,7 +321,6 @@ describe('Model Stream Processor', () => {
       expect(chunks).toEqual(['Here is the final result']);
       expect(metadata.taskId).toEqual('test-task-completion');
       expect(metadata.input).toEqual('test task');
-      expect(metadata.thinking).toEqual(['analyzing request']);
       expect(metadata.toolCalls.length).toBe(3);
       expect(metadata.toolCalls[0].name).toEqual('thinking');
       expect(metadata.toolCalls[1].name).toEqual('foo');
@@ -361,7 +345,6 @@ describe('Model Stream Processor', () => {
         'test-task-chunks',
         input,
         tools,
-        state
       );
 
       const chunks: string[] = [];
@@ -371,7 +354,6 @@ describe('Model Stream Processor', () => {
       expect(chunks).toEqual(['First part of the result']);
       expect(metadata.taskId).toEqual('test-task-chunks');
       expect(metadata.input).toEqual('test task');
-      expect(metadata.thinking).toEqual(['step 1']);
       expect(metadata.toolCalls.length).toBe(3);
       expect(metadata.toolCalls[0].name).toEqual('thinking');
       expect(metadata.toolCalls[1].name).toEqual('foo');
@@ -397,7 +379,6 @@ describe('Model Stream Processor', () => {
       'test-task-math',
       input,
       tools,
-      state
     );
 
     // Verify tool execution and result
@@ -408,9 +389,6 @@ describe('Model Stream Processor', () => {
       params: { a: '5', b: '3' },
     });
     expect(metadata.toolCalls[2].name).toEqual('attempt_completion');
-
-    // Verify thinking chain
-    expect(metadata.thinking).toEqual(['Let me calculate that for you']);
 
     // Verify final output
     const chunks: string[] = [];
@@ -435,7 +413,6 @@ describe('Model Stream Processor', () => {
       'test-task-large-chunk',
       input,
       tools,
-      state
     );
 
     expect(metadata.toolCalls).toHaveLength(3);
