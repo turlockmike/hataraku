@@ -217,8 +217,8 @@ describe("Agent", () => {
 			await expect(agent.task(validTaskInput)).rejects.toThrow("Model error");
 		})
 
-		it("should handle attempt_completion errors", async () => {
-			mockProvider.clearResponses().mockResponse("<attempt_comp></attempt_comp>")
+		it("if attempt_completion is not found in the response, it should throw an error", async () => {
+			mockProvider.clearResponses().mockResponse("<thinking>thinking</thinking>")
 
 			const agent = new Agent(validConfigWithProvider)
 

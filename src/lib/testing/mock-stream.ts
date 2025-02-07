@@ -17,7 +17,7 @@ export function createMockStream<T>(): AsyncGenerator<T> & { push(item: T): void
     },
     async next(): Promise<IteratorResult<T>> {
       if (position >= chunks.length) {
-        if (finished) return { value: undefined, done: true };
+        if (finished) {return { value: undefined, done: true };}
         // Wait for more data
         await new Promise(resolve => setTimeout(resolve, 0));
         return this.next();
