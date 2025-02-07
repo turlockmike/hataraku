@@ -171,6 +171,21 @@ describe("Agent", () => {
 				taskId: expect.any(String),
 				input: expect.any(String),
 				thinking: expect.any(Array),
+				toolCalls: [
+					{
+						name: "attempt_completion",
+						params: {
+							content: expect.any(String),
+						},
+					},
+				],
+				usage: {
+					cacheReads: 0,
+					cacheWrites: 0,
+					cost: 0,
+					tokensIn: 100,
+					tokensOut: 54,
+				},
 			})
 		})
 
@@ -206,7 +221,7 @@ describe("Agent", () => {
 			const agent = new Agent(validConfigWithProvider)
 			agent.initialize()
 			await expect(agent.task(validTaskInput)).rejects.toThrow(
-				"Unexpected text outside of a tool element: \"some\""
+				"Incomplete XML stream at end"
 			);
 		})
 
@@ -217,12 +232,19 @@ describe("Agent", () => {
 			await expect(agent.task(validTaskInput)).rejects.toThrow("Model error");
 		})
 
-		it("if attempt_completion is not found in the response, it should throw an error", async () => {
-			mockProvider.clearResponses().mockResponse("<thinking>thinking</thinking>")
+		it("if no tools are found, it should throw an error", async () => {
+			try {
+			mockProvider.clearResponses().mockResponse("<not_a_tool><content>not a tool</content></not_a_tool>")
 
 			const agent = new Agent(validConfigWithProvider)
+			agent.initialize()
 
-			await expect(agent.task(validTaskInput)).rejects.toEqual(new Error("No attempt_completion with result tag found in response"));
+			await expect(agent.task(validTaskInput)).rejects.toThrow(
+				"No attempt_completion with result tag found in response"
+			);
+			} catch (error) {
+				fail("Should not throw an error")
+			}
 		})
 
 		it("should include schema validation instructions in system prompt when output schema is provided", async () => {

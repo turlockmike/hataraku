@@ -11,12 +11,12 @@ interface XMLStreamParserOptions {
   /**
    * A mapping from tool element names to a handler.
    * If a tool name appears in this mapping then its inner text will be
-   * “streamed” to the handler.
+   * "streamed" to the handler.
    */
   streamHandlers: { [toolName: string]: ToolHandler };
   /**
    * Callback for non‐streaming tool elements.
-   * When a tool element is “parsed” (i.e. not streamed), its parameters
+   * When a tool element is "parsed" (i.e. not streamed), its parameters
    * are passed along.
    */
   onToolParsed: (toolName: string, params: { [paramName: string]: string }) => void;
@@ -28,10 +28,10 @@ interface XMLStreamParserOptions {
  * The parser processes chunks of XML text (which may split tags) and supports
  * two modes:
  *
- * 1. Streaming mode: When a tool element’s name is found in options.streamHandlers,
- *    then everything inside that tool is immediately forwarded (in “chunks”)
- *    to the tool’s stream handler. (It “pauses” on encountering a `<` so that the
- *    closing tag isn’t accidentally sent.)
+ * 1. Streaming mode: When a tool element's name is found in options.streamHandlers,
+ *    then everything inside that tool is immediately forwarded (in "chunks")
+ *    to the tool's stream handler. (It "pauses" on encountering a `<` so that the
+ *    closing tag isn't accidentally sent.)
  *
  * 2. Parsing mode: For any other tool element, we expect one level of nested
  *    XML such as `<param1> … </param1>`. The contents of any parameter tag are
@@ -50,7 +50,7 @@ export class XMLStreamParser {
   private mode: "idle" | "streaming" | "parsing" = "idle";
   // Name of the current tool element (if any)
   private currentToolName: string | null = null;
-  // When in streaming mode, a pointer to the tool’s handler
+  // When in streaming mode, a pointer to the tool's handler
   private currentToolHandler: ToolHandler | null = null;
   // When in parsing mode, we accumulate parameters in an object.
   private currentParams: { [paramName: string]: string } = {};
@@ -73,8 +73,8 @@ export class XMLStreamParser {
     // Append new data to our buffer.
     this.buffer += chunk;
     let pos = 0;
-    
 
+    // Process complete tags and their content
     while (pos < this.buffer.length) {
       // ─── CASE 1: If we are _inside a parameter_ (e.g. within <param1>…</param1>)
       // In that case, we must _not_ break on every '<'—we want to treat inner
@@ -105,29 +105,7 @@ export class XMLStreamParser {
       // Look for the next tag start (<) from our current position.
       const nextTag = this.buffer.indexOf("<", pos);
       if (nextTag === -1) {
-        // No '<' found.
-        if (this.mode === "streaming") {
-          // In streaming mode, send all text to the stream handler.
-          const text = this.buffer.slice(pos);
-          if (text.length > 0) {
-            this.currentToolHandler!.stream(text, this.resolveFunction || undefined);
-          }
-        } else if (this.mode === "parsing" && this.currentParamName === null) {
-          // Outside a parameter inside a tool element,
-          // any non‐whitespace text is an error.
-          const text = this.buffer.slice(pos);
-          if (text.trim().length > 0) {
-            throw new Error(`Unexpected text outside parameter tags: "${text}"`);
-          }
-        } else if (this.mode === "idle") {
-          // Text outside of any tool element is not allowed.
-          const text = this.buffer.slice(pos);
-          if (text.trim().length > 0) {
-            throw new Error(`Unexpected text outside of a tool element: "${text}"`);
-          }
-        }
-        // We’ve reached the end of the buffer.
-        pos = this.buffer.length;
+        // No '<' found, keep the remaining text in buffer for next chunk
         break;
       }
 
@@ -135,34 +113,38 @@ export class XMLStreamParser {
       const textChunk = this.buffer.slice(pos, nextTag);
       if (this.mode === "streaming") {
         if (textChunk.length > 0) {
+          // In streaming mode, send all content up until any '<' character
           this.currentToolHandler!.stream(textChunk, this.resolveFunction || undefined);
         }
       } else if (this.mode === "parsing" && this.currentParamName === null) {
         if (textChunk.trim().length > 0) {
-          // In parsing mode outside a parameter, non‐whitespace text is not allowed.
-          throw new Error(`Unexpected text outside parameter tags: "${textChunk}"`);
+          // In parsing mode, treat direct text content as a "content" parameter
+          this.currentParams.content = (this.currentParams.content || "") + textChunk;
         }
+      } else if (this.mode === "idle" && textChunk.trim().length > 0) {
+        // Only throw for unexpected text if we're idle and it's not whitespace
+        throw new Error(`Unexpected text outside of a tool element: "${textChunk.trim()}"`);
       }
-      pos = nextTag; // Now pos is at the beginning of a tag.
+      pos = nextTag;
 
-      // ─── Now process a complete tag.
+      // Look for the end of this tag
       const endTag = this.buffer.indexOf(">", pos);
       if (endTag === -1) {
-        // Incomplete tag; wait for more data.
+        // Incomplete tag; keep everything from pos onwards in the buffer
+        this.buffer = this.buffer.slice(pos);
+        pos = 0
         break;
       }
-      // Grab the tag “content” (between the '<' and '>')
+
+      // Process the complete tag
       const tagContent = this.buffer.slice(pos + 1, endTag).trim();
       const isClosing = tagContent.startsWith("/");
-      // Remove any leading '/' from closing tags.
       const tagName = isClosing ? tagContent.slice(1).trim() : tagContent.split(/\s/)[0];
 
       if (!isClosing) {
         // ─── OPENING TAG
         if (this.mode === "idle") {
-          // We expect a tool element.
           this.currentToolName = tagName;
-          // Check if this tool is to be streamed.
           if (this.options.streamHandlers[tagName]) {
             this.mode = "streaming";
             this.currentToolHandler = this.options.streamHandlers[tagName];
@@ -172,18 +154,13 @@ export class XMLStreamParser {
           }
         } else if (this.mode === "parsing") {
           if (this.currentParamName !== null) {
-            // We are already inside a parameter. (Remember: inside a parameter, we ignore '<'
-            // unless it is the expected closing tag. So getting here would be an error.)
             throw new Error(
               `Nested tags inside parameter "${this.currentParamName}" are not allowed.`
             );
           }
-          // Otherwise, this is the start of a parameter tag.
           this.currentParamName = tagName;
           this.currentParamText = "";
         } else if (this.mode === "streaming") {
-          // In streaming mode the only tag we expect is the closing tag of the tool element.
-          // (We “pause” as soon as we see '<'.)
           throw new Error(`Unexpected opening tag <${tagName}> in streaming mode.`);
         }
       } else {
@@ -191,70 +168,76 @@ export class XMLStreamParser {
         if (this.mode === "idle") {
           throw new Error(`Unexpected closing tag </${tagName}> when not inside any element.`);
         } else if (this.mode === "streaming") {
-          // In streaming mode, we expect only the closing tag for the tool element.
           if (tagName !== this.currentToolName) {
             throw new Error(
               `Mismatched closing tag </${tagName}> in streaming mode (expected </${this.currentToolName}>).`
             );
           }
-          // End the streaming tool element.
-          if (this.currentToolHandler && this.currentToolHandler.finalize) {
+          if (this.currentToolHandler?.finalize) {
             this.currentToolHandler.finalize(this.resolveFunction || undefined);
           }
-          // Reset state.
           this.mode = "idle";
           this.currentToolName = null;
           this.currentToolHandler = null;
         } else if (this.mode === "parsing") {
           if (this.currentParamName !== null) {
-            // We are inside a parameter but _did not_ detect the expected closing tag
-            // using our “lookahead” method. That means we got a generic closing tag.
-            // This is an error because we would have caught the expected one earlier.
             throw new Error(
               `Unexpected closing tag </${tagName}> inside parameter <${this.currentParamName}>.`
             );
           } else {
-            // A closing tag here is assumed to be closing the tool element.
             if (tagName !== this.currentToolName) {
               throw new Error(
                 `Mismatched closing tag </${tagName}> for tool element <${this.currentToolName}>.`
               );
             }
-            // Emit the final parsed tool.
             this.options.onToolParsed(this.currentToolName!, this.currentParams);
-            // Reset state.
             this.mode = "idle";
             this.currentToolName = null;
             this.currentParams = {};
           }
         }
       }
-      // Advance past the processed tag.
       pos = endTag + 1;
     }
-    // Remove what we’ve processed from the buffer.
-    this.buffer = this.buffer.slice(pos);
+
+    // Keep any unprocessed text in the buffer
+    if (pos < this.buffer.length) {
+      this.buffer = this.buffer.slice(pos);
+    } else {
+      this.buffer = "";
+    }
   }
 
   /**
    * Call this when you are done sending data.
    */
   public end() {
-    if (this.buffer.trim().length > 0) {
-      throw new Error("Incomplete XML stream at end");
-    }
+    if (this.mode === "streaming") {
+      // Force processing of any complete tag in the current buffer.
+      // (Calling write("") will run through the while loop and process
+      // any complete tag that might be waiting in the buffer.)
+      this.write("");
   
-    // If still in streaming mode, finalize the current streaming tool.
-    if (this.mode === "streaming" && this.currentToolHandler && this.currentToolHandler.finalize) {
-      // Call finalize and pass in the resolve function (if any)
-      this.currentToolHandler.finalize(this.resolveFunction || undefined);
-      // Reset the state so that the parser is truly idle.
+      // Now, if there’s leftover text that does not look like the beginning of a tag,
+      // stream it. (This prevents sending closing tag fragments as content.)
+      if (this.buffer && !this.buffer.trim().startsWith("<")) {
+        this.currentToolHandler!.stream(this.buffer, this.resolveFunction || undefined);
+      }
+  
+      // Finalize the current streaming tool.
+      if (this.currentToolHandler?.finalize) {
+        this.currentToolHandler.finalize(this.resolveFunction || undefined);
+      }
       this.mode = "idle";
       this.currentToolName = null;
       this.currentToolHandler = null;
+      this.buffer = "";
     } else if (this.mode !== "idle") {
-      // In parsing mode (or any other mode), it’s still an error.
       throw new Error("Stream ended while still inside an element");
+    } else if (this.buffer.trim().length > 0) {
+      throw new Error("Incomplete XML stream at end");
     }
   }
+  
+  
 }

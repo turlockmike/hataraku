@@ -57,31 +57,19 @@ describe('XMLStreamParser', () => {
     expect(onToolParsed).toHaveBeenCalledWith('otherTool', { param1: 'Hello, world!' });
   });
 
-  test('should throw error for unexpected text outside any tool element', () => {
-    const parser = new XMLStreamParser({
-      streamHandlers: {},
-      onToolParsed: jest.fn(),
-    });
-
-    // Writing text that is not wrapped in a tool element should cause an error.
-    expect(() => {
-      parser.write('Some text outside any XML tag');
-    }).toThrow(/Unexpected text outside of a tool element/);
-  });
-
-  test('should throw error for non-whitespace text outside parameter tags in parsing mode', () => {
+  test('should handle text content in parsing mode', () => {
     const onToolParsed = jest.fn();
     const parser = new XMLStreamParser({
       streamHandlers: {},
       onToolParsed,
     });
 
-    // Open a tool element in parsing mode.
     parser.write('<otherTool>');
-    // Writing non-whitespace text outside of any parameter should cause an error.
-    expect(() => {
-      parser.write('Unexpected text');
-    }).toThrow(/Unexpected text outside parameter tags/);
+    parser.write('Unexpected text');
+    parser.write('</otherTool>');
+    parser.end();
+
+    expect(onToolParsed).toHaveBeenCalledWith('otherTool', { content: 'Unexpected text' });
   });
 
   test('should throw error for mismatched closing tag in streaming mode', () => {
@@ -328,13 +316,119 @@ describe('XMLStreamParser', () => {
       onToolParsed: jest.fn(),
     });
   
-    // Start a streaming element but do not write a closing tag.
     parser.write('<liveTool>');
     parser.write('Stream without close tag');
-    // At this point, the parser is still in streaming mode, but the buffer should be empty.
     parser.end();
   
     expect(streamedContent).toBe('Stream without close tag');
     expect(finalizeCalled).toBe(true);
+  });
+
+  describe('onToolParsed behavior', () => {
+    it('should call onToolParsed for non-streaming tools with correct parameters', () => {
+      const onToolParsed = jest.fn();
+      const parser = new XMLStreamParser({
+        streamHandlers: {},
+        onToolParsed,
+      });
+
+      // Single parameter
+      parser.write('<simple_tool><param1>value1</param1></simple_tool>');
+      expect(onToolParsed).toHaveBeenCalledWith('simple_tool', { param1: 'value1' });
+
+      // Multiple parameters
+      parser.write('<complex_tool><param1>value1</param1><param2>value2</param2></complex_tool>');
+      expect(onToolParsed).toHaveBeenCalledWith('complex_tool', { param1: 'value1', param2: 'value2' });
+
+      // Empty parameter
+      parser.write('<empty_tool><param1></param1></empty_tool>');
+      expect(onToolParsed).toHaveBeenCalledWith('empty_tool', { param1: '' });
+
+      // Tool with no parameters
+      parser.write('<no_params_tool></no_params_tool>');
+      expect(onToolParsed).toHaveBeenCalledWith('no_params_tool', {});
+
+      // Direct text content
+      parser.write('<text_tool>direct text content</text_tool>');
+      expect(onToolParsed).toHaveBeenCalledWith('text_tool', { content: 'direct text content' });
+
+      // Mixed content and parameters
+      parser.write('<mixed_tool>some text<param1>value1</param1>more text</mixed_tool>');
+      expect(onToolParsed).toHaveBeenCalledWith('mixed_tool', { 
+        content: 'some textmore text',
+        param1: 'value1'
+      });
+
+      // Verify total number of calls
+      expect(onToolParsed).toHaveBeenCalledTimes(6);
+    });
+
+    it('should not call onToolParsed for streaming tools', () => {
+      const onToolParsed = jest.fn();
+      const streamHandler = {
+        stream: jest.fn(),
+        finalize: jest.fn(),
+      };
+      
+      const parser = new XMLStreamParser({
+        streamHandlers: { streaming_tool: streamHandler },
+        onToolParsed,
+      });
+
+      parser.write('<streaming_tool>some content</streaming_tool>');
+      expect(onToolParsed).not.toHaveBeenCalled();
+      expect(streamHandler.stream).toHaveBeenCalledWith('some content', undefined);
+      expect(streamHandler.finalize).toHaveBeenCalled();
+    });
+
+    it('should handle mixed streaming and non-streaming tools correctly', () => {
+      const onToolParsed = jest.fn();
+      const streamHandler = {
+        stream: jest.fn(),
+        finalize: jest.fn(),
+      };
+      
+      const parser = new XMLStreamParser({
+        streamHandlers: { streaming_tool: streamHandler },
+        onToolParsed,
+      });
+
+      parser.write('<non_streaming_tool><param1>value1</param1></non_streaming_tool>');
+      parser.write('<streaming_tool>stream content</streaming_tool>');
+      parser.write('<non_streaming_tool><param2>value2</param2></non_streaming_tool>');
+
+      expect(onToolParsed).toHaveBeenCalledTimes(2);
+      expect(onToolParsed).toHaveBeenNthCalledWith(1, 'non_streaming_tool', { param1: 'value1' });
+      expect(onToolParsed).toHaveBeenNthCalledWith(2, 'non_streaming_tool', { param2: 'value2' });
+      
+      expect(streamHandler.stream).toHaveBeenCalledWith('stream content', undefined);
+      expect(streamHandler.finalize).toHaveBeenCalled();
+    });
+  });
+
+  test('should not include closing tag information in streamed content', () => {
+    let streamedData = '';
+    const parser = new XMLStreamParser({
+      streamHandlers: {
+        liveTool: {
+          stream: (data: string) => { streamedData += data; },
+          finalize: jest.fn(),
+        },
+      },
+      onToolParsed: jest.fn(),
+    });
+
+    // Write content in chunks that include closing tag
+    parser.write('<liveTool>Hello');
+    parser.write(' world</liveTool>');
+    parser.write('<liveTool>Another');
+    parser.write(' message</live');
+    parser.write('Tool>');
+    parser.end();
+
+    // Verify that no closing tag information is included
+    expect(streamedData).toBe('Hello world' + 'Another message');
+    expect(streamedData).not.toContain('</liveTool>');
+    expect(streamedData).not.toContain('</live');
   });
 });

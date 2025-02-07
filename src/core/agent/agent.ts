@@ -22,6 +22,7 @@ export interface TaskMetadata {
   tokensIn?: number;
   tokensOut?: number;
   totalCost?: number;
+  toolCalls: { name: string; params: any; result?: any }[];
 }
 
 /**
@@ -259,7 +260,18 @@ public async task<TOutput = string>(
     // If streaming mode was requested, return the stream along with a content promise and metadata.
     if (input.stream) {
       // contentPromise iterates over the stream to get the final output.
-      const contentPromise = metadataPromise.then(() => {
+      const contentPromise = metadataPromise.then(async (metadata) => {
+        // Execute all recorded tool calls
+        for (const toolCall of metadata.toolCalls) {
+          // except for attempt_completion and thinking, which are handled by the model-stream-processor
+          if (toolCall.name !== 'attempt_completion' && toolCall.name !== 'thinking') {
+            const tool = this.getTool(toolCall.name);
+            if (tool.execute) {
+              const result = await tool.execute(toolCall.params, process.cwd());
+              toolCall.result = result;
+            }
+          }
+        }
         const content = attemptCompletionTool.getContent();
         return input.outputSchema ? JSON.parse(content) : content;
       }) as Promise<TOutput>;
@@ -273,7 +285,26 @@ public async task<TOutput = string>(
 
     // Non-streaming case: wait for metadata and then return the final content.
     const metadata = await metadataPromise;
+    
+    // Ensure at least one tool call was made
+    if (metadata.toolCalls.length === 0) {
+      throw new Error("No attempt_completion with result tag found in response");
+    }
+    
+    // Execute all recorded tool calls
+    for (const toolCall of metadata.toolCalls) {
+      // except for attempt_completion and thinking, which are handled by the model-stream-processor
+      if (toolCall.name !== 'attempt_completion' && toolCall.name !== 'thinking') {
+        const tool = this.getTool(toolCall.name);
+        if (tool.execute) {
+          const result = await tool.execute(toolCall.params, process.cwd());
+          toolCall.result = result;
+        }
+      }
+    }
+
     const finalContent = attemptCompletionTool.getContent();
+    console.log('Final content:', finalContent); // Debug log
     const content = input.outputSchema ? JSON.parse(finalContent) : finalContent;
 
     // Optionally add the assistant's response to the thread.
