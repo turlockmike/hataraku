@@ -173,16 +173,6 @@ export class Agent {
     }));
 
     const completionCall = toolCalls.find(call => call.name === 'attempt_completion');
-    console.log('completionCall', {
-      thinking,
-      toolCalls,
-      completion: completionCall?.params.content,
-      metadata: {
-        tokensIn: metadata.usage.tokensIn,
-        tokensOut: metadata.usage.tokensOut,
-        cost: metadata.usage.cost
-      }
-    });
     return {
       thinking,
       toolCalls,
@@ -233,7 +223,10 @@ export class Agent {
         const schemaStr = serializeZodSchema(input.outputSchema);
         messageContent += `<output_schema>${schemaStr}</output_schema>`;
       }
-      thread.addMessage("user", messageContent);
+      // Only add message if there's actual content
+      if (currentInput) {
+        thread.addMessage("user", messageContent);
+      }
       const messages = thread.getFormattedMessages(true);
 
       // Create the attempt completion tool, using the provided outputStream if available
@@ -257,11 +250,36 @@ export class Agent {
       // Add any tool calls to the thread
       if (step.toolCalls.length > 0) {
         const lastToolCall = step.toolCalls[step.toolCalls.length - 1];
-        thread.addMessage("assistant", lastToolCall.name === "attempt_completion" ? lastToolCall.content : `[${lastToolCall.name}] ${lastToolCall.content}`);
+        if (lastToolCall.name === 'attempt_completion') {
+          thread.addMessage("assistant", lastToolCall.content);
+        } else if (lastToolCall.name === 'thinking') {
+          // Skip thinking tool calls
+          // Don't add to thread history
+        } else {
+          // Extract the result value
+          let resultValue = '';
+          if (lastToolCall.result) {
+            if (Array.isArray(lastToolCall.result) && lastToolCall.result[0]?.text) {
+              const match = lastToolCall.result[0].text.match(/The result is (\d+)/);
+              resultValue = match ? match[1] : lastToolCall.result[0].text;
+            } else {
+              resultValue = lastToolCall.result;
+            }
+          }
+          const toolContent = `<${lastToolCall.name}>${Object.entries(lastToolCall.params).map(([key, value]) => `<${key}>${value}</${key}>`).join('')}</${lastToolCall.name}>${resultValue ? `<tool_result>${resultValue}</tool_result>` : ''}`;
+          thread.addMessage("assistant", toolContent);
+        }
       }
 
       // Yield the complete step
       yield step;
+
+      // If this was a tool call (not attempt_completion), continue to get the next step
+      if (step.toolCalls.length > 0 && step.toolCalls[step.toolCalls.length - 1].name !== 'attempt_completion') {
+        // Don't add the task input again for tool calls
+        currentInput = '';
+        continue;
+      }
 
       // If we have a completion, we're done (attempt_completion can only be called once per task)
       if (step.completion) {
