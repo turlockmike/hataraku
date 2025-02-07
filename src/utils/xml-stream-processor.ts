@@ -1,9 +1,10 @@
-type StreamHandler = (data: string) => void;
-type FinalizeHandler = (result?: any) => void;
+type StreamHandler = (data: string, resolve?: (value: any) => void) => void;
+type FinalizeHandler = (resolve?: (value: any) => void) => void;
 
 interface ToolHandler {
   stream: StreamHandler;
   finalize?: FinalizeHandler;
+  resolveFunction?: (value: any) => void;
 }
 
 interface XMLStreamParserOptions {
@@ -58,8 +59,11 @@ export class XMLStreamParser {
   private currentParamName: string | null = null;
   private currentParamText: string = "";
 
-  constructor(options: XMLStreamParserOptions) {
+  private resolveFunction: ((value: any) => void) | null = null;
+
+  constructor(options: XMLStreamParserOptions, resolveFunction?: (value: any) => void) {
     this.options = options;
+    this.resolveFunction = resolveFunction || null;
   }
 
   /**
@@ -69,6 +73,7 @@ export class XMLStreamParser {
     // Append new data to our buffer.
     this.buffer += chunk;
     let pos = 0;
+    
 
     while (pos < this.buffer.length) {
       // ─── CASE 1: If we are _inside a parameter_ (e.g. within <param1>…</param1>)
@@ -105,7 +110,7 @@ export class XMLStreamParser {
           // In streaming mode, send all text to the stream handler.
           const text = this.buffer.slice(pos);
           if (text.length > 0) {
-            this.currentToolHandler!.stream(text);
+            this.currentToolHandler!.stream(text, this.resolveFunction || undefined);
           }
         } else if (this.mode === "parsing" && this.currentParamName === null) {
           // Outside a parameter inside a tool element,
@@ -130,7 +135,7 @@ export class XMLStreamParser {
       const textChunk = this.buffer.slice(pos, nextTag);
       if (this.mode === "streaming") {
         if (textChunk.length > 0) {
-          this.currentToolHandler!.stream(textChunk);
+          this.currentToolHandler!.stream(textChunk, this.resolveFunction || undefined);
         }
       } else if (this.mode === "parsing" && this.currentParamName === null) {
         if (textChunk.trim().length > 0) {
@@ -194,7 +199,7 @@ export class XMLStreamParser {
           }
           // End the streaming tool element.
           if (this.currentToolHandler && this.currentToolHandler.finalize) {
-            this.currentToolHandler.finalize();
+            this.currentToolHandler.finalize(this.resolveFunction || undefined);
           }
           // Reset state.
           this.mode = "idle";
@@ -238,7 +243,17 @@ export class XMLStreamParser {
     if (this.buffer.trim().length > 0) {
       throw new Error("Incomplete XML stream at end");
     }
-    if (this.mode !== "idle") {
+  
+    // If still in streaming mode, finalize the current streaming tool.
+    if (this.mode === "streaming" && this.currentToolHandler && this.currentToolHandler.finalize) {
+      // Call finalize and pass in the resolve function (if any)
+      this.currentToolHandler.finalize(this.resolveFunction || undefined);
+      // Reset the state so that the parser is truly idle.
+      this.mode = "idle";
+      this.currentToolName = null;
+      this.currentToolHandler = null;
+    } else if (this.mode !== "idle") {
+      // In parsing mode (or any other mode), it’s still an error.
       throw new Error("Stream ended while still inside an element");
     }
   }

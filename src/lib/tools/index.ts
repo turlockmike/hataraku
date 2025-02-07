@@ -4,7 +4,6 @@ import { readFileTool } from './read-file';
 import { listFilesTool } from './list-files';
 import { searchFilesTool } from './search-files';
 import { executeCommandTool } from './execute-command';
-import { attemptCompletionTool } from './attempt-completion';
 import { listCodeDefinitionsTool } from './list-code-definition-names';
 import { useMcpTool } from './use-mcp-tool';
 import { accessMcpResourceTool } from './access-mcp-resource';
@@ -39,7 +38,6 @@ export const BrowserTools: UnifiedTool[] = [
 ];
 
 export const UtilityTools: UnifiedTool[] = [
-    attemptCompletionTool,
     waitForUserTool,
     playAudioTool,
     toGraphTool
@@ -73,7 +71,6 @@ export {
     listFilesTool,
     searchFilesTool,
     executeCommandTool,
-    attemptCompletionTool,
     listCodeDefinitionsTool,
     useMcpTool,
     accessMcpResourceTool,

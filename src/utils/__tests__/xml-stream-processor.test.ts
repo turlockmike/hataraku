@@ -315,4 +315,26 @@ describe('XMLStreamParser', () => {
       });
     });
   });
+  test('should call finalize for open streaming tool on end() when closing tag is missing', () => {
+    let streamedContent = '';
+    let finalizeCalled = false;
+    const parser = new XMLStreamParser({
+      streamHandlers: {
+        liveTool: {
+          stream: (data: string) => { streamedContent += data; },
+          finalize: () => { finalizeCalled = true; },
+        },
+      },
+      onToolParsed: jest.fn(),
+    });
+  
+    // Start a streaming element but do not write a closing tag.
+    parser.write('<liveTool>');
+    parser.write('Stream without close tag');
+    // At this point, the parser is still in streaming mode, but the buffer should be empty.
+    parser.end();
+  
+    expect(streamedContent).toBe('Stream without close tag');
+    expect(finalizeCalled).toBe(true);
+  });
 });

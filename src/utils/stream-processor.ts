@@ -1,8 +1,9 @@
+import { ApiStreamChunk, ApiStreamTextChunk } from '../api/transform/stream';
 import { Thread } from '../core/thread/thread';
 /**
  * Processes a model response stream and extracts content between <result> tags.
  * Yields partial outputs and returns the final complete response.
- * 
+ * @deprecated Use XMLStreamParser instead.
  * @param stream - The model response stream to process
  * @param thread - The thread to add the final response to
  * @returns AsyncGenerator yielding partial responses, with final response as return value
@@ -83,4 +84,25 @@ export async function* processResponseStream(
   const finalResponse = completeResponse.trim();
   thread.addMessage('assistant', finalResponse);
   return finalResponse;
+}
+
+/**
+ * Transforms an ApiStreamChunk stream into a format suitable for XMLStreamParser.
+ * Filters out non-text chunks and extracts text content from text chunks.
+ * 
+ * @param stream - The ApiStreamChunk stream to transform
+ * @returns AsyncGenerator that yields text content from the stream
+ */
+export async function* transformApiStreamForXmlParser(
+  stream: AsyncIterable<ApiStreamChunk>
+): AsyncGenerator<string, void, unknown> {
+  for await (const chunk of stream) {
+    if (chunk.type === 'text') {
+      const textChunk = chunk as ApiStreamTextChunk;
+      if (textChunk.text) {
+        yield textChunk.text;
+      }
+    }
+    // Ignore other chunk types (usage, etc) as they're not needed for XML parsing
+  }
 }

@@ -3,11 +3,14 @@ import { agentConfigSchema } from './schemas/config';
 import { UnifiedTool } from '../../lib/types';
 import { ModelProvider, modelProviderFromConfig } from '../../api';
 import { SystemPromptBuilder } from '../prompts/prompt-builder';
-import { attemptCompletionTool, getToolDocs } from '../../lib';
+import { getToolDocs } from '../../lib';
 import process from 'node:process';
 import { Thread } from '../thread/thread';
 import { serializeZodSchema } from '../../utils/schema';
-import { processResponseStream } from '../../utils/stream-processor';
+import { ApiStreamChunk } from '../../api/transform/stream';
+import { AttemptCompletionTool } from '../../lib/tools/attempt-completion-tool';
+import { ThinkingTool } from '../../lib/tools/thinking-tool';
+import { processModelStream, StreamProcessorState } from '../../utils/model-stream-processor';
 
 /**
 * Metadata for a completed task.
@@ -15,7 +18,7 @@ import { processResponseStream } from '../../utils/stream-processor';
 export interface TaskMetadata {
   taskId: string;
   input: string;
-  // Optionally add tokensIn, tokensOut, cost, etc.
+  thinking?: string[];
   tokensIn?: number;
   tokensOut?: number;
   totalCost?: number;
@@ -56,6 +59,14 @@ export class Agent {
   // Used to generate unique task ids.
   private taskCounter = 0;
 
+  // Stream processor state
+  private streamState: StreamProcessorState = {
+    thinkingChain: []
+  };
+
+  // First-class tools
+  private thinkingTool: ThinkingTool;
+
   /**
   * Creates a new Agent instance with the provided configuration
   * @param config The agent configuration
@@ -94,6 +105,9 @@ export class Agent {
         }
       }
     }, process.cwd());
+
+    // Initialize first-class tools
+    this.thinkingTool = new ThinkingTool(this.streamState.thinkingChain);
   }
 
   /**
@@ -140,7 +154,7 @@ export class Agent {
     }
 
     if (input.stream && input.outputSchema) {
-      return Promise.reject(new Error("Output schemas are not supported with streaming responses")) as any;
+      return Promise.reject(new Error("Output schemas are not supported with streaming responses"));
     }
 
     // Generate a unique taskId for this task.
@@ -156,88 +170,77 @@ export class Agent {
     thread.addMessage('user', messageContent);
     const messages = thread.getFormattedMessages(true);
 
-    // Create deferred promises for final result and metadata.
-    let finalResolve!: (value: TOutput) => void;
-    let finalReject!: (error: Error) => void;
-    let metadataResolve!: (value: TaskMetadata) => void;
-    const finalPromise = new Promise<TOutput>((resolve, reject) => {
-      finalResolve = resolve;
-      finalReject = reject;
-    });
-    const metadataPromise = new Promise<TaskMetadata>((resolve) => {
-      metadataResolve = resolve;
-    });
+    // Reset state
+    this.streamState = {
+      thinkingChain: []
+    };
+
+    // Create a new AttemptCompletionTool instance for this task
+    const outputStream: string[] = [];
+    const attemptCompletionTool = new AttemptCompletionTool(outputStream);
 
     // Get the base async iterable stream from the model.
-    let responseStream;
+    let modelStream: AsyncIterable<ApiStreamChunk>;
     try {
-      const streamSource = this.modelProvider.createMessage(systemPrompt, messages);
-      responseStream = processResponseStream(streamSource, thread);
+      modelStream = this.modelProvider.createMessage(systemPrompt, messages);
     } catch (err) {
-      finalReject(err instanceof Error ? err : new Error(String(err)));
-      throw err;
+      throw new Error("No attempt_completion with result tag found in response");
     }
 
-    let finalAccumulated = '';
-    let jsonFinalAccumulated!: TOutput
-// Create and start the composed stream
-const composedStream = (async function* () {
-  try {
-    for await (const part of responseStream) {
-      finalAccumulated += part;
-      yield part;
-    }
-    // Parse JSON if output schema is provided
-    if (input.outputSchema) {
-      try {
-        jsonFinalAccumulated = JSON.parse(finalAccumulated);
-      } catch (err) {
-        throw new Error("Failed to parse response with schema");
+    // Get all tools including first-class tools
+    const allTools = [
+      this.thinkingTool,
+      attemptCompletionTool,
+      ...this.config.tools || []
+    ];
+
+    // Create a stream that yields from the AttemptCompletionTool's output
+    const contentStream = (async function*(this: Agent): AsyncGenerator<string, TOutput> {
+      let lastContent = '';
+      while (true) {
+        const content = attemptCompletionTool.getContent();
+        if (content && content !== lastContent) {
+          lastContent = content;
+          yield content;
+        }
+        await new Promise(resolve => setTimeout(resolve, 10)); // Small delay to prevent busy loop
       }
+    }).bind(this)();
+
+    // Process the model stream to get metadata
+    const metadataPromise = processModelStream(modelStream, taskId, input, allTools, this.streamState);
+
+    // For streaming case, return the full output object
+    if (input.stream) {
+      const contentPromise = new Promise<TOutput>(async (resolve) => {
+        let lastContent = '';
+        for await (const chunk of contentStream) {
+          lastContent = chunk;
+        }
+        resolve(input.outputSchema
+          ? JSON.parse(lastContent) as TOutput
+          : lastContent as unknown as TOutput);
+      });
+
+      return {
+        stream: contentStream,
+        content: contentPromise,
+        metadata: metadataPromise
+      };
     }
-    finalResolve(input.outputSchema ? jsonFinalAccumulated : finalAccumulated as TOutput);
-    const meta: TaskMetadata = {
-      taskId,
-      input: input.content,
-    };
-    metadataResolve(meta);
-    return jsonFinalAccumulated;
-  } catch (err) {
-    // finalReject(err instanceof Error ? err : new Error(String(err)));
-    throw err;
-  }
-})();
 
-// For streaming case, return the full output object
-if (input.stream) {
-  return {
-    stream: composedStream,
-    content: finalPromise,
-    metadata: metadataPromise
-  };
-}
+    // For non-streaming case, wait for metadata and get final content
+    const metadata = await metadataPromise;
+    const content = input.outputSchema
+      ? JSON.parse(attemptCompletionTool.getContent()) as TOutput
+      : attemptCompletionTool.getContent() as unknown as TOutput;
 
-// For non-streaming case, consume the stream and return the content directly
-try {
-  for await (const _ of composedStream) {
-    // Consume the stream but ignore chunks
-  }
-  // If we get here, the stream completed successfully
-  const metadata: TaskMetadata = {
-    taskId,
-    input: input.content,
-  };
-  return {
-    content: input.outputSchema ? jsonFinalAccumulated : finalAccumulated as TOutput,
-    metadata
-  };
-} catch (err) {
-  // Propagate the error with its original message
-  if (err instanceof Error) {
-    throw err;
-  }
-  throw new Error(String(err));
-}
+    // Add response to thread if provided
+    if (thread && content) {
+      thread.addMessage('assistant', String(content));
+    }
+
+    return { content, metadata };
   }
 
   /**
@@ -258,10 +261,12 @@ try {
   * Loads and initializes the configured tools
   * @private
   */
-  // TODO: Need to handle duplication of tools and tool name collisions
   private loadTools(): void {
+    // Add first-class tools
+    this.tools.set(this.thinkingTool.name, this.thinkingTool);
+
+    // Add configured tools
     const tools = this.config.tools || [];
-    tools.push(attemptCompletionTool);
     for (const tool of tools) {
       // Store the tool
       this.tools.set(tool.name, tool);

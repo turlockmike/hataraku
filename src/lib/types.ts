@@ -54,6 +54,11 @@ export interface Tool {
     };
 }
 
+export interface StreamHandler {
+    stream: (data: string, resolve?: (value: any) => void) => void;
+    finalize?: (resolve?: (value: any) => void) => void;
+}
+
 // New unified tool interface that extends Tool
 export interface UnifiedTool<TInput = any, TOutput = any> extends Tool {
     inputSchema: {
@@ -71,6 +76,8 @@ export interface UnifiedTool<TInput = any, TOutput = any> extends Tool {
     execute: (params: TInput, cwd: string) => Promise<TOutput>;
     // Optional initialization method for tools that need setup
     initialize?: () => void;
+    // Optional stream handler for tools that handle streaming content
+    streamHandler?: StreamHandler;
 }
 
 export interface ToolExecutor {
