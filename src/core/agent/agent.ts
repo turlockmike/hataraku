@@ -173,7 +173,16 @@ export class Agent {
     }));
 
     const completionCall = toolCalls.find(call => call.name === 'attempt_completion');
-    
+    console.log('completionCall', {
+      thinking,
+      toolCalls,
+      completion: completionCall?.params.content,
+      metadata: {
+        tokensIn: metadata.usage.tokensIn,
+        tokensOut: metadata.usage.tokensOut,
+        cost: metadata.usage.cost
+      }
+    });
     return {
       thinking,
       toolCalls,

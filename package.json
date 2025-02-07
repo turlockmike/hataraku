@@ -41,6 +41,7 @@
     "example:schema": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/schema-validation.ts",
     "example:thread": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/thread-reuse.ts",
     "example:tool": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/tool-use.ts",
+    "example:multi": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/multi-step-task.ts",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "check-types": "tsc --noEmit",
