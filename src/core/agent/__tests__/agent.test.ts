@@ -7,6 +7,8 @@ import { ModelProvider } from "../../../api"
 import { HatarakuTool, AgentStep } from "../../../lib/types"
 import os from "os"
 import process from "node:process"
+import { createAsyncStream } from "../../../utils/async"
+import { AttemptCompletionTool } from "../../../lib/tools/attempt-completion"
 
 describe("Agent", () => {
 	let mockProvider: MockProvider
@@ -350,7 +352,7 @@ describe("Agent", () => {
 			const streamingInput = {
 				role: "user",
 				content: "test task",
-				stream: true,
+				stream: true as const,
 				outputSchema: z.object({ result: z.string() })
 			} as TaskInput<{ result: string }> & { stream: true }
 
@@ -539,6 +541,60 @@ describe("Agent", () => {
 				result: expect.any(Error)
 			});
 		});
+
+		it("should handle streaming content in chunks", async () => {
+			// Mock a response that will be streamed in chunks
+			mockProvider.clearResponses().mockStreamingResponse([
+				"<thinking>Processing",
+				" your request...</thinking>",
+				"<attempt_completion>Streamed ",
+				"result</attempt_completion>"
+			]);
+
+			const agent = new Agent(validConfigWithProvider);
+			agent.initialize();
+
+			// Create streaming task input
+			const taskInput = {
+				role: 'user' as const,
+				content: 'test task',
+				stream: true as const
+			};
+
+			// Execute task with streaming
+			const result = await agent.task(taskInput);
+			expect(result.stream).toBeDefined();
+
+			// Collect the streamed chunks
+			const streamedChunks: string[] = [];
+			for await (const chunk of result.stream) {
+				streamedChunks.push(chunk);
+			}
+			
+			// Get the final content and metadata
+			const content = await result.content;
+			const metadata = await result.metadata;
+
+			// Verify the content
+			expect(content).toBe("Streamed result");
+
+			// Verify the streamed chunks
+			expect(streamedChunks).toEqual([
+				'Streamed ',
+				'result'
+			]);
+
+			// Verify metadata
+			expect(metadata.toolCalls).toHaveLength(2);
+			expect(metadata.toolCalls[0]).toMatchObject({
+				name: 'thinking',
+				params: { content: 'Processing your request...' }
+			});
+			expect(metadata.toolCalls[1]).toMatchObject({
+				name: 'attempt_completion',
+				params: { content: 'Streamed result' }
+			});
+		});
 	})
 
 	describe("runStep", () => {
@@ -643,6 +699,81 @@ describe("Agent", () => {
 				tokensOut: response.length,
 				cost: 0
 			});
+		});
+
+		it("should handle streaming content in chunks", async () => {
+			// Create a stream to capture attempt_completion output
+			const outputStream = createAsyncStream<string>();
+			const attemptCompletionTool = new AttemptCompletionTool(outputStream);
+
+			// Mock a response that will be streamed in chunks
+			mockProvider.clearResponses().mockStreamingResponse([
+				"<thinking>Processing",
+				" your request...</thinking>",
+				"<attempt_completion>Streamed ",
+				"result</attempt_completion>"
+			]);
+			const modelStream = mockProvider.createMessage("", []);
+			const tools = [mathAddTool, attemptCompletionTool];
+
+			// Start processing the step
+			const stepPromise = agent.runStep(modelStream, tools);
+
+			// Collect the streamed chunks
+			const streamedChunks: string[] = [];
+			for await (const chunk of outputStream) {
+				streamedChunks.push(chunk);
+			}
+
+			const step = await stepPromise;
+			
+			// Verify the step results
+			expect(step.toolCalls).toHaveLength(2);
+			expect(step.toolCalls[0]).toMatchObject({
+				name: 'thinking',
+				content: 'Processing your request...'
+			});
+			expect(step.completion).toBe("Streamed result");
+
+			// Verify the streamed chunks
+			expect(streamedChunks).toEqual([
+				'Streamed ',
+				'result'
+			]);
+		});
+
+		it("should handle streaming with interleaved tool calls", async () => {
+			mockProvider.clearResponses().mockStreamingResponse([
+				"<thinking>First ",
+				"step</thinking>",
+				"<math_add><a>5</a><b>3</b></math_add>",
+				"<thinking>Got ",
+				"result</thinking>",
+				"<attempt_completion>Final ",
+				"answer</attempt_completion>"
+			]);
+			const modelStream = mockProvider.createMessage("", []);
+			const tools = [mathAddTool];
+
+			const step = await (agent as any).runStep(modelStream, tools);
+			expect(step.toolCalls).toHaveLength(4);
+			expect(step.toolCalls[0]).toMatchObject({
+				name: 'thinking',
+				content: 'First step'
+			});
+			expect(step.toolCalls[1]).toMatchObject({
+				name: 'math_add',
+				params: { a: '5', b: '3' },
+				result: [{
+					type: 'text',
+					text: 'The result is 8'
+				}]
+			});
+			expect(step.toolCalls[2]).toMatchObject({
+				name: 'thinking',
+				content: 'Got result'
+			});
+			expect(step.completion).toBe("Final answer");
 		});
 	})
 
@@ -826,6 +957,151 @@ describe("Agent", () => {
 					steps.push(step);
 				}
 			}).rejects.toThrow();
+		});
+
+		it("should handle streaming content in chunks", async () => {
+			// Mock a response that will be streamed in chunks across multiple steps
+			mockProvider.clearResponses()
+				.mockStreamingResponse([
+					"<thinking>First step",
+					" processing...</thinking>",
+					"<math_add><a>5</a><b>3</b></math_add>",
+					"<thinking>Got result: 8</thinking>"
+				])
+				.mockStreamingResponse([
+					"<thinking>Second step",
+					" calculating...</thinking>",
+					"<math_add><a>8</a><b>2</b></math_add>",
+					"<attempt_completion>Final answer: ",
+					"10</attempt_completion>"
+				]);
+
+			const taskInput = { 
+				role: 'user' as const, 
+				content: 'test task',
+				stream: true as const
+			};
+
+			// Create output stream to capture attempt_completion chunks
+			const outputStream = createAsyncStream<string>();
+
+			// Create and initialize agent
+			const agent = new Agent({
+				name: "test-agent",
+				model: mockProvider,
+				tools: [mathAddTool],
+				role: "test role",
+			});
+			agent.initialize();
+
+			// Execute task with runTask and collect steps
+			const generator = agent.runTask(taskInput, outputStream);
+			const steps: AgentStep[] = [];
+			
+			// Collect streamed chunks in parallel with steps
+			const streamedChunks: string[] = [];
+			const streamPromise = (async () => {
+				for await (const chunk of outputStream) {
+					streamedChunks.push(chunk);
+				}
+			})();
+
+			// Collect steps
+			for await (const step of generator) {
+				steps.push(step);
+			}
+
+			// Wait for stream to complete
+			await streamPromise;
+
+			// Verify the steps
+			expect(steps).toHaveLength(2);
+			
+			// First step
+			expect(steps[0].toolCalls).toHaveLength(3);
+			expect(steps[0].toolCalls[0]).toMatchObject({
+				name: 'thinking',
+				content: 'First step processing...'
+			});
+			expect(steps[0].toolCalls[1]).toMatchObject({
+				name: 'math_add',
+				params: { a: '5', b: '3' }
+			});
+			expect(steps[0].toolCalls[2]).toMatchObject({
+				name: 'thinking',
+				content: 'Got result: 8'
+			});
+			expect(steps[0].completion).toBeUndefined();
+
+			// Second step
+			expect(steps[1].toolCalls).toHaveLength(3);
+			expect(steps[1].toolCalls[0]).toMatchObject({
+				name: 'thinking',
+				content: 'Second step calculating...'
+			});
+			expect(steps[1].toolCalls[1]).toMatchObject({
+				name: 'math_add',
+				params: { a: '8', b: '2' }
+			});
+			expect(steps[1].toolCalls[2]).toMatchObject({
+				name: 'attempt_completion',
+				content: 'Final answer: 10'
+			});
+			expect(steps[1].completion).toBe('Final answer: 10');
+
+			// Verify the streamed chunks
+			expect(streamedChunks).toEqual([
+				'Final answer: ',
+				'10'
+			]);
+		});
+
+		it("should handle streaming with multiple steps", async () => {
+			mockProvider.clearResponses()
+				.mockStreamingResponse([
+					"<thinking>First ",
+					"calculation...</thinking>",
+					"<math_add><a>5</a><b>3</b></math_add>"
+				])
+				.mockStreamingResponse([
+					"<thinking>Second ",
+					"calculation...</thinking>",
+					"<math_add><a>8</a><b>2</b></math_add>",
+					"<attempt_completion>Final result: ",
+					"10</attempt_completion>"
+				]);
+
+			const taskInput = { role: 'user' as const, content: 'test task' };
+			const generator = agent.runTask(taskInput);
+			
+			const steps: AgentStep[] = [];
+			for await (const step of generator) {
+				steps.push(step);
+			}
+
+			expect(steps).toHaveLength(2);
+			// First step
+			expect(steps[0].toolCalls).toHaveLength(2);
+			expect(steps[0].toolCalls[0]).toMatchObject({
+				name: 'thinking',
+				content: 'First calculation...'
+			});
+			expect(steps[0].toolCalls[1]).toMatchObject({
+				name: 'math_add',
+				params: { a: '5', b: '3' }
+			});
+
+			// Second step
+			expect(steps[1].toolCalls).toHaveLength(3);
+			expect(steps[1].toolCalls[0]).toMatchObject({
+				name: 'thinking',
+				content: 'Second calculation...'
+			});
+			expect(steps[1].toolCalls[1]).toMatchObject({
+				name: 'math_add',
+				params: { a: '8', b: '2' }
+			});
+			expect(steps[1].completion).toBe("Final result: 10");
 		});
 	})
 })

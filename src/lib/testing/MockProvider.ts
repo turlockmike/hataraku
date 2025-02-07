@@ -9,7 +9,7 @@ interface Call {
 }
 
 export class MockProvider implements ModelProvider {
-  private responses: Array<{ type: 'text' | 'error'; content: string }> = [];
+  private responses: Array<{ type: 'text' | 'error'; content: string | string[] }> = [];
   private modelInfo: { id: string; info: ModelInfo };
   private calls: Call[] = [];
 
@@ -25,6 +25,11 @@ export class MockProvider implements ModelProvider {
 
   mockResponse(text: string) {
     this.responses.push({ type: 'text', content: text });
+    return this;
+  }
+
+  mockStreamingResponse(chunks: string[]) {
+    this.responses.push({ type: 'text', content: chunks });
     return this;
   }
 
@@ -63,28 +68,43 @@ export class MockProvider implements ModelProvider {
     }
 
     if (response.type === 'error') {
-      throw new Error(response.content);
+      throw new Error(response.content as string);
     }
 
-
-    // Split the response into smaller chunks to simulate streaming
-    const chunks = response.content.match(/.{1,4}/g) || [];
-    for (const chunk of chunks) {
+    if (Array.isArray(response.content)) {
+      // Handle streaming response chunks
+      for (const chunk of response.content) {
+        yield {
+          type: 'text',
+          text: chunk,
+        };
+        // Simulate some delay between chunks
+        await new Promise(resolve => setTimeout(resolve, 1));
+      }
+      // Final usage chunk
       yield {
-        type: 'text',
-        text: chunk,
+        type: 'usage',
+        inputTokens: 0,
+        outputTokens: response.content.join('').length, // Approximate token count
       };
-
-      // Simulate some delay between chunks
-      await new Promise(resolve => setTimeout(resolve, 1));
+    } else {
+      // Handle single response
+      const chunks = response.content.match(/.{1,4}/g) || [];
+      for (const chunk of chunks) {
+        yield {
+          type: 'text',
+          text: chunk,
+        };
+        // Simulate some delay between chunks
+        await new Promise(resolve => setTimeout(resolve, 1));
+      }
+      // Final usage chunk
+      yield {
+        type: 'usage',
+        inputTokens: 0,
+        outputTokens: response.content.length, // Approximate token count
+      };
     }
-
-    // Final usage chunk to update output tokens
-    yield {
-      type: 'usage',
-      inputTokens: 0,
-      outputTokens: response.content.length, // Approximate token count
-    };
   }
 
   getModel() {
