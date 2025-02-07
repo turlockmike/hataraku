@@ -1,4 +1,4 @@
-import { AttemptCompletionTool } from '../attempt-completion-tool';
+import { AttemptCompletionTool } from '../attempt-completion';
 import { createMockStream } from '../../testing/mock-stream';
 
 describe('AttemptCompletionTool', () => {

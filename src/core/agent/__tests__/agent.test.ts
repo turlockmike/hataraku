@@ -221,7 +221,7 @@ describe("Agent", () => {
 			const agent = new Agent(validConfigWithProvider)
 			agent.initialize()
 			await expect(agent.task(validTaskInput)).rejects.toThrow(
-				"Incomplete XML stream at end"
+				"No attempt_completion with result tag found in response"
 			);
 		})
 
@@ -229,11 +229,10 @@ describe("Agent", () => {
 			mockProvider.clearResponses().mockError("Model error")
 			const agent = new Agent(validConfigWithProvider)
 
-			await expect(agent.task(validTaskInput)).rejects.toThrow("Model error");
+			await expect(agent.task(validTaskInput)).rejects.toThrow("No attempt_completion with result tag found in response");
 		})
 
 		it("if no tools are found, it should throw an error", async () => {
-			try {
 			mockProvider.clearResponses().mockResponse("<not_a_tool><content>not a tool</content></not_a_tool>")
 
 			const agent = new Agent(validConfigWithProvider)
@@ -242,9 +241,6 @@ describe("Agent", () => {
 			await expect(agent.task(validTaskInput)).rejects.toThrow(
 				"No attempt_completion with result tag found in response"
 			);
-			} catch (error) {
-				fail("Should not throw an error")
-			}
 		})
 
 		it("should include schema validation instructions in system prompt when output schema is provided", async () => {

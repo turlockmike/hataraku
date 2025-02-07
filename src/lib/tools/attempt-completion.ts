@@ -82,7 +82,6 @@ export class AttemptCompletionTool implements UnifiedTool<AttemptCompletionInput
     }
 
     getContent(): string {
-        console.log('AttemptCompletionTool getContent', this.content);
         return this.content.join('');
     }
 }

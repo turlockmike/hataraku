@@ -8,7 +8,7 @@ import process from 'node:process';
 import { Thread } from '../thread/thread';
 import { serializeZodSchema } from '../../utils/schema';
 import { ApiStreamChunk } from '../../api/transform/stream';
-import { AttemptCompletionTool } from '../../lib/tools/attempt-completion-tool';
+import { AttemptCompletionTool } from '../../lib/tools/attempt-completion';
 import { ThinkingTool } from '../../lib/tools/thinking-tool';
 import { processModelStream, StreamProcessorState } from '../../utils/model-stream-processor';
 
@@ -304,7 +304,6 @@ public async task<TOutput = string>(
     }
 
     const finalContent = attemptCompletionTool.getContent();
-    console.log('Final content:', finalContent); // Debug log
     const content = input.outputSchema ? JSON.parse(finalContent) : finalContent;
 
     // Optionally add the assistant's response to the thread.

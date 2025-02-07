@@ -85,7 +85,7 @@ export class MockProvider implements ModelProvider {
       };
 
       // Simulate some delay between chunks
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 1));
     }
 
     // Final usage chunk to update output tokens

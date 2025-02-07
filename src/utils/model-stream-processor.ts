@@ -21,6 +21,11 @@ export interface ExtendedTaskMetadata extends TaskMetadata {
     cacheReads: number;
     cost: number;
   };
+  errors?: {
+    type: string;
+    message: string;
+    timestamp: number;
+  }[];
 }
 
 export interface StreamProcessorState {
@@ -43,13 +48,14 @@ export async function processModelStream(
   state: { thinkingChain: string[] }
 ): Promise<ExtendedTaskMetadata> {
   // Create a promise that will resolve when attempt_completion is encountered
-  let metadataResolve: ((value: ExtendedTaskMetadata) => void) | null = null;
+  let metadataResolve!: (value: ExtendedTaskMetadata) => void;
   const metadataPromise = new Promise<ExtendedTaskMetadata>((resolve) => {
     metadataResolve = resolve;
   });
 
   // Array to record tool call events
   const toolCalls: ToolCall[] = [];
+  const errors: { type: string; message: string; timestamp: number; }[] = [];
 
   // Build stream handlers from tools that have streamHandler
   const handlers: { [toolName: string]: { stream: (data: string) => void, finalize?: () => void } } = {};
@@ -104,13 +110,14 @@ export async function processModelStream(
       toolCalls.push({ name: toolName, params });
       
       // When attempt_completion is encountered, resolve metadata
-      if (toolName === 'attempt_completion' && metadataResolve) {
+      if (toolName === 'attempt_completion') {
         metadataResolve({
           taskId,
           input: input.content,
           thinking: state.thinkingChain,
           toolCalls,
-          usage: { ...usageMetrics }
+          usage: { ...usageMetrics },
+          errors: errors.length > 0 ? errors : undefined
         });
       }
     }
@@ -129,7 +136,15 @@ export async function processModelStream(
   try {
     for await (const chunk of modelStream) {
       if (chunk.type === 'text') {
-        parser.write(chunk.text);
+        try {
+          parser.write(chunk.text);
+        } catch (err) {
+          errors.push({
+            type: 'parse_error',
+            message: err instanceof Error ? err.message : String(err),
+            timestamp: Date.now()
+          });
+        }
       } else if (chunk.type === 'usage') {
         usageMetrics.tokensIn += chunk.inputTokens || 0;
         usageMetrics.tokensOut += chunk.outputTokens || 0;
@@ -138,24 +153,35 @@ export async function processModelStream(
         usageMetrics.cost += chunk.totalCost || 0;
       }
     }
-    parser.end();
+    try {
+      parser.end();
+    } catch (err) {
+      errors.push({
+        type: 'stream_end_error',
+        message: err instanceof Error ? err.message : String(err),
+        timestamp: Date.now()
+      });
+    }
   } catch (err) {
-    console.error('Error processing stream:', err); // Debug log
-    throw err instanceof Error ? err : new Error(String(err));
+    errors.push({
+      type: 'stream_processing_error',
+      message: err instanceof Error ? err.message : String(err),
+      timestamp: Date.now()
+    });
   }
 
-  // Wait for metadata resolution or default metadata if attempt_completion was not encountered
-  const metadata = await Promise.race([
-    metadataPromise,
-    Promise.resolve({
-      taskId,
-      input: input.content,
-      thinking: state.thinkingChain,
-      toolCalls,
-      usage: { ...usageMetrics }
-    } as ExtendedTaskMetadata)
-  ]);
+  // Create metadata object
+  const metadata: ExtendedTaskMetadata = {
+    taskId,
+    input: input.content,
+    thinking: state.thinkingChain,
+    toolCalls,
+    usage: { ...usageMetrics },
+    errors: errors.length > 0 ? errors : undefined
+  };
 
-  console.log('Tool calls:', toolCalls); // Debug log
-  return metadata;
+  // Resolve metadata if not already resolved
+  metadataResolve(metadata);
+
+  return metadataPromise;
 }

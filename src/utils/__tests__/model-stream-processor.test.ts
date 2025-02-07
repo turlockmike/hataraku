@@ -1,7 +1,7 @@
 import { processModelStream } from '../model-stream-processor';
 import { ApiStreamChunk } from '../../api/transform/stream';
 import { TaskInput } from '../../core/agent/types/config';
-import { AttemptCompletionTool } from '../../lib/tools/attempt-completion-tool';
+import { AttemptCompletionTool } from '../../lib/tools/attempt-completion';
 import { ThinkingTool } from '../../lib/tools/thinking-tool';
 import { UnifiedTool } from '../../lib/types';
 import { createMockStream as createOutputMockStream } from '../../lib/testing/mock-stream';
@@ -125,13 +125,127 @@ describe('Model Stream Processor', () => {
       role: 'assistant'
     };
 
-    await expect(processModelStream(
+    const metadata = await processModelStream(
       createMockStream(mockChunks),
       'test-task-3',
       input,
       tools,
       state
-    )).rejects.toThrow();
+    );
+
+    // Verify that the error was captured in metadata
+    
+    expect(metadata.errors).toMatchObject([{"message": "Mismatched closing tag </B> for tool element <A>.", "timestamp": expect.any(Number), "type": "parse_error"}, {"message": "Stream ended while still inside an element", "timestamp": expect.any(Number), "type": "stream_end_error"}]);
+    
+
+    // Verify that other metadata is still present
+    expect(metadata.taskId).toEqual('test-task-3');
+    expect(metadata.thinking).toEqual(['analyzing']);
+    expect(metadata.toolCalls).toHaveLength(1);
+    expect(metadata.toolCalls[0].name).toEqual('thinking');
+  });
+
+  it('should handle stream end errors', async () => {
+    const mockChunks: ApiStreamChunk[] = [
+      { type: 'text', text: '<thinking>analyzing</thinking>' },
+      { type: 'text', text: '<foo><param1>test' } // Incomplete XML
+    ];
+
+    const input: TaskInput<string> = {
+      content: 'test task',
+      role: 'assistant'
+    };
+
+    const metadata = await processModelStream(
+      createMockStream(mockChunks),
+      'test-task-end-error',
+      input,
+      tools,
+      state
+    );
+
+    // Verify that the error was captured in metadata
+    expect(metadata.errors).toBeDefined();
+    expect(metadata.errors!.length).toBe(1);
+    expect(metadata.errors![0]).toMatchObject({
+      type: 'stream_end_error',
+      message: expect.stringContaining('Stream ended while still inside an element'),
+      timestamp: expect.any(Number)
+    });
+
+    // Verify that partial processing still occurred
+    expect(metadata.thinking).toEqual(['analyzing']);
+    expect(metadata.toolCalls).toHaveLength(1);
+    expect(metadata.toolCalls[0].name).toEqual('thinking');
+  });
+
+  it('should handle multiple errors in the same stream', async () => {
+    const mockChunks: ApiStreamChunk[] = [
+      { type: 'text', text: '<thinking>analyzing</thinking>' },
+      { type: 'text', text: '<A>tag</B>' }, // Parse error
+      { type: 'text', text: '<foo><param1>test' } // Stream end error
+    ];
+
+    const input: TaskInput<string> = {
+      content: 'test task',
+      role: 'assistant'
+    };
+
+    const metadata = await processModelStream(
+      createMockStream(mockChunks),
+      'test-task-multiple-errors',
+      input,
+      tools,
+      state
+    );
+
+    // Verify that both errors were captured
+    expect(metadata.errors).toBeDefined();
+    expect(metadata.errors!.length).toBe(2);
+    expect(metadata.errors![0]).toMatchObject({
+      type: 'parse_error',
+      message: expect.stringContaining('Mismatched closing tag'),
+      timestamp: expect.any(Number)
+    });
+    expect(metadata.errors![1]).toMatchObject({
+      type: 'stream_end_error',
+      message: expect.stringContaining('Stream ended while still inside an element'),
+      timestamp: expect.any(Number)
+    });
+
+    // Verify that successful operations were still recorded
+    expect(metadata.thinking).toEqual(['analyzing']);
+    expect(metadata.toolCalls).toHaveLength(1);
+    expect(metadata.toolCalls[0].name).toEqual('thinking');
+  });
+
+  it('should complete successfully when no errors occur', async () => {
+    const mockChunks: ApiStreamChunk[] = [
+      { type: 'text', text: '<thinking>analyzing</thinking>' },
+      { type: 'text', text: '<attempt_completion>success</attempt_completion>' }
+    ];
+
+    const input: TaskInput<string> = {
+      content: 'test task',
+      role: 'assistant'
+    };
+
+    const metadata = await processModelStream(
+      createMockStream(mockChunks),
+      'test-task-no-errors',
+      input,
+      tools,
+      state
+    );
+
+    // Verify that no errors were recorded
+    expect(metadata.errors).toBeUndefined();
+    
+    // Verify normal processing occurred
+    expect(metadata.thinking).toEqual(['analyzing']);
+    expect(metadata.toolCalls).toHaveLength(2);
+    expect(metadata.toolCalls[0].name).toEqual('thinking');
+    expect(metadata.toolCalls[1].name).toEqual('attempt_completion');
   });
 
   it('should handle multiple thinking blocks before completion', async () => {
