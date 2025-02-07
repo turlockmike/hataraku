@@ -374,7 +374,7 @@ export class Agent {
           toolCalls.push(...step.toolCalls.map(call => ({
             name: call.name,
             params: call.params,
-            result: call.result,
+            result: call.name === 'attempt_completion' ? call.content : call.result,
             stepNumber
           })));
 
