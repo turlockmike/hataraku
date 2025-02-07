@@ -128,3 +128,61 @@ export interface ToolDefinition {
   name: string;
   streamHandler?: (toolName: string, toolStream: AsyncGenerator<string, void, void>) => Promise<void>;
 }
+
+export interface TaskMetadata {
+    taskId: string;
+    input: string;
+    errors?: any;
+    totalSteps: number;
+    toolCalls: { 
+      name: string; 
+      params: any; 
+      result?: any;
+      stepNumber: number;
+    }[];
+    usage: {
+      cacheReads: number;
+      cacheWrites: number;
+      cost: number;
+      tokensIn: number;
+      tokensOut: number;
+    };
+  }
+  
+  /**
+  * Composite result of a task execution.
+  * Contains a streaming async iterator, a promise for the final result and a promise for metadata.
+  */
+  export interface StreamingTaskOutput<T> {
+    stream: AsyncGenerator<string, T>;
+    content: Promise<T>;
+    metadata: Promise<TaskMetadata>;
+  }
+  
+  /**
+  * Non-streaming task output.
+  * Contains the final result and metadata directly.
+  */
+  export interface NonStreamingTaskOutput<T> {
+    content: T;
+    metadata: TaskMetadata;
+  }
+  
+  /**
+  * Represents a single step in the agent's task execution process
+  */
+  export interface AgentStep {
+    thinking: string[];
+    toolCalls: Array<{
+      name: string;
+      content: string;
+      params: any;
+      result: any;
+    }>;
+    completion?: string;
+    metadata: {
+      tokensIn?: number;
+      tokensOut?: number;
+      cost?: number;
+    };
+  }

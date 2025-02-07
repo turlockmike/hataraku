@@ -14,11 +14,12 @@ async function main() {
 
   // Create and initialize agent
   const agent = new Agent(config);
+  agent.initialize();
 
   // Create task input with streaming enabled
   const task = {
     role: 'user' as const,
-    content: 'Write a detailed epic poem (at least 20 lines) about a programmer\'s journey through learning artificial intelligence, with rich metaphors comparing coding concepts to natural phenomena. Include specific mentions of neural networks, machine learning algorithms, and the emotional journey of discovery.',
+    content: 'Write a detailed epic poem (at least 5 lines) about a programmer\'s journey through learning artificial intelligence, with rich metaphors comparing coding concepts to natural phenomena. Include specific mentions of neural networks, machine learning algorithms, and the emotional journey of discovery.',
     stream: true as const // Enable streaming
   };
 
@@ -28,12 +29,15 @@ async function main() {
     
     // Use for-await-of to process the stream
     const result = await agent.task(task);
+    let chunkCount = 0;
     for await (const chunk of result.stream) {
+      chunkCount++;
       // Print chunk without newline to show streaming effect
       process.stdout.write(chunk);
     }
     
     console.log('\n\nTask completed!');
+    console.log('Total chunks received:', chunkCount);
     console.log('metadata:', await result.metadata);
   } catch (error) {
     console.error('Error:', error);

@@ -2,9 +2,10 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs/promises';
 import path from 'path';
 import { Anthropic } from '@anthropic-ai/sdk';
+import { MessageRole } from '../../lib/types';
 
 export interface ThreadMessage {
-  role: 'user' | 'assistant';
+  role: MessageRole;
   content: string;
   timestamp: Date;
 }
@@ -57,7 +58,7 @@ export class Thread {
   }
 
   // Message Management
-  addMessage(role: 'user' | 'assistant', content: string): void {
+  addMessage(role: MessageRole, content: string): void {
     const message: ThreadMessage = {
       role,
       content,
