@@ -164,12 +164,13 @@ describe("Agent", () => {
 			
 			const content = await result.content
 			const metadata = await result.metadata
-			
-			expect(chunks.join("")).toBe("test response")
 			expect(content).toBe("test response")
+			expect(chunks.join("")).toBe("test response")
+			
 			expect(metadata).toEqual({
 				taskId: expect.any(String),
 				input: expect.any(String),
+				thinking: expect.any(Array),
 			})
 		})
 
@@ -285,6 +286,8 @@ describe("Agent", () => {
 			for await (const chunk of result.stream) {
 				receivedChunks.push(chunk)
 			}
+
+			expect(receivedChunks.join("")).toBe("Here is the streamed content")
 
 			// Also verify the final content
 			const content = await result.content

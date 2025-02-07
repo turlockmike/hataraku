@@ -1,12 +1,13 @@
 import { AttemptCompletionTool } from '../attempt-completion-tool';
+import { createMockStream } from '../../testing/mock-stream';
 
 describe('AttemptCompletionTool', () => {
   let tool: AttemptCompletionTool;
-  let outputStream: string[];
+  let mockStream: AsyncGenerator<string> & { push(item: string): void; end(): void };
   
   beforeEach(() => {
-    outputStream = [];
-    tool = new AttemptCompletionTool(outputStream);
+    mockStream = createMockStream<string>();
+    tool = new AttemptCompletionTool(mockStream);
   });
 
   test('should correctly handle stream data via streamHandler', async () => {
@@ -36,7 +37,12 @@ describe('AttemptCompletionTool', () => {
     });
 
     expect(finalContent).toBe(chunk1 + chunk2);
-    expect(outputStream).toEqual([chunk1, chunk2]);
+    // Use for await...of to get all chunks from the stream
+    const chunks: string[] = [];
+    for await (const chunk of mockStream) {
+      chunks.push(chunk);
+    }
+    expect(chunks).toEqual([chunk1, chunk2]);
   });
 
   test('should execute successfully', async () => {

@@ -12,8 +12,9 @@ export interface AttemptCompletionOutput {
 export class AttemptCompletionTool implements UnifiedTool<AttemptCompletionInput, AttemptCompletionOutput> {
     name = 'attempt_completion';
     description = 'Attempt to complete the task';
+    private content: string[] = [];
 
-    constructor(private outputStream: string[]) {}
+    constructor(private contentStream: AsyncGenerator<string, any>) {}
 
     parameters = {
         result: {
@@ -51,27 +52,20 @@ export class AttemptCompletionTool implements UnifiedTool<AttemptCompletionInput
     };
 
     streamHandler = {
-        stream: (data: string, resolve?: (value: any) => void) => {
-            this.outputStream.push(data);
+        stream: async (data: string, resolve?: (value: any) => void) => {
+            this.content.push(data);
+            (this.contentStream as any).push(data);
             if (resolve) {
                 resolve(data);
             }
         },
         finalize: (resolve?: (value: any) => void) => {
-            const finalContent = this.outputStream.join('');
             if (resolve) {
-                resolve(finalContent);
+                resolve(this.getContent());
             }
+            (this.contentStream as any).end();
         }
     };
-
-    /**
-     * Get the current content from the output stream
-     * @returns The joined content from the output stream
-     */
-    getContent(): string {
-        return this.outputStream.join('');
-    }
 
     async execute({ result }: AttemptCompletionInput, _cwd: string): Promise<AttemptCompletionOutput> {
         try {
@@ -85,5 +79,9 @@ export class AttemptCompletionTool implements UnifiedTool<AttemptCompletionInput
                 message: `Error completing task: ${error.message}`
             };
         }
+    }
+
+    getContent(): string {
+        return this.content.join('');
     }
 }

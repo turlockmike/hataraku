@@ -4,6 +4,7 @@ import { TaskInput } from '../../core/agent/types/config';
 import { AttemptCompletionTool } from '../../lib/tools/attempt-completion-tool';
 import { ThinkingTool } from '../../lib/tools/thinking-tool';
 import { UnifiedTool } from '../../lib/types';
+import { createMockStream as createOutputMockStream } from '../../lib/testing/mock-stream';
 
 // Helper function to create async iterable from chunks
 async function* createMockStream(chunks: ApiStreamChunk[]): AsyncIterable<ApiStreamChunk> {
@@ -14,11 +15,11 @@ async function* createMockStream(chunks: ApiStreamChunk[]): AsyncIterable<ApiStr
 
 describe('Model Stream Processor', () => {
   let state: StreamProcessorState;
-  let attemptCompletionOutputStream: string[];
+  let attemptCompletionOutputStream: AsyncGenerator<string, any, any> & { push(item: string): void; end(): void };
   let tools: UnifiedTool[];
 
   beforeEach(() => {
-    attemptCompletionOutputStream = [];
+    attemptCompletionOutputStream = createOutputMockStream<string>();
     state = {
       thinkingChain: []
     };
@@ -49,7 +50,11 @@ describe('Model Stream Processor', () => {
       state
     );
 
-    expect(attemptCompletionOutputStream).toEqual(['result']);
+    const chunks: string[] = [];
+    for await (const chunk of attemptCompletionOutputStream) {
+      chunks.push(chunk);
+    }
+    expect(chunks).toEqual(['result']);
     expect(metadata).toEqual({
       taskId: 'test-task-1',
       input: 'test task',
@@ -72,7 +77,12 @@ describe('Model Stream Processor', () => {
       state
     );
 
-    expect(attemptCompletionOutputStream).toEqual([]);
+    attemptCompletionOutputStream.end();
+    const chunks: string[] = [];
+    for await (const chunk of attemptCompletionOutputStream) {
+      chunks.push(chunk);
+    }
+    expect(chunks).toEqual([]);
     expect(metadata).toEqual({
       taskId: 'test-task-2',
       input: 'test task',
@@ -120,7 +130,11 @@ describe('Model Stream Processor', () => {
       state
     );
 
-    expect(attemptCompletionOutputStream).toEqual(['final result']);
+    const chunks: string[] = [];
+    for await (const chunk of attemptCompletionOutputStream) {
+      chunks.push(chunk);
+    }
+    expect(chunks).toEqual(['final result']);
     expect(metadata.thinking).toEqual(['step 1', 'step 2']);
   });
 
@@ -144,7 +158,11 @@ describe('Model Stream Processor', () => {
         state
       );
 
-      expect(attemptCompletionOutputStream).toEqual(['Here is the final result']);
+      const chunks: string[] = [];
+      for await (const chunk of attemptCompletionOutputStream) {
+        chunks.push(chunk);
+      }
+      expect(chunks).toEqual(['Here is the final result']);
       expect(metadata).toEqual({
         taskId: 'test-task-completion',
         input: 'test task',
@@ -171,7 +189,11 @@ describe('Model Stream Processor', () => {
         state
       );
 
-      expect(attemptCompletionOutputStream).toEqual(['First part of the result']);
+      const chunks: string[] = [];
+      for await (const chunk of attemptCompletionOutputStream) {
+        chunks.push(chunk);
+      }
+      expect(chunks).toEqual(['First part of the result']);
       expect(metadata).toEqual({
         taskId: 'test-task-chunks',
         input: 'test task',

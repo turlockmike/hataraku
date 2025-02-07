@@ -135,51 +135,107 @@ export class Agent {
     })
   }
 
-  /**
-  * Executes a task using the configured model and tools.
-  * @param input The task input configuration
-  * @returns A streaming output object if streaming is enabled, otherwise a promise that resolves to the final result
-  */
-  public async task<TOutput = string>(
-    input: TaskInput<TOutput> & { stream: true }
-  ): Promise<StreamingTaskOutput<TOutput>>;
-  public async task<TOutput = string>(
-    input: TaskInput<TOutput> & { stream?: false | undefined }
-  ): Promise<NonStreamingTaskOutput<TOutput>>;
+  // A helper that creates an async stream with push/end capabilities.
+  private createAsyncStream<T>(): AsyncGenerator<T> & { push(item: T): void; end(): void } {
+    const buffer: T[] = [];
+    let finished = false;
+    let resolver: ((result: IteratorResult<T>) => void) | null = null;
+
+    const generator: AsyncGenerator<T> = {
+      async next(): Promise<IteratorResult<T>> {
+        if (buffer.length > 0) {
+          return { value: buffer.shift()!, done: false };
+        }
+        if (finished) {
+          return { value: undefined as any, done: true };
+        }
+        return new Promise(resolve => {
+          resolver = resolve;
+        });
+      },
+      async return(): Promise<IteratorResult<T>> {
+        finished = true;
+        return { value: undefined as any, done: true };
+      },
+      async throw(err: any): Promise<IteratorResult<T>> {
+        finished = true;
+        return { value: undefined as any, done: true };
+      },
+      [Symbol.asyncIterator]() { return this; },
+      async [Symbol.asyncDispose]() {
+        finished = true;
+      }
+    };
+
+    const stream = {
+      push(item: T) {
+        if (resolver) {
+          resolver({ value: item, done: false });
+          resolver = null;
+        } else {
+          buffer.push(item);
+        }
+      },
+      end() {
+        finished = true;
+        if (resolver) {
+          resolver({ value: undefined as any, done: true });
+          resolver = null;
+        }
+      }
+    };
+
+    return { ...generator, ...stream } as AsyncGenerator<T> & { push(item: T): void; end(): void };
+  }
+
+  // Overload for streaming mode.
+public async task<TOutput = string>(
+  input: TaskInput<TOutput> & { stream: true }
+): Promise<StreamingTaskOutput<TOutput>>;
+
+// Overload for non-streaming mode.
+public async task<TOutput = string>(
+  input: TaskInput<TOutput> & { stream?: false | undefined }
+): Promise<NonStreamingTaskOutput<TOutput>>;
+
   public async task<TOutput = string>(
     input: TaskInput<TOutput> & { stream?: boolean }
   ): Promise<StreamingTaskOutput<TOutput> | NonStreamingTaskOutput<TOutput>> {
+    // Ensure the instance is initialized.
     if (!this.initialized) {
-      this.initialize();
+      await this.initialize();
     }
 
+    // Streaming responses do not support output schemas.
     if (input.stream && input.outputSchema) {
-      return Promise.reject(new Error("Output schemas are not supported with streaming responses"));
+      throw new Error("Output schemas are not supported with streaming responses");
     }
 
-    // Generate a unique taskId for this task.
+    // Generate a unique taskId.
     const taskId = `${Date.now()}-${this.taskCounter++}`;
-
     const systemPrompt = this.systemPromptBuilder.build();
     const thread = input.thread || new Thread();
+
+    // Build the message content.
     let messageContent = `<task>${input.content}</task>`;
     if (input.outputSchema) {
       const schemaStr = serializeZodSchema(input.outputSchema);
       messageContent += `<output_schema>${schemaStr}</output_schema>`;
     }
-    thread.addMessage('user', messageContent);
+    thread.addMessage("user", messageContent);
     const messages = thread.getFormattedMessages(true);
 
-    // Reset state
-    this.streamState = {
-      thinkingChain: []
-    };
+    // Reset the stream state.
+    this.streamState = { thinkingChain: [] };
 
-    // Create a new AttemptCompletionTool instance for this task
-    const outputStream: string[] = [];
+    // Create an async stream that we will use for streaming output.
+    const outputStream = this.createAsyncStream<string>();
+
+    // Create the attemptCompletion tool, providing it the stream.
+    // (Assuming the tool writes its chunks to the stream.)
     const attemptCompletionTool = new AttemptCompletionTool(outputStream);
 
-    // Get the base async iterable stream from the model.
+    // Get the model's async stream (e.g. from your provider).
     let modelStream: AsyncIterable<ApiStreamChunk>;
     try {
       modelStream = this.modelProvider.createMessage(systemPrompt, messages);
@@ -187,57 +243,42 @@ export class Agent {
       throw new Error("No attempt_completion with result tag found in response");
     }
 
-    // Get all tools including first-class tools
-    const allTools = [
-      this.thinkingTool,
-      attemptCompletionTool,
-      ...this.config.tools || []
-    ];
+    // Combine all tools (first-class and others) into one array.
+    const allTools = [this.thinkingTool, attemptCompletionTool, ...(this.config.tools || [])];
 
-    // Create a stream that yields from the AttemptCompletionTool's output
-    const contentStream = (async function*(this: Agent): AsyncGenerator<string, TOutput> {
-      let lastContent = '';
-      while (true) {
-        const content = attemptCompletionTool.getContent();
-        if (content && content !== lastContent) {
-          lastContent = content;
-          yield content;
-        }
-        await new Promise(resolve => setTimeout(resolve, 10)); // Small delay to prevent busy loop
-      }
-    }).bind(this)();
-
-    // Process the model stream to get metadata
+    // Process the model's stream concurrently; this returns a metadata promise.
     const metadataPromise = processModelStream(modelStream, taskId, input, allTools, this.streamState);
 
-    // For streaming case, return the full output object
+    // Once the metadata (and processing) is complete, push final content and finish the stream.
+    metadataPromise.then(() => {
+      const finalContent = attemptCompletionTool.getContent();
+      outputStream.push(finalContent);
+      outputStream.end();
+    });
+
+    // If streaming mode was requested, return the stream along with a content promise and metadata.
     if (input.stream) {
-      const contentPromise = new Promise<TOutput>(async (resolve) => {
-        let lastContent = '';
-        for await (const chunk of contentStream) {
-          lastContent = chunk;
-        }
-        resolve(input.outputSchema
-          ? JSON.parse(lastContent) as TOutput
-          : lastContent as unknown as TOutput);
-      });
+      // contentPromise iterates over the stream to get the final output.
+      const contentPromise = metadataPromise.then(() => {
+        const content = attemptCompletionTool.getContent();
+        return input.outputSchema ? JSON.parse(content) : content;
+      }) as Promise<TOutput>;
 
       return {
-        stream: contentStream,
+        stream: outputStream,
         content: contentPromise,
-        metadata: metadataPromise
+        metadata: metadataPromise,
       };
     }
 
-    // For non-streaming case, wait for metadata and get final content
+    // Non-streaming case: wait for metadata and then return the final content.
     const metadata = await metadataPromise;
-    const content = input.outputSchema
-      ? JSON.parse(attemptCompletionTool.getContent()) as TOutput
-      : attemptCompletionTool.getContent() as unknown as TOutput;
+    const finalContent = attemptCompletionTool.getContent();
+    const content = input.outputSchema ? JSON.parse(finalContent) : finalContent;
 
-    // Add response to thread if provided
+    // Optionally add the assistant's response to the thread.
     if (thread && content) {
-      thread.addMessage('assistant', String(content));
+      thread.addMessage("assistant", String(content));
     }
 
     return { content, metadata };
