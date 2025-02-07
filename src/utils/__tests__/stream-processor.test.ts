@@ -1,5 +1,4 @@
-import { processResponseStream, transformApiStreamForXmlParser } from '../stream-processor';
-import { Thread } from '../../core/thread/thread';
+import { transformApiStreamForXmlParser } from '../stream-processor';
 import { ApiStreamChunk } from '../../api/transform/stream';
 
 // Helper function to create async iterable from chunks
