@@ -1,9 +1,9 @@
 import { AgentConfig, TaskInput } from './types/config';
 import { agentConfigSchema } from './schemas/config';
-import { UnifiedTool } from '../../lib/types';
+import { HatarakuTool } from '../../lib/types';
 import { ModelProvider, modelProviderFromConfig } from '../../api';
 import { SystemPromptBuilder } from '../prompts/prompt-builder';
-import { getToolDocs } from '../../lib';
+import { getHatarakuToolDocs } from '../../lib';
 import process from 'node:process';
 import { Thread } from '../thread/thread';
 import { serializeZodSchema } from '../../utils/schema';
@@ -11,6 +11,7 @@ import { ApiStreamChunk } from '../../api/transform/stream';
 import { AttemptCompletionTool } from '../../lib/tools/attempt-completion';
 import { ThinkingTool } from '../../lib/tools/thinking-tool';
 import { processModelStream, StreamProcessorState } from '../../utils/model-stream-processor';
+import { z } from 'zod';
 
 /**
 * Metadata for a completed task.
@@ -51,7 +52,7 @@ export interface NonStreamingTaskOutput<T> {
 export class Agent {
   private readonly config: AgentConfig;
   private initialized: boolean = false;
-  private tools: Map<string, UnifiedTool> = new Map();
+  private tools: Map<string, HatarakuTool> = new Map();
   private modelProvider: ModelProvider;
   private systemPromptBuilder: SystemPromptBuilder;
   private role: string;
@@ -130,7 +131,7 @@ export class Agent {
 
     this.systemPromptBuilder.addSection({
       name: 'tool_list',
-      content: getToolDocs(Array.from(this.tools.values())),
+      content: getHatarakuToolDocs(Array.from(this.tools.values())),
       order: 45, // After tool-use-guidelines
       enabled: true
     })
@@ -267,8 +268,34 @@ public async task<TOutput = string>(
           if (toolCall.name !== 'attempt_completion' && toolCall.name !== 'thinking') {
             const tool = this.getTool(toolCall.name);
             if (tool.execute) {
-              const result = await tool.execute(toolCall.params, process.cwd());
-              toolCall.result = result;
+              try {
+                // Convert JSON Schema to Zod schema for validation
+                const schema = tool.inputSchema && tool.inputSchema.properties ? z.object(
+                  Object.fromEntries(
+                    Object.entries(tool.inputSchema.properties).map(([key, value]) => [
+                      key,
+                      (value as { type: string }).type === 'number'
+                        ? z.preprocess((arg) => {
+                            if (typeof arg === 'string') {
+                              const num = Number(arg);
+                              return isNaN(num) ? arg : num;
+                            }
+                            return arg;
+                          }, z.number())
+                        : z.any()
+                    ])
+                  )
+                ) : undefined;
+                
+                const convertedParams = schema ? schema.parse(toolCall.params) : toolCall.params;
+                const res = await tool.execute(convertedParams);
+                if (res.isError) {
+                  throw new Error('Tool execution failed');
+                }
+                toolCall.result = res.content;
+              } catch (err) {
+                toolCall.result = err instanceof Error ? err : new Error(String(err));
+              }
             }
           }
         }
@@ -297,8 +324,35 @@ public async task<TOutput = string>(
       if (toolCall.name !== 'attempt_completion' && toolCall.name !== 'thinking') {
         const tool = this.getTool(toolCall.name);
         if (tool.execute) {
-          const result = await tool.execute(toolCall.params, process.cwd());
-          toolCall.result = result;
+          try {
+            // Convert JSON Schema to Zod schema for validation
+            const schema = tool.inputSchema && tool.inputSchema.properties ? z.object(
+              Object.fromEntries(
+                Object.entries(tool.inputSchema.properties).map(([key, value]) => [
+                  key,
+                  (value as { type: string }).type === 'number'
+                    ? z.preprocess((arg) => {
+                        if (typeof arg === 'string') {
+                          const num = Number(arg);
+                          return isNaN(num) ? arg : num;
+                        }
+                        return arg;
+                      }, z.number())
+                    : z.any()
+                ])
+              )
+            ) : undefined;
+            
+            const convertedParams = schema ? schema.parse(toolCall.params) : toolCall.params;
+            const res = await tool.execute(convertedParams);
+            
+            if (res.isError) {
+              throw new Error('Tool execution failed');
+            }
+            toolCall.result = res.content;
+          } catch (err) {
+            toolCall.result = err instanceof Error ? err : new Error(String(err));
+          }
         }
       }
     }
@@ -320,7 +374,7 @@ public async task<TOutput = string>(
   * @returns The tool if found
   * @throws {Error} If the tool is not found
   */
-  private getTool(name: string): UnifiedTool {
+  private getTool(name: string): HatarakuTool {
     const tool = this.tools.get(name);
     if (!tool) {
       throw new Error(`Tool '${name}' not found`);

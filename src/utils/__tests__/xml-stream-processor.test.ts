@@ -431,4 +431,25 @@ describe('XMLStreamParser', () => {
     expect(streamedData).not.toContain('</liveTool>');
     expect(streamedData).not.toContain('</live');
   });
+
+  test('multiple tools in multiple chunks', () => {
+    const onToolParsed = jest.fn();
+    const parser = new XMLStreamParser({
+      streamHandlers: {},
+      onToolParsed,
+    });
+
+    parser.write('<thinking>Let me calculate that for you</thinking>');
+    parser.write('<math_add><');
+    parser.write('a>5</a');
+    parser.write('><b>3</b');
+    parser.write('></math_add>');
+    parser.write('<attempt_completion>The result is 8</attempt_completion>');
+    parser.end();
+    
+    expect(onToolParsed).toHaveBeenCalledWith('thinking', { content: 'Let me calculate that for you' });
+    expect(onToolParsed).toHaveBeenCalledWith('math_add', { a: '5', b: '3' });
+    expect(onToolParsed).toHaveBeenCalledWith('attempt_completion', { content: 'The result is 8' });
+    
+  })
 });

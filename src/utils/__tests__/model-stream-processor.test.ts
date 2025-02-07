@@ -3,7 +3,7 @@ import { ApiStreamChunk } from '../../api/transform/stream';
 import { TaskInput } from '../../core/agent/types/config';
 import { AttemptCompletionTool } from '../../lib/tools/attempt-completion';
 import { ThinkingTool } from '../../lib/tools/thinking-tool';
-import { UnifiedTool } from '../../lib/types';
+import { HatarakuTool } from '../../lib/types';
 import { createMockStream as createOutputMockStream } from '../../lib/testing/mock-stream';
 
 // Helper function to create async iterable from chunks
@@ -14,7 +14,7 @@ async function* createMockStream(chunks: ApiStreamChunk[]): AsyncIterable<ApiStr
 }
 
 // Mock non-streaming tool for testing
-const mockFooTool: UnifiedTool = {
+const mockFooTool: HatarakuTool = {
   name: 'foo',
   description: 'A mock tool for testing',
   inputSchema: {
@@ -23,20 +23,42 @@ const mockFooTool: UnifiedTool = {
     required: [],
     additionalProperties: false
   },
-  outputSchema: {
+  execute: async () => ({
+    content: [{
+      type: 'text',
+      text: 'foo executed'
+    }]
+  })
+};
+
+// Mock math addition tool
+const mathAddTool: HatarakuTool = {
+  name: 'math_add',
+  description: 'Add two numbers together',
+  inputSchema: {
     type: 'object',
-    properties: {},
-    required: [],
+    properties: {
+      a: { type: 'number' },
+      b: { type: 'number' }
+    },
+    required: ['a', 'b'],
     additionalProperties: false
   },
-  parameters: {},
-  execute: async () => [false, 'foo executed']
+  
+  execute: async (params: { a: number; b: number }) => {
+    return {
+      content: [{
+        type: 'text',
+        text: `The result is ${params.a + params.b}`
+      }]
+    };
+  }
 };
 
 describe('Model Stream Processor', () => {
   let state: { thinkingChain: string[] };
   let attemptCompletionOutputStream: AsyncGenerator<string, any, any> & { push(item: string): void; end(): void };
-  let tools: UnifiedTool[];
+  let tools: HatarakuTool[];
 
   beforeEach(() => {
     attemptCompletionOutputStream = createOutputMockStream<string>();
@@ -47,7 +69,7 @@ describe('Model Stream Processor', () => {
     // Create tools with stream handlers
     const completionTool = new AttemptCompletionTool(attemptCompletionOutputStream);
     const thinkingTool = new ThinkingTool(state.thinkingChain);
-    tools = [completionTool, thinkingTool, mockFooTool];
+    tools = [completionTool, thinkingTool, mockFooTool, mathAddTool];
   });
 
   it('should process stream and emit thinking and completion chunks', async () => {
@@ -357,4 +379,70 @@ describe('Model Stream Processor', () => {
       expect(metadata.usage).toEqual({ tokensIn: 0, tokensOut: 0, cacheWrites: 0, cacheReads: 0, cost: 0 });
     });
   });
+
+  it('should execute math_add tool and include result in metadata', async () => {
+    const mockChunks: ApiStreamChunk[] = [
+      { type: 'text', text: '<thinking>Let me calculate that for you</thinking>' },
+      { type: 'text', text: '<math_add><a>5</a><b>3</b></math_add>' },
+      { type: 'text', text: '<attempt_completion>The result is 8</attempt_completion>' }
+    ];
+
+    const input: TaskInput<string> = {
+      content: 'test task',
+      role: 'assistant'
+    };
+
+    const metadata = await processModelStream(
+      createMockStream(mockChunks),
+      'test-task-math',
+      input,
+      tools,
+      state
+    );
+
+    // Verify tool execution and result
+    expect(metadata.toolCalls).toHaveLength(3);
+    expect(metadata.toolCalls[0].name).toEqual('thinking');
+    expect(metadata.toolCalls[1]).toMatchObject({
+      name: 'math_add',
+      params: { a: '5', b: '3' },
+    });
+    expect(metadata.toolCalls[2].name).toEqual('attempt_completion');
+
+    // Verify thinking chain
+    expect(metadata.thinking).toEqual(['Let me calculate that for you']);
+
+    // Verify final output
+    const chunks: string[] = [];
+    for await (const chunk of attemptCompletionOutputStream) {
+      chunks.push(chunk);
+    }
+    expect(chunks).toEqual(['The result is 8']);
+  });
+
+  it('should work with very large chunks', async () => {
+    const text = '<thinking>Let me calculate that for you</thinking><math_add><a>5</a><b>3</b></math_add><attempt_completion>The result is 8</attempt_completion>';
+    const mockChunks: ApiStreamChunk[] = [
+      { type: 'text', text: text }
+    ];
+    const input: TaskInput<string> = {
+      content: 'test task',
+      role: 'assistant'
+    };
+
+    const metadata = await processModelStream(
+      createMockStream(mockChunks),
+      'test-task-large-chunk',
+      input,
+      tools,
+      state
+    );
+
+    expect(metadata.toolCalls).toHaveLength(3);
+    expect(metadata.toolCalls[0].name).toEqual('thinking');
+    expect(metadata.toolCalls[1].name).toEqual('math_add');
+    expect(metadata.toolCalls[2].name).toEqual('attempt_completion');
+    
+    
+  })
 });

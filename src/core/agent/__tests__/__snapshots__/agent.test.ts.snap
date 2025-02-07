@@ -82,17 +82,23 @@ TOOL_LIST
 ## thinking
 Description: Record thinking/reasoning steps
 Parameters:
-- content: (required) The thinking content
+- content: (required) The thinking content (type: string)
 
 ## mock_tool
 Description: A basic mock tool for testing
 Parameters:
-- input: (required) Test input parameter
+- result: (required) result (type: string)
 
 ## mock_tool_init
 Description: A basic mock tool for testing
 Parameters:
-- input: (required) Test input parameter
+- result: (required) result (type: string)
+
+## math_add
+Description: Add two numbers together
+Parameters:
+- a: (required) The first number to add (type: number)
+- b: (required) The second number to add (type: number)
 
 ====
 

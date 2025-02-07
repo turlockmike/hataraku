@@ -67,15 +67,6 @@ export class MockProvider implements ModelProvider {
     }
 
 
-    // First yield a usage chunk to simulate the message_start behavior
-    yield {
-      type: 'usage',
-      inputTokens: 100, // Mock values
-      outputTokens: 0,
-      cacheWriteTokens: undefined,
-      cacheReadTokens: undefined,
-    };
-
     // Split the response into smaller chunks to simulate streaming
     const chunks = response.content.match(/.{1,4}/g) || [];
     for (const chunk of chunks) {

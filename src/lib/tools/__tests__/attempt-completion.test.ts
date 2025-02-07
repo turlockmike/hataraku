@@ -47,10 +47,12 @@ describe('AttemptCompletionTool', () => {
 
   test('should execute successfully', async () => {
     const resultInput = 'final result';
-    const res = await tool.execute({ result: resultInput }, 'test-cwd');
+    const res = await tool.execute({ result: resultInput });
     expect(res).toEqual({
-      success: true,
-      message: resultInput
+      content: [{
+        type: 'text',
+        text: resultInput
+      }]
     });
   });
 

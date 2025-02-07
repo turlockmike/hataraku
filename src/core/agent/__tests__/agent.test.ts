@@ -4,6 +4,7 @@ import { Thread } from "../../thread/thread"
 import { z } from "zod"
 import { MockProvider, MockTool } from "../../../lib/testing"
 import { ModelProvider } from "../../../api"
+import { HatarakuTool } from "../../../lib/types"
 import os from "os"
 import process from "node:process"
 
@@ -13,6 +14,7 @@ describe("Agent", () => {
 	let mockToolWithInit: MockTool
 	let validConfigWithProvider: AgentConfig
 	let validConfigWithModelConfig: AgentConfig
+	let mathAddTool: HatarakuTool
 
 	beforeEach(() => {
 		mockProvider = new MockProvider()
@@ -22,10 +24,33 @@ describe("Agent", () => {
 			/* mock initialization */
 		})
 
+		// Initialize math add tool
+		mathAddTool = {
+			name: 'math_add',
+			description: 'Add two numbers together',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					a: { type: 'number', description: 'The first number to add' },
+					b: { type: 'number', description: 'The second number to add' }
+				},
+				required: ['a', 'b'],
+				additionalProperties: false
+			},	
+			execute: async (params: { a: number; b: number }) => {
+				return {
+					content: [{
+						type: 'text',
+						text: `The result is ${params.a + params.b}`
+					}]
+				};
+			}
+		};
+
 		validConfigWithProvider = {
 			name: "test-agent",
 			model: mockProvider as ModelProvider,
-			tools: [mockTool, mockToolWithInit],
+			tools: [mockTool, mockToolWithInit, mathAddTool],
 			role: "You are Hataraku, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.",
 			customInstructions: "You should always speak and think in the English language.",
 		}
@@ -36,7 +61,7 @@ describe("Agent", () => {
 				apiProvider: "anthropic",
 				apiModelId: "claude-3-5-sonnet-20241022",
 			},
-			tools: [mockTool, mockToolWithInit],
+			tools: [mockTool, mockToolWithInit, mathAddTool],
 			role: "You are Hataraku, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.",
 			customInstructions: "You should always speak and think in the English language.",
 		}
@@ -168,6 +193,7 @@ describe("Agent", () => {
 			expect(chunks.join("")).toBe("test response")
 			
 			expect(metadata).toEqual({
+				errors: undefined,
 				taskId: expect.any(String),
 				input: expect.any(String),
 				thinking: expect.any(Array),
@@ -183,7 +209,7 @@ describe("Agent", () => {
 					cacheReads: 0,
 					cacheWrites: 0,
 					cost: 0,
-					tokensIn: 100,
+					tokensIn: 0,
 					tokensOut: 54,
 				},
 			})
@@ -239,7 +265,7 @@ describe("Agent", () => {
 			agent.initialize()
 
 			await expect(agent.task(validTaskInput)).rejects.toThrow(
-				"No attempt_completion with result tag found in response"
+				"Tool 'not_a_tool' not found"
 			);
 		})
 
@@ -443,5 +469,80 @@ describe("Agent", () => {
 				expect(Array.from(newThread.getAllContexts().entries())).toHaveLength(0)
 			})
 		})
+
+		it("should execute math_add tool and include result in response", async () => {
+			mockProvider.clearResponses().mockResponse(`
+				<thinking>Let me calculate that for you</thinking>
+				<math_add><a>5</a><b>3</b></math_add>
+				<attempt_completion>The result is 8</attempt_completion>
+			`);
+
+			const agent = new Agent(validConfigWithProvider);
+			// agent.initialize();
+
+			const { content, metadata } = await agent.task(validTaskInput);
+
+			// Verify the final content
+			expect(content).toBe("The result is 8");
+
+			// Verify tool execution
+			expect(metadata.toolCalls).toHaveLength(3);
+			expect(metadata.toolCalls[0].name).toEqual('thinking');
+			expect(metadata.toolCalls[1]).toMatchObject({
+				name: 'math_add',
+				params: { a: '5', b: '3' },
+				result: [{
+					text: 'The result is 8',
+					type: 'text',
+				}]
+			});
+			expect(metadata.toolCalls[2].name).toEqual('attempt_completion');
+
+			// Verify thinking chain
+			expect(metadata.thinking).toEqual(['Let me calculate that for you']);
+		});
+
+		it("should handle math_add tool with string to number conversion", async () => {
+			mockProvider.clearResponses().mockResponse(`
+				<thinking>Processing calculation</thinking>
+				<math_add><a>10.5</a><b>2.3</b></math_add>
+				<attempt_completion>The result is 12.8</attempt_completion>
+			`);
+
+			const agent = new Agent(validConfigWithProvider);
+			agent.initialize();
+
+			const { content, metadata } = await agent.task(validTaskInput);
+
+			// Verify tool execution with floating point numbers
+			expect(metadata.toolCalls[1]).toMatchObject({
+				name: 'math_add',
+				params: { a: '10.5', b: '2.3' },
+				result: [{
+					text: 'The result is 12.8',
+					type: 'text',
+				}]
+			});
+		});
+
+		it("should handle math_add tool errors gracefully", async () => {
+			mockProvider.clearResponses().mockResponse(`
+				<thinking>Attempting calculation</thinking>
+				<math_add><a>invalid</a><b>3</b></math_add>
+				<attempt_completion>Failed to calculate</attempt_completion>
+			`);
+
+			const agent = new Agent(validConfigWithProvider);
+			agent.initialize();
+
+			const { content, metadata } = await agent.task(validTaskInput);
+
+			// Verify that the tool call was recorded but resulted in an error
+			expect(metadata.toolCalls[1]).toMatchObject({
+				name: 'math_add',
+				params: { a: 'invalid', b: '3' },
+				result: expect.any(Error)
+			});
+		});
 	})
 })

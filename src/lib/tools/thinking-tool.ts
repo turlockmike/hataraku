@@ -1,16 +1,13 @@
-import { UnifiedTool } from '../types';
+import { HatarakuTool, HatarakuToolResult } from '../types';
 
 export interface ThinkingInput {
     content: string;
 }
 
-export interface ThinkingOutput {
-    success: boolean;
-}
-
-export class ThinkingTool implements UnifiedTool<ThinkingInput, ThinkingOutput> {
+export class ThinkingTool implements HatarakuTool<ThinkingInput> {
     name = 'thinking';
     description = 'Record thinking/reasoning steps';
+    [key: string]: any;
 
     constructor(private thinkingChain: string[]) {}
 
@@ -51,15 +48,22 @@ export class ThinkingTool implements UnifiedTool<ThinkingInput, ThinkingOutput> 
         }
     };
 
-    async execute({ content }: ThinkingInput): Promise<ThinkingOutput> {
+    async execute({ content }: ThinkingInput): Promise<HatarakuToolResult> {
         try {
             this.thinkingChain.push(content);
             return {
-                success: true
+                content: [{
+                    type: 'text',
+                    text: content
+                }]
             };
         } catch (error) {
             return {
-                success: false
+                isError: true,
+                content: [{
+                    type: 'text',
+                    text: `Error recording thinking step: ${error}`
+                }]
             };
         }
     }

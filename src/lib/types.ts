@@ -1,3 +1,6 @@
+import type { Tool as MCPTool, ListToolsResultSchema } from "@modelcontextprotocol/sdk/types.js";
+
+
 export interface TextBlock {
     type: 'text';
     text: string;
@@ -59,6 +62,7 @@ export interface StreamHandler {
     finalize?: (resolve?: (value: any) => void) => void;
 }
 
+
 // New unified tool interface that extends Tool
 export interface UnifiedTool<TInput = any, TOutput = any> extends Tool {
     inputSchema: {
@@ -77,6 +81,17 @@ export interface UnifiedTool<TInput = any, TOutput = any> extends Tool {
     // Optional initialization method for tools that need setup
     initialize?: () => void;
     // Optional stream handler for tools that handle streaming content
+    streamHandler?: StreamHandler;
+}
+
+export type HatarakuToolResult = {
+    isError?: boolean;
+    content: MessageBlock[];
+}
+
+export interface HatarakuTool<TInput = any> extends MCPTool {
+    execute: (params: TInput) => Promise<HatarakuToolResult>;
+    initialize?: () => void;
     streamHandler?: StreamHandler;
 }
 

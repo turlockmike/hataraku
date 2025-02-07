@@ -83,9 +83,21 @@ export class XMLStreamParser {
         const closingTag = `</${this.currentParamName}>`;
         const endIndex = this.buffer.indexOf(closingTag, pos);
         if (endIndex === -1) {
-          // No closing tag yet – accumulate all available text.
-          this.currentParamText += this.buffer.slice(pos);
-          pos = this.buffer.length;
+          // Instead of consuming the whole rest of the buffer,
+          // look for a candidate position where the tail of the buffer might be the start of the closing tag.
+          let candidateIndex = this.buffer.length;
+          for (let i = pos; i < this.buffer.length; i++) {
+            const fragment = this.buffer.slice(i);
+            if (closingTag.startsWith(fragment)) {
+              candidateIndex = i;
+              break;
+            }
+          }
+          // Only accumulate text up to the candidate position.
+          this.currentParamText += this.buffer.slice(pos, candidateIndex);
+          // Retain the candidate fragment in the buffer for the next chunk.
+          this.buffer = this.buffer.slice(candidateIndex);
+          pos = 0;
           break;
         } else {
           // We found the closing tag; accumulate the text _up to_ it.
@@ -141,6 +153,7 @@ export class XMLStreamParser {
       const isClosing = tagContent.startsWith("/");
       const tagName = isClosing ? tagContent.slice(1).trim() : tagContent.split(/\s/)[0];
 
+      
       if (!isClosing) {
         // ─── OPENING TAG
         if (this.mode === "idle") {
@@ -181,9 +194,14 @@ export class XMLStreamParser {
           this.currentToolHandler = null;
         } else if (this.mode === "parsing") {
           if (this.currentParamName !== null) {
-            throw new Error(
-              `Unexpected closing tag </${tagName}> inside parameter <${this.currentParamName}>.`
-            );
+            if (tagName !== this.currentParamName) {
+              throw new Error(
+                `Unexpected closing tag </${tagName}> inside parameter <${this.currentParamName}>.`
+              );
+            }
+            this.currentParams[this.currentParamName] = this.currentParamText;
+            this.currentParamName = null;
+            this.currentParamText = "";
           } else {
             if (tagName !== this.currentToolName) {
               throw new Error(
@@ -218,7 +236,7 @@ export class XMLStreamParser {
       // any complete tag that might be waiting in the buffer.)
       this.write("");
   
-      // Now, if there’s leftover text that does not look like the beginning of a tag,
+      // Now, if there's leftover text that does not look like the beginning of a tag,
       // stream it. (This prevents sending closing tag fragments as content.)
       if (this.buffer && !this.buffer.trim().startsWith("<")) {
         this.currentToolHandler!.stream(this.buffer, this.resolveFunction || undefined);

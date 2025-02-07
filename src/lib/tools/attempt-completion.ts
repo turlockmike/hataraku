@@ -1,4 +1,4 @@
-import { UnifiedTool } from '../types';
+import { HatarakuTool, HatarakuToolResult } from '../types';
 
 export interface AttemptCompletionInput {
     result: string;
@@ -9,10 +9,11 @@ export interface AttemptCompletionOutput {
     message: string;
 }
 
-export class AttemptCompletionTool implements UnifiedTool<AttemptCompletionInput, AttemptCompletionOutput> {
+export class AttemptCompletionTool implements HatarakuTool<AttemptCompletionInput> {
     name = 'attempt_completion';
     description = 'Attempt to complete the task';
     private content: string[] = [];
+    [key: string]: any;
 
     constructor(private contentStream: AsyncGenerator<string, any>) {}
 
@@ -35,22 +36,6 @@ export class AttemptCompletionTool implements UnifiedTool<AttemptCompletionInput
         additionalProperties: false
     };
 
-    outputSchema = {
-        type: 'object' as const,
-        properties: {
-            success: {
-                type: 'boolean',
-                description: 'Whether the completion attempt was successful'
-            },
-            message: {
-                type: 'string',
-                description: 'A message describing the result of the operation to display to the user'
-            }
-        },
-        required: ['success', 'message'],
-        additionalProperties: false
-    };
-
     streamHandler = {
         stream: async (data: string, resolve?: (value: any) => void) => {
             this.content.push(data);
@@ -67,16 +52,21 @@ export class AttemptCompletionTool implements UnifiedTool<AttemptCompletionInput
         }
     };
 
-    async execute({ result }: AttemptCompletionInput, _cwd: string): Promise<AttemptCompletionOutput> {
+    async execute({ result }: AttemptCompletionInput): Promise<HatarakuToolResult> {
         try {
             return {
-                success: true,
-                message: result
+                content: [{
+                    type: 'text',
+                    text: result
+                }]
             };
         } catch (error) {
             return {
-                success: false,
-                message: `Error completing task: ${error.message}`
+                isError: true,
+                content: [{
+                    type: 'text',
+                    text: `Error completing task: ${error.message}`
+                }]
             };
         }
     }

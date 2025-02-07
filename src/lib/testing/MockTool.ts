@@ -1,8 +1,7 @@
-import { UnifiedTool } from '../types';
+import { HatarakuTool, HatarakuToolResult } from '../types';
 
 interface Call {
   params: any;
-  cwd: string;
 }
 
 type SchemaProperty = {
@@ -17,28 +16,22 @@ type SchemaProperty = {
  * A mock implementation of UnifiedTool for testing purposes.
  * Allows controlling responses and tracking calls without any test framework dependencies.
  */
-export class MockTool implements UnifiedTool {
+export class MockTool implements HatarakuTool {
   private responses: Array<{ type: 'success' | 'error'; value: any }> = [];
   private calls: Call[] = [];
   private initializeCalls: number = 0;
   private customInitialize?: () => void;
+  [key: string]: any;
 
   constructor(
     public name: string = 'mock_tool',
     public description: string = 'A mock tool for testing',
-    public parameters: Record<string, { required: boolean; description: string }> = {},
     public inputSchema = {
       type: 'object' as const,
       properties: {} as Record<string, SchemaProperty>,
       required: [] as string[],
       additionalProperties: false
     },
-    public outputSchema = {
-      type: 'object' as const,
-      properties: {} as Record<string, SchemaProperty>,
-      required: [] as string[],
-      additionalProperties: false
-    }
   ) {}
 
   /**
@@ -96,11 +89,17 @@ export class MockTool implements UnifiedTool {
   /**
    * Implementation of UnifiedTool.execute
    */
-  async execute(params: any, cwd: string): Promise<any> {
-    this.calls.push({ params, cwd });
+  async execute(params: any): Promise<HatarakuToolResult> {
+    this.calls.push({ params });
 
     if (this.responses.length === 0) {
-      return { success: true }; // Default response
+      return {
+        isError: false,
+        content: [{
+          type: 'text',
+          text: 'Mock tool executed'
+        }]
+      }; // Default response
     }
 
     const response = this.responses.shift()!;
@@ -135,20 +134,6 @@ export class MockTool implements UnifiedTool {
     return new MockTool(
       name,
       'A basic mock tool for testing',
-      {
-        input: {
-          required: true,
-          description: 'Test input parameter'
-        }
-      },
-      {
-        type: 'object',
-        properties: {
-          input: { type: 'string' }
-        },
-        required: ['input'],
-        additionalProperties: false
-      },
       {
         type: 'object',
         properties: {

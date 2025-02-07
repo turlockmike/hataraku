@@ -2,7 +2,7 @@ import { ApiStreamChunk } from '../api/transform/stream';
 import { TaskInput } from '../core/agent/types/config';
 import { TaskMetadata } from '../core/agent/agent';
 import { XMLStreamParser } from './xml-stream-processor';
-import { UnifiedTool } from '../lib/types';
+import { HatarakuTool } from '../lib/types';
 
 // New interface to record tool call events
 export interface ToolCall {
@@ -44,7 +44,7 @@ export async function processModelStream(
   modelStream: AsyncIterable<ApiStreamChunk>,
   taskId: string,
   input: TaskInput<unknown>,
-  tools: UnifiedTool[],
+  tools: HatarakuTool[],
   state: { thinkingChain: string[] }
 ): Promise<ExtendedTaskMetadata> {
   // Create a promise that will resolve when attempt_completion is encountered
