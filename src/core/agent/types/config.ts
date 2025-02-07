@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UnifiedTool } from '../../../lib/types';
+import { HatarakuTool } from '../../../lib/types';
 import { ModelConfiguration, ModelProvider as ApiModelProvider } from '../../../shared/api';
 import { ModelProvider } from '../../../api';
 import { SystemPromptConfig } from '../../prompts/prompt-builder';
@@ -31,7 +31,7 @@ export interface AgentConfig {
   /** Model configuration - can be either a ModelProvider instance or a ModelConfiguration */
   model: ModelConfig;
   /** List of tools to use - must be UnifiedTool instances */
-  tools?: UnifiedTool[];
+  tools?: HatarakuTool[];
   /** Streaming configuration */
   streaming?: StreamingConfig;
   /** Maximum number of retries for failed operations */

@@ -14,10 +14,10 @@ When a task includes an output schema:
 
 Example with schema requiring { "foo": string, "num": number }:
 <attempt_completion>
-  <result>{
+  {
     "foo": "bar",
     "num": 123
-  }</result>
+  }
 </attempt_completion>
 
 Remember:

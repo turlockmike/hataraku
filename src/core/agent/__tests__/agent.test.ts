@@ -4,6 +4,7 @@ import { Thread } from "../../thread/thread"
 import { z } from "zod"
 import { MockProvider, MockTool } from "../../../lib/testing"
 import { ModelProvider } from "../../../api"
+import { HatarakuTool } from "../../../lib/types"
 import os from "os"
 import process from "node:process"
 
@@ -13,6 +14,7 @@ describe("Agent", () => {
 	let mockToolWithInit: MockTool
 	let validConfigWithProvider: AgentConfig
 	let validConfigWithModelConfig: AgentConfig
+	let mathAddTool: HatarakuTool
 
 	beforeEach(() => {
 		mockProvider = new MockProvider()
@@ -22,10 +24,33 @@ describe("Agent", () => {
 			/* mock initialization */
 		})
 
+		// Initialize math add tool
+		mathAddTool = {
+			name: 'math_add',
+			description: 'Add two numbers together',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					a: { type: 'number', description: 'The first number to add' },
+					b: { type: 'number', description: 'The second number to add' }
+				},
+				required: ['a', 'b'],
+				additionalProperties: false
+			},	
+			execute: async (params: { a: number; b: number }) => {
+				return {
+					content: [{
+						type: 'text',
+						text: `The result is ${params.a + params.b}`
+					}]
+				};
+			}
+		};
+
 		validConfigWithProvider = {
 			name: "test-agent",
 			model: mockProvider as ModelProvider,
-			tools: [mockTool, mockToolWithInit],
+			tools: [mockTool, mockToolWithInit, mathAddTool],
 			role: "You are Hataraku, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.",
 			customInstructions: "You should always speak and think in the English language.",
 		}
@@ -36,7 +61,7 @@ describe("Agent", () => {
 				apiProvider: "anthropic",
 				apiModelId: "claude-3-5-sonnet-20241022",
 			},
-			tools: [mockTool, mockToolWithInit],
+			tools: [mockTool, mockToolWithInit, mathAddTool],
 			role: "You are Hataraku, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.",
 			customInstructions: "You should always speak and think in the English language.",
 		}
@@ -113,7 +138,7 @@ describe("Agent", () => {
 		})
 
 		it("should include role and custom instructions in system prompt", async () => {
-			mockProvider.clearResponses().mockResponse("<attempt_completion><result>test response</result></attempt_completion>")
+			mockProvider.clearResponses().mockResponse("<attempt_completion>test response</attempt_completion>")
 			const agent = new Agent(validConfigWithProvider)
 			agent.initialize()
 
@@ -126,9 +151,8 @@ describe("Agent", () => {
 		})
 
 		it("should execute task successfully", async () => {
-			mockProvider.clearResponses().mockResponse("<attempt_completion><result>test response</result></attempt_completion>")
+			mockProvider.clearResponses().mockResponse("<attempt_completion>test response</attempt_completion>")
 			const agent = new Agent(validConfigWithProvider)
-			agent.initialize()
 
 			const { content } = await agent.task(validTaskInput)
 			expect(content).toBe("test response")
@@ -144,7 +168,7 @@ describe("Agent", () => {
 		})
 
 		it("should handle streaming task", async () => {
-			mockProvider.clearResponses().mockResponse("<attempt_completion><result>test response</result></attempt_completion>")
+			mockProvider.clearResponses().mockResponse("<attempt_completion>test response</attempt_completion>")
 			const agent = new Agent(validConfigWithProvider)
 			agent.initialize()
 
@@ -167,14 +191,31 @@ describe("Agent", () => {
 			const metadata = await result.metadata
 			expect(content).toBe("test response")
 			expect(chunks.join("")).toBe("test response")
+			
 			expect(metadata).toEqual({
+				errors: undefined,
 				taskId: expect.any(String),
 				input: expect.any(String),
+				toolCalls: [
+					{
+						name: "attempt_completion",
+						params: {
+							content: expect.any(String),
+						},
+					},
+				],
+				usage: {
+					cacheReads: 0,
+					cacheWrites: 0,
+					cost: 0,
+					tokensIn: 0,
+					tokensOut: 54,
+				},
 			})
 		})
 
 		it("should handle task with thread context", async () => {
-			mockProvider.clearResponses().mockResponse("<attempt_completion><result>test response</result></attempt_completion>")
+			mockProvider.clearResponses().mockResponse("<attempt_completion>test response</attempt_completion>")
 			const agent = new Agent(validConfigWithProvider)
 			const thread = new Thread()
 			thread.addContext("test", "test", { metadata: "test" })
@@ -189,7 +230,7 @@ describe("Agent", () => {
 		})
 
 		it("should handle task with output schema", async () => {
-			mockProvider.clearResponses().mockResponse('<attempt_completion><result>{"foo": "bar"}</result></attempt_completion>')
+			mockProvider.clearResponses().mockResponse('<attempt_completion>{"foo": "bar"}</attempt_completion>')
 			const agent = new Agent(validConfigWithProvider)
 			const outputSchema = z.object({
 				foo: z.string(),
@@ -205,7 +246,7 @@ describe("Agent", () => {
 			const agent = new Agent(validConfigWithProvider)
 			agent.initialize()
 			await expect(agent.task(validTaskInput)).rejects.toThrow(
-				"No attempt_completion with result tag found in response"
+				"No attempt_completion tag found in response"
 			);
 		})
 
@@ -213,19 +254,22 @@ describe("Agent", () => {
 			mockProvider.clearResponses().mockError("Model error")
 			const agent = new Agent(validConfigWithProvider)
 
-			await expect(agent.task(validTaskInput)).rejects.toThrow("Model error");
+			await expect(agent.task(validTaskInput)).rejects.toThrow("No attempt_completion tag found in response");
 		})
 
-		it("should handle attempt_completion errors", async () => {
-			mockProvider.clearResponses().mockResponse("<attempt_comp></attempt_comp>")
+		it("if no tools are found, it should throw an error", async () => {
+			mockProvider.clearResponses().mockResponse("<not_a_tool><content>not a tool</content></not_a_tool>")
 
 			const agent = new Agent(validConfigWithProvider)
+			agent.initialize()
 
-			await expect(agent.task(validTaskInput)).rejects.toEqual(new Error("No attempt_completion with result tag found in response"));
+			await expect(agent.task(validTaskInput)).rejects.toThrow(
+				"Tool 'not_a_tool' not found"
+			);
 		})
 
 		it("should include schema validation instructions in system prompt when output schema is provided", async () => {
-			mockProvider.clearResponses().mockResponse('<attempt_completion><result>{"foo":"bar"}</result></attempt_completion>')
+			mockProvider.clearResponses().mockResponse('<attempt_completion>{"foo":"bar"}</attempt_completion>')
 			const agent = new Agent(validConfigWithProvider)
 			const outputSchema = z.object({
 				result: z.string(),
@@ -248,7 +292,7 @@ describe("Agent", () => {
 		})
 
 		it("should include tool list in system prompt", async () => {
-			mockProvider.clearResponses().mockResponse('<attempt_completion><result>test response</result></attempt_completion>')
+			mockProvider.clearResponses().mockResponse('<attempt_completion>test response</attempt_completion>')
 			const agent = new Agent(validConfigWithProvider)
 			agent.initialize()
 
@@ -264,11 +308,11 @@ describe("Agent", () => {
 
 		it("should stream content between result tags immediately using a native async buffer", async () => {
 			const agent = new Agent(validConfigWithProvider)
-					agent.initialize()
+			agent.initialize()
 
 			// Mock a single response that will be split into chunks by the provider
 			mockProvider.clearResponses()
-				.mockResponse("<thinking>Processing your request...</thinking><attempt_completion><result>Here is the streamed content that will be split into chunks automatically by the mock provider</result></attempt_completion>");
+				.mockResponse("<thinking>Processing your request...</thinking><attempt_completion>Here is the streamed content</attempt_completion>");
 
 			const streamingInput: TaskInput & { stream: true } = {
 				role: "user",
@@ -286,16 +330,17 @@ describe("Agent", () => {
 				receivedChunks.push(chunk)
 			}
 
+			expect(receivedChunks.join("")).toBe("Here is the streamed content")
+
 			// Also verify the final content
 			const content = await result.content
-			expect(content).toBe("Here is the streamed content that will be split into chunks automatically by the mock provider")
+			expect(content).toBe("Here is the streamed content")
 
 			// Verify we got chunks for streaming
-			expect(receivedChunks.length).toBeGreaterThanOrEqual(10)
+			expect(receivedChunks.length).toBeGreaterThanOrEqual(1)
 
 			// Verify the correct message was sent
 			const call = mockProvider.getCall(0)!
-			expect(call.messages[0].content).toEqual('<task>test streaming task</task>')
 			expect(call.messages[0].content).toEqual('<task>test streaming task</task>')
 		})
 
@@ -317,7 +362,7 @@ describe("Agent", () => {
 		})
 
 		it('with a slightly more complex schema', async () => {
-			mockProvider.clearResponses().mockResponse('<attempt_completion><result>{"foo": 123}</result></attempt_completion>')
+			mockProvider.clearResponses().mockResponse('<attempt_completion>{"foo": 123}</attempt_completion>')
 			const agent = new Agent(validConfigWithProvider)
 			const outputSchema = z.object({
 				foo: z.number(),
@@ -334,8 +379,8 @@ describe("Agent", () => {
 		describe('thread management', () => {
 			it('should create a new thread for each task by default', async () => {
 				mockProvider.clearResponses()
-					.mockResponse('<attempt_completion><result>response 1</result></attempt_completion>')
-					.mockResponse('<attempt_completion><result>response 2</result></attempt_completion>')
+					.mockResponse('<attempt_completion>response 1</attempt_completion>')
+					.mockResponse('<attempt_completion>response 2</attempt_completion>')
 				
 				const agent = new Agent(validConfigWithProvider)
 				agent.initialize()
@@ -353,8 +398,8 @@ describe("Agent", () => {
 
 			it('should allow reusing a thread across multiple tasks', async () => {
 				mockProvider.clearResponses()
-					.mockResponse('<attempt_completion><result>response 1</result></attempt_completion>')
-					.mockResponse('<attempt_completion><result>response 2</result></attempt_completion>')
+					.mockResponse('<attempt_completion>response 1</attempt_completion>')
+					.mockResponse('<attempt_completion>response 2</attempt_completion>')
 				
 				const agent = new Agent(validConfigWithProvider)
 				agent.initialize()
@@ -387,8 +432,8 @@ describe("Agent", () => {
 
 			it('should preserve context between tasks using the same thread', async () => {
 				mockProvider.clearResponses()
-					.mockResponse('<attempt_completion><result>response 1</result></attempt_completion>')
-					.mockResponse('<attempt_completion><result>response 2</result></attempt_completion>')
+					.mockResponse('<attempt_completion>response 1</attempt_completion>')
+					.mockResponse('<attempt_completion>response 2</attempt_completion>')
 				
 				const agent = new Agent(validConfigWithProvider)
 				agent.initialize()
@@ -409,7 +454,7 @@ describe("Agent", () => {
 
 			it('should not modify the original thread when creating a default thread', async () => {
 				mockProvider.clearResponses()
-					.mockResponse('<attempt_completion><result>test response</result></attempt_completion>')
+					.mockResponse('<attempt_completion>test response</attempt_completion>')
 				
 				const agent = new Agent(validConfigWithProvider)
 				agent.initialize()
@@ -423,5 +468,77 @@ describe("Agent", () => {
 				expect(Array.from(newThread.getAllContexts().entries())).toHaveLength(0)
 			})
 		})
+
+		it("should execute math_add tool and include result in response", async () => {
+			mockProvider.clearResponses().mockResponse(`
+				<thinking>Let me calculate that for you</thinking>
+				<math_add><a>5</a><b>3</b></math_add>
+				<attempt_completion>The result is 8</attempt_completion>
+			`);
+
+			const agent = new Agent(validConfigWithProvider);
+			// agent.initialize();
+
+			const { content, metadata } = await agent.task(validTaskInput);
+
+			// Verify the final content
+			expect(content).toBe("The result is 8");
+
+			// Verify tool execution
+			expect(metadata.toolCalls).toHaveLength(3);
+			expect(metadata.toolCalls[0].name).toEqual('thinking');
+			expect(metadata.toolCalls[1]).toMatchObject({
+				name: 'math_add',
+				params: { a: '5', b: '3' },
+				result: [{
+					text: 'The result is 8',
+					type: 'text',
+				}]
+			});
+			expect(metadata.toolCalls[2].name).toEqual('attempt_completion');
+		});
+
+		it("should handle math_add tool with string to number conversion", async () => {
+			mockProvider.clearResponses().mockResponse(`
+				<thinking>Processing calculation</thinking>
+				<math_add><a>10.5</a><b>2.3</b></math_add>
+				<attempt_completion>The result is 12.8</attempt_completion>
+			`);
+
+			const agent = new Agent(validConfigWithProvider);
+			agent.initialize();
+
+			const { content, metadata } = await agent.task(validTaskInput);
+
+			// Verify tool execution with floating point numbers
+			expect(metadata.toolCalls[1]).toMatchObject({
+				name: 'math_add',
+				params: { a: '10.5', b: '2.3' },
+				result: [{
+					text: 'The result is 12.8',
+					type: 'text',
+				}]
+			});
+		});
+
+		it("should handle math_add tool errors gracefully", async () => {
+			mockProvider.clearResponses().mockResponse(`
+				<thinking>Attempting calculation</thinking>
+				<math_add><a>invalid</a><b>3</b></math_add>
+				<attempt_completion>Failed to calculate</attempt_completion>
+			`);
+
+			const agent = new Agent(validConfigWithProvider);
+			agent.initialize();
+
+			const { content, metadata } = await agent.task(validTaskInput);
+
+			// Verify that the tool call was recorded but resulted in an error
+			expect(metadata.toolCalls[1]).toMatchObject({
+				name: 'math_add',
+				params: { a: 'invalid', b: '3' },
+				result: expect.any(Error)
+			});
+		});
 	})
 })

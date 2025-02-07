@@ -1,13 +1,17 @@
 import { AgentConfig, TaskInput } from './types/config';
 import { agentConfigSchema } from './schemas/config';
-import { UnifiedTool } from '../../lib/types';
+import { HatarakuTool } from '../../lib/types';
 import { ModelProvider, modelProviderFromConfig } from '../../api';
 import { SystemPromptBuilder } from '../prompts/prompt-builder';
-import { attemptCompletionTool, getToolDocs } from '../../lib';
+import { getHatarakuToolDocs } from '../../lib';
 import process from 'node:process';
 import { Thread } from '../thread/thread';
 import { serializeZodSchema } from '../../utils/schema';
-import { processResponseStream } from '../../utils/stream-processor';
+import { ApiStreamChunk } from '../../api/transform/stream';
+import { AttemptCompletionTool } from '../../lib/tools/attempt-completion';
+import { ThinkingTool } from '../../lib/tools/thinking-tool';
+import { processModelStream } from '../../utils/model-stream-processor';
+import { z } from 'zod';
 
 /**
 * Metadata for a completed task.
@@ -15,10 +19,11 @@ import { processResponseStream } from '../../utils/stream-processor';
 export interface TaskMetadata {
   taskId: string;
   input: string;
-  // Optionally add tokensIn, tokensOut, cost, etc.
+  thinking?: string[];
   tokensIn?: number;
   tokensOut?: number;
   totalCost?: number;
+  toolCalls: { name: string; params: any; result?: any }[];
 }
 
 /**
@@ -47,7 +52,7 @@ export interface NonStreamingTaskOutput<T> {
 export class Agent {
   private readonly config: AgentConfig;
   private initialized: boolean = false;
-  private tools: Map<string, UnifiedTool> = new Map();
+  private tools: Map<string, HatarakuTool> = new Map();
   private modelProvider: ModelProvider;
   private systemPromptBuilder: SystemPromptBuilder;
   private role: string;
@@ -55,6 +60,10 @@ export class Agent {
 
   // Used to generate unique task ids.
   private taskCounter = 0;
+  
+
+  // First-class tools
+  private thinkingTool: ThinkingTool;
 
   /**
   * Creates a new Agent instance with the provided configuration
@@ -94,6 +103,10 @@ export class Agent {
         }
       }
     }, process.cwd());
+
+    const thinkingChain: string[] = [];
+    // Initialize first-class tools
+    this.thinkingTool = new ThinkingTool(thinkingChain);
   }
 
   /**
@@ -115,129 +128,239 @@ export class Agent {
 
     this.systemPromptBuilder.addSection({
       name: 'tool_list',
-      content: getToolDocs(Array.from(this.tools.values())),
+      content: getHatarakuToolDocs(Array.from(this.tools.values())),
       order: 45, // After tool-use-guidelines
       enabled: true
     })
   }
 
-  /**
-  * Executes a task using the configured model and tools.
-  * @param input The task input configuration
-  * @returns A streaming output object if streaming is enabled, otherwise a promise that resolves to the final result
-  */
-  public async task<TOutput = string>(
-    input: TaskInput<TOutput> & { stream: true }
-  ): Promise<StreamingTaskOutput<TOutput>>;
-  public async task<TOutput = string>(
-    input: TaskInput<TOutput> & { stream?: false | undefined }
-  ): Promise<NonStreamingTaskOutput<TOutput>>;
+  // A helper that creates an async stream with push/end capabilities.
+  private createAsyncStream<T>(): AsyncGenerator<T> & { push(item: T): void; end(): void } {
+    const buffer: T[] = [];
+    let finished = false;
+    let resolver: ((result: IteratorResult<T>) => void) | null = null;
+
+    const generator: AsyncGenerator<T> = {
+      async next(): Promise<IteratorResult<T>> {
+        if (buffer.length > 0) {
+          return { value: buffer.shift()!, done: false };
+        }
+        if (finished) {
+          return { value: undefined as any, done: true };
+        }
+        return new Promise(resolve => {
+          resolver = resolve;
+        });
+      },
+      async return(): Promise<IteratorResult<T>> {
+        finished = true;
+        return { value: undefined as any, done: true };
+      },
+      async throw(err: any): Promise<IteratorResult<T>> {
+        finished = true;
+        return { value: undefined as any, done: true };
+      },
+      [Symbol.asyncIterator]() { return this; },
+      async [Symbol.asyncDispose]() {
+        finished = true;
+      }
+    };
+
+    const stream = {
+      push(item: T) {
+        if (resolver) {
+          resolver({ value: item, done: false });
+          resolver = null;
+        } else {
+          buffer.push(item);
+        }
+      },
+      end() {
+        finished = true;
+        if (resolver) {
+          resolver({ value: undefined as any, done: true });
+          resolver = null;
+        }
+      }
+    };
+
+    return { ...generator, ...stream } as AsyncGenerator<T> & { push(item: T): void; end(): void };
+  }
+
+  // Overload for streaming mode.
+public async task<TOutput = string>(
+  input: TaskInput<TOutput> & { stream: true }
+): Promise<StreamingTaskOutput<TOutput>>;
+
+// Overload for non-streaming mode.
+public async task<TOutput = string>(
+  input: TaskInput<TOutput> & { stream?: false | undefined }
+): Promise<NonStreamingTaskOutput<TOutput>>;
+
   public async task<TOutput = string>(
     input: TaskInput<TOutput> & { stream?: boolean }
   ): Promise<StreamingTaskOutput<TOutput> | NonStreamingTaskOutput<TOutput>> {
+    // Ensure the instance is initialized.
     if (!this.initialized) {
-      this.initialize();
+      await this.initialize();
     }
 
+    // Streaming responses do not support output schemas.
     if (input.stream && input.outputSchema) {
-      return Promise.reject(new Error("Output schemas are not supported with streaming responses")) as any;
+      throw new Error("Output schemas are not supported with streaming responses");
     }
 
-    // Generate a unique taskId for this task.
+    // Generate a unique taskId.
     const taskId = `${Date.now()}-${this.taskCounter++}`;
-
     const systemPrompt = this.systemPromptBuilder.build();
     const thread = input.thread || new Thread();
+
+    // Build the message content.
     let messageContent = `<task>${input.content}</task>`;
     if (input.outputSchema) {
       const schemaStr = serializeZodSchema(input.outputSchema);
       messageContent += `<output_schema>${schemaStr}</output_schema>`;
     }
-    thread.addMessage('user', messageContent);
+    thread.addMessage("user", messageContent);
     const messages = thread.getFormattedMessages(true);
 
-    // Create deferred promises for final result and metadata.
-    let finalResolve!: (value: TOutput) => void;
-    let finalReject!: (error: Error) => void;
-    let metadataResolve!: (value: TaskMetadata) => void;
-    const finalPromise = new Promise<TOutput>((resolve, reject) => {
-      finalResolve = resolve;
-      finalReject = reject;
-    });
-    const metadataPromise = new Promise<TaskMetadata>((resolve) => {
-      metadataResolve = resolve;
-    });
 
-    // Get the base async iterable stream from the model.
-    let responseStream;
+    // Create an async stream that we will use for streaming output.
+    const outputStream = this.createAsyncStream<string>();
+
+    // Create the attemptCompletion tool, providing it the stream.
+    // (Assuming the tool writes its chunks to the stream.)
+    const attemptCompletionTool = new AttemptCompletionTool(outputStream);
+
+    // Get the model's async stream (e.g. from your provider).
+    let modelStream: AsyncIterable<ApiStreamChunk>;
     try {
-      const streamSource = this.modelProvider.createMessage(systemPrompt, messages);
-      responseStream = processResponseStream(streamSource, thread);
+      modelStream = this.modelProvider.createMessage(systemPrompt, messages);
     } catch (err) {
-      finalReject(err instanceof Error ? err : new Error(String(err)));
-      throw err;
+      throw new Error("No attempt_completion tag found in response");
     }
 
-    let finalAccumulated = '';
-    let jsonFinalAccumulated!: TOutput
-// Create and start the composed stream
-const composedStream = (async function* () {
-  try {
-    for await (const part of responseStream) {
-      finalAccumulated += part;
-      yield part;
+    // Combine all tools (first-class and others) into one array.
+    const allTools = [this.thinkingTool, attemptCompletionTool, ...(this.config.tools || [])];
+
+    // Process the model's stream concurrently; this returns a metadata promise.
+    const metadataPromise = processModelStream(modelStream, taskId, input, allTools);
+
+    // Once the metadata (and processing) is complete, push final content and finish the stream.
+    metadataPromise.then(() => {
+      const finalContent = attemptCompletionTool.getContent();
+      outputStream.push(finalContent);
+      outputStream.end();
+    });
+
+    // If streaming mode was requested, return the stream along with a content promise and metadata.
+    if (input.stream) {
+      // contentPromise iterates over the stream to get the final output.
+      const contentPromise = metadataPromise.then(async (metadata) => {
+        // Execute all recorded tool calls
+        for (const toolCall of metadata.toolCalls) {
+          // except for attempt_completion and thinking, which are handled by the model-stream-processor
+          if (toolCall.name !== 'attempt_completion' && toolCall.name !== 'thinking') {
+            const tool = this.getTool(toolCall.name);
+            if (tool.execute) {
+              try {
+                // Convert JSON Schema to Zod schema for validation
+                const schema = tool.inputSchema && tool.inputSchema.properties ? z.object(
+                  Object.fromEntries(
+                    Object.entries(tool.inputSchema.properties).map(([key, value]) => [
+                      key,
+                      (value as { type: string }).type === 'number'
+                        ? z.preprocess((arg) => {
+                            if (typeof arg === 'string') {
+                              const num = Number(arg);
+                              return isNaN(num) ? arg : num;
+                            }
+                            return arg;
+                          }, z.number())
+                        : z.any()
+                    ])
+                  )
+                ) : undefined;
+                
+                const convertedParams = schema ? schema.parse(toolCall.params) : toolCall.params;
+                const res = await tool.execute(convertedParams);
+                if (res.isError) {
+                  throw new Error('Tool execution failed');
+                }
+                toolCall.result = res.content;
+              } catch (err) {
+                toolCall.result = err instanceof Error ? err : new Error(String(err));
+              }
+            }
+          }
+        }
+        const content = attemptCompletionTool.getContent();
+        return input.outputSchema ? JSON.parse(content) : content;
+      }) as Promise<TOutput>;
+
+      return {
+        stream: outputStream,
+        content: contentPromise,
+        metadata: metadataPromise,
+      };
     }
-    // Parse JSON if output schema is provided
-    if (input.outputSchema) {
-      try {
-        jsonFinalAccumulated = JSON.parse(finalAccumulated);
-      } catch (err) {
-        throw new Error("Failed to parse response with schema");
+
+    // Non-streaming case: wait for metadata and then return the final content.
+    const metadata = await metadataPromise;
+    
+    // Ensure at least one tool call was made
+    if (metadata.toolCalls.length === 0) {
+      throw new Error("No attempt_completion tag found in response");
+    }
+    
+    // Execute all recorded tool calls
+    for (const toolCall of metadata.toolCalls) {
+      // except for attempt_completion and thinking, which are handled by the model-stream-processor
+      if (toolCall.name !== 'attempt_completion' && toolCall.name !== 'thinking') {
+        const tool = this.getTool(toolCall.name);
+        if (tool.execute) {
+          try {
+            // Convert JSON Schema to Zod schema for validation
+            const schema = tool.inputSchema && tool.inputSchema.properties ? z.object(
+              Object.fromEntries(
+                Object.entries(tool.inputSchema.properties).map(([key, value]) => [
+                  key,
+                  (value as { type: string }).type === 'number'
+                    ? z.preprocess((arg) => {
+                        if (typeof arg === 'string') {
+                          const num = Number(arg);
+                          return isNaN(num) ? arg : num;
+                        }
+                        return arg;
+                      }, z.number())
+                    : z.any()
+                ])
+              )
+            ) : undefined;
+            
+            const convertedParams = schema ? schema.parse(toolCall.params) : toolCall.params;
+            const res = await tool.execute(convertedParams);
+            
+            if (res.isError) {
+              throw new Error('Tool execution failed');
+            }
+            toolCall.result = res.content;
+          } catch (err) {
+            toolCall.result = err instanceof Error ? err : new Error(String(err));
+          }
+        }
       }
     }
-    finalResolve(input.outputSchema ? jsonFinalAccumulated : finalAccumulated as TOutput);
-    const meta: TaskMetadata = {
-      taskId,
-      input: input.content,
-    };
-    metadataResolve(meta);
-    return jsonFinalAccumulated;
-  } catch (err) {
-    // finalReject(err instanceof Error ? err : new Error(String(err)));
-    throw err;
-  }
-})();
 
-// For streaming case, return the full output object
-if (input.stream) {
-  return {
-    stream: composedStream,
-    content: finalPromise,
-    metadata: metadataPromise
-  };
-}
+    const finalContent = attemptCompletionTool.getContent();
+    const content = input.outputSchema ? JSON.parse(finalContent) : finalContent;
 
-// For non-streaming case, consume the stream and return the content directly
-try {
-  for await (const _ of composedStream) {
-    // Consume the stream but ignore chunks
-  }
-  // If we get here, the stream completed successfully
-  const metadata: TaskMetadata = {
-    taskId,
-    input: input.content,
-  };
-  return {
-    content: input.outputSchema ? jsonFinalAccumulated : finalAccumulated as TOutput,
-    metadata
-  };
-} catch (err) {
-  // Propagate the error with its original message
-  if (err instanceof Error) {
-    throw err;
-  }
-  throw new Error(String(err));
-}
+    // Optionally add the assistant's response to the thread.
+    if (thread && content) {
+      thread.addMessage("assistant", String(content));
+    }
+
+    return { content, metadata };
   }
 
   /**
@@ -246,7 +369,7 @@ try {
   * @returns The tool if found
   * @throws {Error} If the tool is not found
   */
-  private getTool(name: string): UnifiedTool {
+  private getTool(name: string): HatarakuTool {
     const tool = this.tools.get(name);
     if (!tool) {
       throw new Error(`Tool '${name}' not found`);
@@ -258,10 +381,12 @@ try {
   * Loads and initializes the configured tools
   * @private
   */
-  // TODO: Need to handle duplication of tools and tool name collisions
   private loadTools(): void {
+    // Add first-class tools
+    this.tools.set(this.thinkingTool.name, this.thinkingTool);
+
+    // Add configured tools
     const tools = this.config.tools || [];
-    tools.push(attemptCompletionTool);
     for (const tool of tools) {
       // Store the tool
       this.tools.set(tool.name, tool);
