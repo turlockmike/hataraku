@@ -479,8 +479,9 @@ describe('XMLStreamParser', () => {
 
     parser.write('<thinking>Let me calculate that for you</thinking>');
     parser.write('<math_add><');
-    parser.write('a>5</a');
-    parser.write('><b>3</b');
+    parser.write('a')
+    parser.write('>5</');
+    parser.write('a><b>3</b');
     parser.write('></math_add>');
     expect(onComplete).not.toHaveBeenCalled();
     parser.end();

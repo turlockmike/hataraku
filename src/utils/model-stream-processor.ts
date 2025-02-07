@@ -1,6 +1,5 @@
 import { ApiStreamChunk } from '../api/transform/stream';
 import { TaskInput } from '../core/agent/types/config';
-import { TaskMetadata } from '../core/agent/agent';
 import { XMLStreamParser } from './xml-stream-processor';
 import { HatarakuTool } from '../lib/types';
 
@@ -12,7 +11,9 @@ export interface ToolCall {
 }
 
 // Extended metadata to include tool calls and usage metrics
-export interface ExtendedTaskMetadata extends TaskMetadata {
+export interface ExtendedTaskMetadata {
+  taskId: string;
+  input: string;
   toolCalls: ToolCall[];
   usage: {
     tokensIn: number;

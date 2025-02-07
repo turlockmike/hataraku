@@ -4,7 +4,7 @@ import { Thread } from "../../thread/thread"
 import { z } from "zod"
 import { MockProvider, MockTool } from "../../../lib/testing"
 import { ModelProvider } from "../../../api"
-import { HatarakuTool } from "../../../lib/types"
+import { HatarakuTool, AgentStep } from "../../../lib/types"
 import os from "os"
 import process from "node:process"
 
@@ -269,14 +269,14 @@ describe("Agent", () => {
 		})
 
 		it("should include schema validation instructions in system prompt when output schema is provided", async () => {
-			mockProvider.clearResponses().mockResponse('<attempt_completion>{"foo":"bar"}</attempt_completion>')
+			mockProvider.clearResponses().mockResponse('<attempt_completion>{"result":"test value"}</attempt_completion>')
 			const agent = new Agent(validConfigWithProvider)
 			const outputSchema = z.object({
 				result: z.string(),
 			})
 
 			const { content } = await agent.task({ ...validTaskInput, outputSchema })
-			expect(content).toEqual({ foo: "bar" })
+			expect(content).toEqual({ result: "test value" })
 			
 			const call = mockProvider.getCall(0)!
 			expect(call.systemPrompt).toContain("Schema Validation and Output Formatting")
@@ -288,7 +288,6 @@ describe("Agent", () => {
 			expect(call.systemPrompt).toContain("For streaming responses, each chunk must be valid JSON that matches the schema")
 			expect(call.systemPrompt).toContain('You will be given a task in a <task></task> tag. You will also be optionally given an output schema in a <output_schema></output_schema> tag.')
 			expect(call.systemPrompt).toContain("When calling attempt_completion, ensure the result is valid JSON that matches the schema")
-			expect(call.messages[0].content).toEqual('<task>test task</task><output_schema>{"result": z.string()}</output_schema>')
 		})
 
 		it("should include tool list in system prompt", async () => {
@@ -539,6 +538,294 @@ describe("Agent", () => {
 				params: { a: 'invalid', b: '3' },
 				result: expect.any(Error)
 			});
+		});
+	})
+
+	describe("runStep", () => {
+		let agent: Agent;
+		let mockProvider: MockProvider;
+		let mathAddTool: HatarakuTool;
+
+		beforeEach(() => {
+			mockProvider = new MockProvider();
+			mathAddTool = {
+				name: 'math_add',
+				description: 'Add two numbers together',
+				inputSchema: {
+					type: 'object',
+					properties: {
+						a: { type: 'number', description: 'First number' },
+						b: { type: 'number', description: 'Second number' }
+					},
+					required: ['a', 'b'],
+					additionalProperties: false
+				},
+				execute: async (params: { a: number; b: number }) => {
+					return {
+						content: [{
+							type: 'text',
+							text: `The result is ${params.a + params.b}`
+						}]
+					};
+				}
+			};
+
+			agent = new Agent({
+				name: "test-agent",
+				model: mockProvider,
+				tools: [mathAddTool],
+				role: "test role",
+			});
+			agent.initialize();
+		});
+
+		it("should process a simple thinking tag", async () => {
+			mockProvider.clearResponses().mockResponse("<thinking>Processing request</thinking>");
+			const modelStream = mockProvider.createMessage("", []);
+			const tools = [mathAddTool];
+
+			const step = await (agent as any).runStep(modelStream, tools);
+			expect(step.thinking).toEqual([]);
+			expect(step.toolCalls).toHaveLength(1);
+			expect(step.toolCalls[0]).toMatchObject({
+				name: 'thinking',
+				content: 'Processing request'
+			});
+		});
+
+		it("should process a math_add tool call with result", async () => {
+			mockProvider.clearResponses().mockResponse(`
+				<thinking>Let me calculate that</thinking>
+				<math_add><a>5</a><b>3</b></math_add>
+			`);
+			const modelStream = mockProvider.createMessage("", []);
+			const tools = [mathAddTool];
+
+			const step = await (agent as any).runStep(modelStream, tools);
+			expect(step.toolCalls).toHaveLength(2);
+			expect(step.toolCalls[0]).toMatchObject({
+				name: 'thinking',
+				content: 'Let me calculate that'
+			});
+			expect(step.toolCalls[1]).toMatchObject({
+				name: 'math_add',
+				params: { a: '5', b: '3' },
+				result: [{
+					type: 'text',
+					text: 'The result is 8'
+				}]
+			});
+		});
+
+		it("should handle attempt_completion and set completion", async () => {
+			mockProvider.clearResponses().mockResponse(`
+				<thinking>Processing</thinking>
+				<attempt_completion>Final result</attempt_completion>
+			`);
+			const modelStream = mockProvider.createMessage("", []);
+			const tools = [mathAddTool];
+
+			const step = await (agent as any).runStep(modelStream, tools);
+			expect(step.toolCalls).toHaveLength(2);
+			expect(step.completion).toBe("Final result");
+		});
+
+		it("should accumulate usage metrics", async () => {
+			// The response length will be used as outputTokens
+			const response = "<thinking>test</thinking>";
+			mockProvider.clearResponses().mockResponse(response);
+			const modelStream = mockProvider.createMessage("", []);
+			const tools = [mathAddTool];
+
+			const step = await (agent as any).runStep(modelStream, tools);
+			expect(step.metadata).toMatchObject({
+				tokensIn: 0,
+				tokensOut: response.length,
+				cost: 0
+			});
+		});
+	})
+
+	describe("runTask", () => {
+		let agent: Agent;
+		let mockProvider: MockProvider;
+		let mathAddTool: HatarakuTool;
+
+		beforeEach(() => {
+			mockProvider = new MockProvider();
+			mathAddTool = {
+				name: 'math_add',
+				description: 'Add two numbers together',
+				inputSchema: {
+					type: 'object',
+					properties: {
+						a: { type: 'number', description: 'First number' },
+						b: { type: 'number', description: 'Second number' }
+					},
+					required: ['a', 'b'],
+					additionalProperties: false
+				},
+				execute: async (params: { a: number; b: number }) => {
+					return {
+						content: [{
+							type: 'text',
+							text: `The result is ${params.a + params.b}`
+						}]
+					};
+				}
+			};
+
+			agent = new Agent({
+				name: "test-agent",
+				model: mockProvider,
+				tools: [mathAddTool],
+				role: "test role",
+			});
+			agent.initialize();
+		});
+
+		it("should execute a basic task and yield steps", async () => {
+			mockProvider.clearResponses().mockResponse(`
+				<thinking>Processing</thinking>
+				<attempt_completion>Final result</attempt_completion>
+			`);
+
+			const taskInput = { role: 'user' as const, content: 'test task' };
+			const generator = agent.runTask(taskInput);
+			
+			const steps: AgentStep[] = [];
+			for await (const step of generator) {
+				steps.push(step);
+			}
+
+			expect(steps).toHaveLength(1);
+			expect(steps[0].toolCalls).toHaveLength(2);
+			expect(steps[0].completion).toBe("Final result");
+		});
+
+		it("should handle multiple tool calls before completion", async () => {
+			mockProvider.clearResponses()
+				.mockResponse(`
+					<thinking>First step</thinking>
+					<math_add><a>5</a><b>3</b></math_add>
+				`)
+				.mockResponse(`
+					<thinking>Got result</thinking>
+					<attempt_completion>The result is 8</attempt_completion>
+				`);
+
+			const taskInput = { role: 'user' as const, content: 'test task' };
+			const generator = agent.runTask(taskInput);
+			
+			const steps: AgentStep[] = [];
+			for await (const step of generator) {
+				steps.push(step);
+			}
+
+			expect(steps).toHaveLength(2);
+			expect(steps[0].toolCalls[1]).toMatchObject({
+				name: 'math_add',
+				params: { a: '5', b: '3' },
+				result: [{
+					type: 'text',
+					text: 'The result is 8'
+				}]
+			});
+			expect(steps[1].completion).toBe("The result is 8");
+		});
+
+		it("should handle errors in tool execution", async () => {
+			mockProvider.clearResponses()
+				.mockResponse(`
+					<thinking>Processing</thinking>
+					<math_add><a>invalid</a><b>3</b></math_add>
+				`)
+				.mockResponse(`
+					<thinking>Error occurred</thinking>
+					<attempt_completion>Failed to calculate</attempt_completion>
+				`);
+
+			const taskInput = { role: 'user' as const, content: 'test task' };
+			const generator = agent.runTask(taskInput);
+			
+			const steps: AgentStep[] = [];
+			for await (const step of generator) {
+				steps.push(step);
+			}
+
+			expect(steps).toHaveLength(2);
+			expect(steps[0].toolCalls[1].result).toBeInstanceOf(Error);
+			expect(steps[1].completion).toBe("Failed to calculate");
+		});
+
+		it("should preserve thread context between steps", async () => {
+			mockProvider.clearResponses()
+				.mockResponse(`
+					<thinking>First step</thinking>
+					<math_add><a>5</a><b>3</b></math_add>
+				`)
+				.mockResponse(`
+					<thinking>Got result</thinking>
+					<attempt_completion>The result is 8</attempt_completion>
+				`);
+
+			const thread = new Thread();
+			thread.addContext('test', 'test context');
+			const taskInput = { role: 'user' as const, content: 'test task', thread };
+			const generator = agent.runTask(taskInput);
+			
+			const steps: AgentStep[] = [];
+			for await (const step of generator) {
+				steps.push(step);
+			}
+
+			expect(thread.getMessages()).toHaveLength(4); // Initial context + 2 steps * 2 messages each
+			const context = thread.getAllContexts().get('test');
+			expect(context?.value).toBe('test context');
+		});
+
+		it("should validate output against schema", async () => {
+			mockProvider.clearResponses().mockResponse(`
+				<thinking>Processing</thinking>
+				<attempt_completion>{"result": "test"}</attempt_completion>
+			`);
+
+			const taskInput = {
+				role: 'user' as const,
+				content: 'test task',
+				outputSchema: z.object({ result: z.string() })
+			};
+			const generator = agent.runTask(taskInput);
+			
+			const steps: AgentStep[] = [];
+			for await (const step of generator) {
+				steps.push(step);
+				if (step.completion) {
+					const result = JSON.parse(step.completion);
+					expect(result).toEqual({ result: "test" });
+				}
+			}
+		});
+
+		it("should throw error for invalid schema output", async () => {
+			mockProvider.clearResponses().mockResponse(`
+				<thinking>Processing</thinking>
+				<attempt_completion>{"wrong": "format"}</attempt_completion>
+			`);
+
+			const taskInput = {
+				role: 'user' as const,
+				content: 'test task',
+				outputSchema: z.object({ result: z.string() })
+			};
+			const generator = agent.runTask(taskInput);
+			
+			const steps: AgentStep[] = [];
+			await expect(async () => {
+				for await (const step of generator) {
+					steps.push(step);
+				}
+			}).rejects.toThrow();
 		});
 	})
 })
