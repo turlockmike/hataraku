@@ -133,7 +133,13 @@ export interface TaskMetadata {
     taskId: string;
     input: string;
     errors?: any;
-    toolCalls: { name: string; params: any; result?: any }[];
+    totalSteps: number;
+    toolCalls: { 
+      name: string; 
+      params: any; 
+      result?: any;
+      stepNumber: number;
+    }[];
     usage: {
       cacheReads: number;
       cacheWrites: number;

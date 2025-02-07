@@ -211,8 +211,6 @@ export class Agent {
     const MAX_ATTEMPTS = 3;
     
     while (attempts < MAX_ATTEMPTS) {
-      attempts++;
-
       // Generate a unique taskId.
       const taskId = `${Date.now()}-${this.taskCounter++}`;
       const systemPrompt = this.systemPromptBuilder.build();
@@ -244,7 +242,7 @@ export class Agent {
 
       // Combine all tools
       const allTools = [localThinkingTool, attemptCompletionTool, ...(this.config.tools || [])];
-
+      console.log('running step # ', attempts);
       const step = await this.runStep(modelStream, allTools);
       
       // Add any tool calls to the thread
@@ -301,15 +299,15 @@ export class Agent {
         return parsedContent;
       }
 
-      // If we've reached max attempts without completion, throw an error
-      if (attempts === MAX_ATTEMPTS) {
-        throw new Error("No attempt_completion tag found in response after maximum attempts");
-      }
-
       // Use the last tool call result as the next input
       if (step.toolCalls.length > 0) {
         const lastToolCall = step.toolCalls[step.toolCalls.length - 1];
         currentInput = `[${lastToolCall.name}] Result: ${lastToolCall.result}`;
+      }
+      attempts++;
+      // If we've reached max attempts without completion, throw an error
+      if (attempts === MAX_ATTEMPTS) {
+        throw new Error("No attempt_completion tag found in response after maximum attempts");
       }
     }
 
@@ -347,11 +345,12 @@ export class Agent {
 
     if (input.stream) {
       // For streaming mode, process steps asynchronously
-      const toolCalls: { name: string; params: any; result?: any }[] = [];
+      const toolCalls: { name: string; params: any; result?: any; stepNumber: number }[] = [];
       const metadata: TaskMetadata = {
         taskId,
         input: input.content,
         toolCalls,
+        totalSteps: 0,
         errors: undefined,
         usage: {
           cacheReads: 0,
@@ -364,14 +363,19 @@ export class Agent {
 
       const contentPromise = new Promise<TOutput>(async (resolve) => {
         let finalContent: TOutput | undefined;
+        let stepNumber = -1;
 
         // Process all steps
         for await (const step of taskSteps) {
-          // Add tool calls to metadata
+          stepNumber++;
+          metadata.totalSteps = stepNumber + 1;
+          
+          // Add tool calls to metadata with step numbers
           toolCalls.push(...step.toolCalls.map(call => ({
             name: call.name,
             params: call.params,
-            result: call.result
+            result: call.result,
+            stepNumber
           })));
 
           // Accumulate usage info
@@ -400,12 +404,13 @@ export class Agent {
     }
 
     // For non-streaming mode, process synchronously as before
-    const toolCalls: { name: string; params: any; result?: any }[] = [];
+    const toolCalls: { name: string; params: any; result?: any; stepNumber: number }[] = [];
     let finalContent: TOutput | undefined;
     const metadata: TaskMetadata = {
       taskId,
       input: input.content,
       toolCalls,
+      totalSteps: 0,
       errors: undefined,
       usage: {
         cacheReads: 0,
@@ -416,13 +421,18 @@ export class Agent {
       }
     };
 
+    let stepNumber = -1;
     // Process all steps
     for await (const step of taskSteps) {
-      // Add tool calls to metadata
+      stepNumber++;
+      metadata.totalSteps = stepNumber + 1;
+      
+      // Add tool calls to metadata with step numbers
       toolCalls.push(...step.toolCalls.map(call => ({
         name: call.name,
         params: call.params,
-        result: call.result
+        result: call.result,
+        stepNumber
       })));
 
       // Accumulate usage info

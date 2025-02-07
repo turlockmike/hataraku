@@ -232,8 +232,11 @@ describe("Agent", () => {
 						params: {
 							content: expect.any(String),
 						},
+						result: "test response",
+						stepNumber: 0,
 					},
 				],
+				totalSteps: 1,
 				usage: {
 					cacheReads: 0,
 					cacheWrites: 0,
