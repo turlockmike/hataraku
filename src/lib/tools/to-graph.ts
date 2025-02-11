@@ -5,7 +5,7 @@ import * as fs from 'fs/promises';
 import { platform } from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { getToGraphDescription } from '../../core/prompts/tools';
+import { getToGraphDescription } from '../../core-old/prompts/tools';
 
 const execAsync = promisify(exec);
 

@@ -2,7 +2,7 @@ import { UnifiedTool } from '../types';
 import { McpClient } from '../mcp/McpClient';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { getUseMcpToolDescription } from '../../core/prompts/tools';
+import { getUseMcpToolDescription } from '../../core-old/prompts/tools';
 
 export interface UseMcpToolInput {
     server_name: string;

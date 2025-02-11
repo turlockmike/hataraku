@@ -1,5 +1,5 @@
-import { Agent } from '../core/agent';
-import { AgentConfig, TaskInput } from '../core/agent/types/config';
+import { Agent } from '../core-old/agent';
+import { AgentConfig, TaskInput } from '../core-old/agent/types/config';
 
 async function main() {
   // Get query from command line arguments

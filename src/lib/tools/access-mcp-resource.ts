@@ -1,6 +1,6 @@
 import { UnifiedTool } from '../types';
 import { McpClient } from '../mcp/McpClient';
-import { getAccessMcpResourceDescription } from '../../core/prompts/tools';
+import { getAccessMcpResourceDescription } from '../../core-old/prompts/tools';
 
 export interface AccessMcpResourceInput {
     server_name: string;

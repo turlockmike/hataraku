@@ -1,6 +1,6 @@
 import { processModelStream } from '../model-stream-processor';
 import { ApiStreamChunk } from '../../api/transform/stream';
-import { TaskInput } from '../../core/agent/types/config';
+import { TaskInput } from '../../core-old/agent/types/config';
 import { AttemptCompletionTool } from '../../lib/tools/attempt-completion';
 import { ThinkingTool } from '../../lib/tools/thinking-tool';
 import { HatarakuTool } from '../../lib/types';

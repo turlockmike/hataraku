@@ -1,7 +1,7 @@
 import { UnifiedTool } from '../types';
 import * as path from 'path';
 import { parseSourceCodeForDefinitionsTopLevel } from '../../services/tree-sitter';
-import { getListCodeDefinitionNamesDescription } from '../../core/prompts/tools';
+import { getListCodeDefinitionNamesDescription } from '../../core-old/prompts/tools';
 
 export interface ListCodeDefinitionsInput {
     path: string;

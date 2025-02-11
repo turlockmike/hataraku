@@ -1,7 +1,7 @@
 import { UnifiedTool } from '../types';
 import * as path from 'path';
 import { searchFiles } from '../services/search';
-import { getSearchFilesDescription } from '../../core/prompts/tools';
+import { getSearchFilesDescription } from '../../core-old/prompts/tools';
 
 export interface SearchFilesInput {
     path: string;

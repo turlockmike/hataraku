@@ -1,7 +1,7 @@
 import { UnifiedTool } from '../types';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getReadFileDescription } from '../../core/prompts/tools';
+import { getReadFileDescription } from '../../core-old/prompts/tools';
 
 export interface ReadFileInput {
     path: string;

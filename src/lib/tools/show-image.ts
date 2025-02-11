@@ -4,7 +4,7 @@ import * as fs from 'fs/promises';
 import { platform } from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { getShowImageDescription } from '../../core/prompts/tools';
+import { getShowImageDescription } from '../../core-old/prompts/tools';
 
 const execAsync = promisify(exec);
 

@@ -2,7 +2,7 @@ import { UnifiedTool } from '../types';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as sound from 'sound-play';
-import { getPlayAudioDescription } from '../../core/prompts/tools';
+import { getPlayAudioDescription } from '../../core-old/prompts/tools';
 
 export interface PlayAudioInput {
     path: string;

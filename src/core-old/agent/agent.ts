@@ -11,7 +11,6 @@ import { ApiStreamChunk } from '../../api/transform/stream';
 import { AttemptCompletionTool } from '../../lib/tools/attempt-completion';
 import { ThinkingTool } from '../../lib/tools/thinking-tool';
 import { processModelStream } from '../../utils/model-stream-processor';
-import { z } from 'zod';
 import { createAsyncStream } from '../../utils/async';
 
 /**

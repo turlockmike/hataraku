@@ -1,7 +1,7 @@
 import { UnifiedTool } from '../types';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getListFilesDescription } from '../../core/prompts/tools';
+import { getListFilesDescription } from '../../core-old/prompts/tools';
 
 export interface ListFilesInput {
     path: string;

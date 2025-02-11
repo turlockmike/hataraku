@@ -1,6 +1,6 @@
 import { UnifiedTool } from '../types';
 import { input } from '@inquirer/prompts';
-import { getWaitForUserDescription } from '../../core/prompts/tools';
+import { getWaitForUserDescription } from '../../core-old/prompts/tools';
 
 export interface WaitForUserInput {
     prompt: string;

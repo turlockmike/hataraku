@@ -118,6 +118,10 @@ const analyzeDiff = createTask({
 const results = await analyzeDiff({
   diff: 'diff --git a/file.ts b/file.ts\n- old code\n+ new code with substantial changes ...'
 });
+
+
+
+
 ```
 
 ## CLI Reference

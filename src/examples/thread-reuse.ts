@@ -1,6 +1,6 @@
-import { Agent } from '../core/agent';
-import { AgentConfig } from '../core/agent/types/config';
-import { Thread } from '../core/thread/thread';
+import { Agent } from '../core-old/agent';
+import { AgentConfig } from '../core-old/agent/types/config';
+import { Thread } from '../core-old/thread/thread';
 
 async function main() {
   // Create agent config with OpenRouter/Sonnet model

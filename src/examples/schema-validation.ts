@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { Agent } from '../core/agent';
+import { Agent } from '../core-old/agent';
 import { z } from 'zod';
 
 async function main() {

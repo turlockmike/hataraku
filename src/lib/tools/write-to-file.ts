@@ -1,7 +1,7 @@
 import { UnifiedTool } from '../types';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getWriteToFileDescription } from '../../core/prompts/tools';
+import { getWriteToFileDescription } from '../../core-old/prompts/tools';
 
 export interface WriteToFileInput {
     path: string;

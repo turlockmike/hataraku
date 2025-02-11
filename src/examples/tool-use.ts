@@ -1,6 +1,6 @@
 import { HatarakuTool } from "../lib/types";
-import { Agent } from '../core/agent';
-import { AgentConfig, TaskInput } from '../core/agent/types/config';
+import { Agent } from '../core-old/agent';
+import { AgentConfig, TaskInput } from '../core-old/agent/types/config';
 import chalk from "chalk";
 
 // A simple Fibonacci calculator tool

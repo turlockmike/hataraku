@@ -1,6 +1,6 @@
 import { UnifiedTool } from '../types';
 import { CliBrowserSession } from '../../services/browser/CliBrowserSession';
-import { getBrowserActionDescription } from '../../core/prompts/tools';
+import { getBrowserActionDescription } from '../../core-old/prompts/tools';
 
 export interface BrowserActionInput {
     action: string;

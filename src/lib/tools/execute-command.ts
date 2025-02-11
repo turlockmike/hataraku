@@ -1,6 +1,6 @@
 import { UnifiedTool } from '../types';
 import { spawn } from 'child_process';
-import { getExecuteCommandDescription } from '../../core/prompts/tools';
+import { getExecuteCommandDescription } from '../../core-old/prompts/tools';
 
 export interface ExecuteCommandInput {
     command: string;

@@ -2,7 +2,7 @@ import { UnifiedTool } from '../types';
 import { Fetcher } from '../fetcher';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { getFetchDescription } from '../../core/prompts/tools';
+import { getFetchDescription } from '../../core-old/prompts/tools';
 
 export interface FetchInput {
     url: string;
