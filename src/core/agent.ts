@@ -15,6 +15,8 @@ interface CallSettings {
   maxRetries?: number;
   abortSignal?: AbortSignal;
   headers?: Record<string, string | undefined>;
+  maxSteps?: number;
+  toolChoice?: 'auto' | 'none' | 'required';
 }
 
 export interface AgentConfig {

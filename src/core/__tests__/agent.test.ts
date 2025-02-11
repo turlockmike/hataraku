@@ -59,7 +59,7 @@ describe('Agent', () => {
     });
   });
 
-  describe('agent.executeTask', () => {
+  describe('agent.task', () => {
     it('should handle basic text generation', async () => {
       const agent = createAgent({
         name: 'Test Agent',
@@ -203,5 +203,146 @@ describe('Agent', () => {
         })
       ).rejects.toThrow();
     });
+
+    it('should include message history and system prompt in API calls', async () => {
+      const mockDoGenerate = jest.fn().mockImplementation(async (options) => ({
+        text: 'Test response',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+        rawCall: { rawPrompt: null, rawSettings: {} }
+      }));
+
+      const agent = createAgent({
+        name: 'Test Agent',
+        role: 'You are a test agent',
+        description: 'A test agent',
+        model: new MockLanguageModelV1({
+          doGenerate: mockDoGenerate
+        }),
+        tools: {}
+      });
+
+      const messages = [
+        { role: 'user' as const, content: 'Previous message 1' },
+        { role: 'assistant' as const, content: 'Previous response 1' }
+      ];
+
+      await agent.task('Current message', { messages });
+
+      expect(mockDoGenerate).toHaveBeenCalledWith(expect.objectContaining({
+        system: expect.stringContaining('You are a test agent'),
+        messages: expect.arrayContaining([
+          { role: 'user' as const, content: 'Previous message 1' },
+          { role: 'assistant' as const, content: 'Previous response 1' },
+          { role: 'user' as const, content: 'Current message' }
+        ])
+      }));
+    });
+
+    it('should pass through call settings to the model', async () => {
+      const mockDoGenerate = jest.fn().mockImplementation(async (options) => ({
+        text: 'Test response',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+        rawCall: { rawPrompt: null, rawSettings: {} }
+      }));
+
+      const agent = createAgent({
+        name: 'Test Agent',
+        role: 'You are a test agent',
+        description: 'A test agent',
+        model: new MockLanguageModelV1({
+          doGenerate: mockDoGenerate
+        }),
+        tools: {},
+        callSettings: {
+          temperature: 0.7,
+          maxTokens: 1000,
+          topP: 0.9
+        }
+      });
+
+      await agent.task('Test message');
+
+      expect(mockDoGenerate).toHaveBeenCalledWith(expect.objectContaining({
+        temperature: 0.7,
+        maxTokens: 1000,
+        topP: 0.9
+      }));
+    });
+
+    it('should combine tool usage with message history', async () => {
+      const mockDoGenerate = jest.fn().mockImplementation(async (options) => {
+        if (options.mode?.type === 'object-json') {
+          return {
+            text: '{"content":"Final result"}',
+            finishReason: 'stop',
+            usage: { promptTokens: 10, completionTokens: 20 },
+            rawCall: { rawPrompt: null, rawSettings: {} }
+          };
+        }
+        return {
+          text: 'Tool response',
+          response: {
+            messages: [
+              { role: 'assistant' as const, content: 'Using tool...' },
+              { role: 'tool' as const, content: 'Tool result', toolName: 'mock_tool' }
+            ]
+          },
+          toolCalls: [{
+            toolCallId: 'call-1',
+            toolCallType: 'function',
+            toolName: 'mock_tool',
+            args: JSON.stringify({ input: 'test input' })
+          }],
+          finishReason: 'stop',
+          usage: { promptTokens: 10, completionTokens: 20 },
+          rawCall: { rawPrompt: null, rawSettings: {} }
+        };
+      });
+
+      const agent = createAgent({
+        name: 'Test Agent',
+        role: 'You are a test agent',
+        description: 'A test agent',
+        model: new MockLanguageModelV1({
+          doGenerate: mockDoGenerate
+        }),
+        tools: {
+          mock_tool: mockTool
+        }
+      });
+
+      const messages = [
+        { role: 'user' as const, content: 'Previous message' }
+      ];
+
+      const result = await agent.task('Use the tool', {
+        messages,
+        schema: z.object({
+          content: z.string()
+        })
+      });
+
+      // Verify first call includes previous messages
+      expect(mockDoGenerate.mock.calls[0][0]).toEqual(expect.objectContaining({
+        messages: expect.arrayContaining([
+          { role: 'user' as const, content: 'Previous message' },
+          { role: 'user' as const, content: 'Use the tool' }
+        ])
+      }));
+
+      // Verify second call includes tool response messages
+      expect(mockDoGenerate.mock.calls[1][0]).toEqual(expect.objectContaining({
+        messages: expect.arrayContaining([
+          { role: 'assistant' as const, content: 'Using tool...' },
+          { role: 'tool' as const, content: 'Tool result', toolName: 'mock_tool' }
+        ])
+      }));
+
+      expect(result).toEqual({
+        content: 'Final result'
+      });
+    });
   });
-}); 
+});
