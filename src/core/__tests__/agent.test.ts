@@ -22,6 +22,7 @@ describe('Agent', () => {
     it('should create an agent with basic configuration', () => {
       const agent = createAgent({
         name: 'Test Agent',
+        role: 'You are a test agent',
         description: 'A test agent',
         model: new MockLanguageModelV1({
           doGenerate: async () => ({
@@ -47,6 +48,7 @@ describe('Agent', () => {
       expect(() => {
         createAgent({
           name: '',  // Invalid: empty name
+          role: 'You are a test agent',
           description: 'Test agent',
           model: new MockLanguageModelV1({}),
           tools: {
@@ -61,6 +63,7 @@ describe('Agent', () => {
     it('should handle basic text generation', async () => {
       const agent = createAgent({
         name: 'Test Agent',
+        role: 'You are a test agent',
         description: 'A test agent',
         model: new MockLanguageModelV1({
           doGenerate: async () => ({
@@ -75,9 +78,7 @@ describe('Agent', () => {
         }
       });
 
-      const result = await agent.executeTask({
-        input: 'Test task input'
-      });
+      const result = await agent.task('Test task input');
 
       expect(result).toBe('Test response');
     });
@@ -85,10 +86,12 @@ describe('Agent', () => {
     it('should execute a task with tool calls', async () => {
       const agent = createAgent({
         name: 'Test Agent',
+        role: 'You are a test agent',
         description: 'A test agent',
         model: new MockLanguageModelV1({
           defaultObjectGenerationMode: 'json',
           doGenerate: async (options) => {
+            console.log('ooptions', options)
             if (options.mode.type === 'object-json') {
               return {
                 text: `{"content":"Hello, world!"}`,
@@ -117,8 +120,7 @@ describe('Agent', () => {
         }
       });
 
-      const result = await agent.executeTask({
-        input: 'Test task input',
+      const result = await agent.task('Test task input', {
         schema: z.object({
           content: z.string()
         })
@@ -134,6 +136,7 @@ describe('Agent', () => {
     it('should handle streaming responses', async () => {
       const agent = createAgent({
         name: 'Test Agent',
+        role: 'You are a test agent',
         description: 'A test agent',
         model: new MockLanguageModelV1({
           doStream: async () => ({
@@ -159,8 +162,7 @@ describe('Agent', () => {
         }
       });
 
-      const result = await agent.executeTask({
-        input: 'Test task input',
+      const result = await agent.task('Test task input', {
         stream: true
       });
 
@@ -175,6 +177,7 @@ describe('Agent', () => {
     it('should validate output against schema', async () => {
       const agent = createAgent({
         name: 'Test Agent',
+        role: 'You are a test agent',
         description: 'A test agent',
         model: new MockLanguageModelV1({
           doGenerate: async () => ({
@@ -195,8 +198,7 @@ describe('Agent', () => {
       });
 
       await expect(
-        agent.executeTask({
-          input: 'Test task input',
+        agent.task('Test task input', {
           schema
         })
       ).rejects.toThrow();
