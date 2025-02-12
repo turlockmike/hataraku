@@ -1,8 +1,8 @@
 import chalk from 'chalk';
-import { analyzerTasks, type AnalysisResult, analysisSchema } from './agents/analyzer';
+import { analyzerTasks } from './agents/analyzer';
 
 async function main() {
-  console.log(chalk.cyan('\n📊 Structured Task Example\n'));
+  console.log(chalk.cyan('\n📊 Text Analysis Example (Tools + Schema)\n'));
 
   try {
     // Input
@@ -17,8 +17,9 @@ async function main() {
     console.log(chalk.cyan('📥 Input Text:'));
     console.log(chalk.gray(`   ${text.trim().replace(/\n\s+/g, ' ')}\n`));
 
-    // Analyze text
+    // Analyze text using tools and schema validation
     console.log(chalk.cyan('🤖 Analyzing text...'));
+    console.log(chalk.gray('   Using tools for word count, sentiment, and complexity analysis...'));
     const analysis = await analyzerTasks.analyze.execute({ text });
 
     // Display structured results
@@ -26,7 +27,7 @@ async function main() {
     console.log(chalk.gray('   Word Count:'), chalk.yellow(analysis.wordCount));
     console.log(chalk.gray('   Sentiment:'), chalk.yellow(analysis.sentiment));
     console.log(chalk.gray('   Top Themes:'));
-    analysis.topThemes.forEach((theme: string) => {
+    analysis.topThemes.forEach(theme => {
       console.log(chalk.gray('     •'), chalk.yellow(theme));
     });
     console.log(chalk.gray('   Complexity:'));

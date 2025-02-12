@@ -56,6 +56,7 @@
     "example:math": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/math-simple.ts",
     "example:basic": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/basic-task.ts",
     "example:structured": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/structured-task.ts",
+    "example:tool-schema": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/tool-and-schema.ts",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "check-types": "tsc --noEmit",

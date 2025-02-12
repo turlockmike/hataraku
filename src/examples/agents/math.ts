@@ -40,7 +40,7 @@ export const mathTasks = {
     agent: mathAgent,
     schema: schemas.mathOutput,
     task: (input: z.infer<typeof schemas.mathInput>) => 
-      `Use the add tool to add these numbers: ${input.a} and ${input.b}`
+      `Use the add tool to add these numbers: ${input.a} and ${input.b}.`
   }),
 
   multiply: createTask({

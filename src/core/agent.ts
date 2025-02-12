@@ -1,6 +1,7 @@
 import {  LanguageModelV1, generateText, generateObject, streamText, ToolSet, CoreMessage, Message } from 'ai';
 import { z } from 'zod';
 import { AsyncIterableStream } from './types';
+import { writeFileSync } from 'node:fs';
 
 const DEFAULT_MAX_STEPS = 25;
 
@@ -30,7 +31,7 @@ export interface AgentConfig {
 }
 
 export interface TaskInput<T = unknown> {
-  messages?: Array<CoreMessage> | Array<Omit<Message, "id">>;
+  messages?: Array<CoreMessage>;
   schema?: z.ZodType<T>;
   stream?: boolean;
 }
@@ -86,7 +87,7 @@ export class Agent {
   async task<T>(task: string, input?: TaskInput<T> & { schema: z.ZodType<T> }): Promise<T>;
   async task(task: string, input?: TaskInput): Promise<string>;
   async task<T>(task: string, input?: TaskInput<T> & { stream?: boolean; schema?: z.ZodType<T> }): Promise<string | AsyncIterableStream<string> | T> {
-    const messages = input?.messages || [];
+    const messages: CoreMessage[] = input?.messages || [];
     const maxSteps = this.callSettings.maxSteps || DEFAULT_MAX_STEPS;
     messages.push({
       role: 'user',
@@ -119,25 +120,28 @@ export class Agent {
         tools: this.tools,
         ...this.callSettings,
       })
-
       const responseMessages: CoreMessage[] = result.response.messages
       responseMessages.push({
         role:'user',
         content: 'Given the following text, extract the following information according to the schema provided:\n\n' + result.text
       })
-  
-      if (input?.schema) {
-        const { object } = await generateObject({
-          model: this.model,
-          system: this.getSystemPrompt(),
-          messages: responseMessages,
-          schema: input.schema,
-          ...this.callSettings,
-        });
-        return object;
-      }
-  
-      return result.text;
+
+      // Should contain the initial user message, the final assistant message and the new user message to format the response
+      messages.push(responseMessages[responseMessages.length - 1])
+      messages.push({
+        role: 'user',
+        content: 'Based on the last response, please format the information according to the schema provided'
+      })
+
+      const { object, response } = await generateObject({
+        model: this.model,
+        system: this.getSystemPrompt(),
+        messages: messages,
+        maxSteps,
+        schema: input.schema,
+        ...this.callSettings,
+      });
+      return object;
     }
 
     if (input?.schema) {
