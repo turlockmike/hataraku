@@ -1,5 +1,8 @@
-import { createWorkflow, type Workflow, type WorkflowConfig } from '../../';
+import { createWorkflow, type Workflow, type WorkflowConfig, type TaskExecutor } from '../../';
 import { z } from 'zod';
+import { createAgent } from '../../agent';
+import { createTask } from '../../task';
+import { MockLanguageModelV1 } from 'ai/test';
 
 describe('Workflow', () => {
   // Test schemas
@@ -35,18 +38,50 @@ describe('Workflow', () => {
     riskLevel: 'low' as const
   };
 
-  // Test tasks with mocked responses
-  const analyzeCode = {
+  // Create a mock agent for our tasks
+  const mockAgent = createAgent({
+    name: 'Mock Agent',
+    description: 'A mock agent for testing',
+    role: 'You are a mock agent for testing',
+    model: new MockLanguageModelV1({
+      defaultObjectGenerationMode: 'json',
+      doGenerate: async () => ({
+        text: JSON.stringify(mockAnalysisResponse),
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+        rawCall: { rawPrompt: null, rawSettings: {} }
+      })
+    })
+  });
+
+  // Create proper Task instances
+  const analyzeCodeTask = createTask({
     name: 'Analyze Code',
     description: 'Analyzes code changes',
-    execute: jest.fn().mockResolvedValue(mockAnalysisResponse)
-  };
+    agent: mockAgent,
+    schema: analysisSchema,
+    task: (input: z.infer<typeof workflowInputSchema>) => 
+      `Analyze this code: ${input.diff}`
+  });
 
-  const securityCheck = {
+  const securityCheckTask = createTask({
     name: 'Security Check',
     description: 'Checks for security issues',
-    execute: jest.fn().mockResolvedValue(mockSecurityResponse)
-  };
+    agent: mockAgent,
+    schema: securitySchema,
+    task: (input: { diff: string; complexity: number }) => 
+      `Check security for: ${input.diff} with complexity ${input.complexity}`
+  });
+
+  // Create task executor wrappers that match the TaskExecutor interface
+  const analyzeCode = jest.fn(async (input: z.infer<typeof workflowInputSchema>) => mockAnalysisResponse) as 
+    jest.MockedFunction<TaskExecutor<z.infer<typeof workflowInputSchema>, typeof mockAnalysisResponse>>;
+
+  type SecurityCheckInput = { diff: string; complexity?: number };
+  type SecurityCheckOutput = z.infer<typeof securitySchema>;
+
+  const securityCheck = jest.fn(async (input: SecurityCheckInput) => mockSecurityResponse) as 
+    jest.MockedFunction<TaskExecutor<SecurityCheckInput, SecurityCheckOutput>>;
 
   // Event tracking
   type WorkflowEvent = {
@@ -63,37 +98,34 @@ describe('Workflow', () => {
     // Reset mock function calls and event log before each test
     jest.clearAllMocks();
     eventLog = [];
+    analyzeCode.mockClear();
+    securityCheck.mockClear();
   });
 
   describe('createWorkflow', () => {
     test('should create a workflow with schema validation', () => {
-      const config: WorkflowConfig<z.infer<typeof workflowInputSchema>, z.infer<typeof workflowOutputSchema>> = {
+      const workflow = createWorkflow({
         name: 'Test Workflow',
-        description: 'A test workflow',
-        inputSchema: workflowInputSchema,
-        outputSchema: workflowOutputSchema
-      };
-
-      const workflow = createWorkflow(config, async (w) => ({
+        description: 'A test workflow'
+      }, async (w) => ({
         analysis: mockAnalysisResponse,
         security: mockSecurityResponse
       }));
 
       expect(workflow).toBeDefined();
-      expect(workflow.name).toBe(config.name);
-      expect(workflow.description).toBe(config.description);
+      expect(workflow.name).toBe('Test Workflow');
+      expect(workflow.description).toBe('A test workflow');
     });
 
     test('should throw error if input fails schema validation', async () => {
       const workflow = createWorkflow({
         name: 'Validated Workflow',
-        description: 'A workflow with input validation',
-        inputSchema: workflowInputSchema
+        description: 'A workflow with input validation'
       }, async (w) => ({
         analysis: mockAnalysisResponse
       }));
 
-      await expect(workflow.execute({} as any))
+      await expect(workflow.execute({} as any, { schema: workflowInputSchema }))
         .rejects
         .toThrow('Validation error');
     });
@@ -101,11 +133,10 @@ describe('Workflow', () => {
     test('should throw error if output fails schema validation', async () => {
       const workflow = createWorkflow({
         name: 'Validated Workflow',
-        description: 'A workflow with output validation',
-        outputSchema: workflowOutputSchema
+        description: 'A workflow with output validation'
       }, async (w) => ({} as any));
 
-      await expect(workflow.execute({ diff: 'test' }))
+      await expect(workflow.execute({ diff: 'test' }, { schema: workflowOutputSchema }))
         .rejects
         .toThrow('Validation error');
     });
@@ -113,12 +144,7 @@ describe('Workflow', () => {
 
   describe('workflow events', () => {
     test('should emit events for workflow lifecycle', async () => {
-      type WorkflowOutput = {
-        'Analyze Code': typeof mockAnalysisResponse;
-        'Security Check': typeof mockSecurityResponse;
-      };
-
-      const workflow = createWorkflow<{ diff: string }, WorkflowOutput>({
+      const workflow = createWorkflow<{ diff: string }>({
         name: 'Event Workflow',
         description: 'A workflow that emits events',
         onTaskStart: (taskName: string) => {
@@ -153,13 +179,15 @@ describe('Workflow', () => {
           });
         }
       }, async (w) => {
-        const builder = w
-          .task('Analyze Code', analyzeCode.execute, { diff: 'test code' })
-          .task('Security Check', securityCheck.execute, { 
-            diff: 'test code',
-            complexity: mockAnalysisResponse.complexity 
-          });
-        return builder;
+        const analysis = await w.task('Analyze Code', analyzeCode, { diff: 'test code' });
+        const security = await w.task('Security Check', securityCheck, { 
+          diff: 'test code',
+          complexity: analysis.complexity 
+        });
+        return {
+          analysis,
+          security
+        };
       });
 
       await workflow.execute({ diff: 'test code' });
@@ -191,8 +219,8 @@ describe('Workflow', () => {
         type: 'workflowComplete',
         workflowName: 'Event Workflow',
         data: {
-          'Analyze Code': mockAnalysisResponse,
-          'Security Check': mockSecurityResponse
+          analysis: mockAnalysisResponse,
+          security: mockSecurityResponse
         }
       });
     });
@@ -226,75 +254,94 @@ describe('Workflow', () => {
 
   describe('workflow execution', () => {
     test('should execute tasks in sequence', async () => {
-      type WorkflowOutput = {
-        'Analyze Code': typeof mockAnalysisResponse;
-        'Security Check': typeof mockSecurityResponse;
-      };
-
-      const workflow = createWorkflow<{ diff: string }, WorkflowOutput>({
+      const workflow = createWorkflow<{ diff: string }>({
         name: 'Code Review',
         description: 'Reviews code changes'
       }, async (w) => {
-        const builder = w
-          .task('Analyze Code', analyzeCode.execute, { diff: 'test code changes' })
-          .task('Security Check', securityCheck.execute, { 
+        const analysisResult = await w.task(
+          'Analyze Code', 
+          analyzeCode, 
+          { diff: 'test code changes' }
+        );
+
+        const securityResult = await w.task(
+          'Security Check', 
+          securityCheck, 
+          { 
             diff: 'test code changes',
-            complexity: mockAnalysisResponse.complexity 
-          });
-        return builder;
+            complexity: analysisResult.complexity 
+          }
+        );
+
+        return {
+          analysis: analysisResult,
+          security: securityResult
+        };
       });
 
       const testInput = { diff: 'test code changes' };
       const result = await workflow.execute(testInput);
 
       // Verify task execution order
-      expect(analyzeCode.execute).toHaveBeenCalledWith(testInput);
-      expect(securityCheck.execute).toHaveBeenCalledWith({
+      expect(analyzeCode).toHaveBeenCalledWith(testInput);
+      expect(securityCheck).toHaveBeenCalledWith({
         diff: testInput.diff,
         complexity: mockAnalysisResponse.complexity
       });
 
       // Verify result structure
       expect(result).toEqual({
-        'Analyze Code': mockAnalysisResponse,
-        'Security Check': mockSecurityResponse
+        analysis: mockAnalysisResponse,
+        security: mockSecurityResponse
       });
     });
 
     test('should execute tasks in parallel when possible', async () => {
-      type WorkflowOutput = {
-        'Analyze Code': typeof mockAnalysisResponse;
-        'Security Check': typeof mockSecurityResponse;
-      };
-
-      const workflow = createWorkflow<{ diff: string }, WorkflowOutput>({
+      const workflow = createWorkflow<{ diff: string }>({
         name: 'Parallel Review',
         description: 'Reviews code changes in parallel'
       }, async (w) => {
-        const builder = w.parallel({
-          'Analyze Code': analyzeCode.execute({ diff: 'test code changes' }),
-          'Security Check': securityCheck.execute({ 
-            diff: 'test code changes',
-            complexity: 5
-          })
-        });
-        return builder;
+        type Analysis = typeof mockAnalysisResponse;
+        type Security = typeof mockSecurityResponse;
+        
+        const tasks = [
+          {
+            name: 'Analyze Code',
+            task: analyzeCode,
+            input: { diff: 'test code changes' }
+          },
+          {
+            name: 'Security Check',
+            task: securityCheck,
+            input: { 
+              diff: 'test code changes',
+              complexity: 5
+            }
+          }
+        ] as const;
+
+        const [analysisResult, securityResult] = await w.parallel(tasks);
+
+        return {
+          analysis: analysisResult,
+          security: securityResult
+        };
       });
 
       const testInput = { diff: 'test code changes' };
       const result = await workflow.execute(testInput);
 
       // Verify both tasks were called
-      expect(analyzeCode.execute).toHaveBeenCalledWith(testInput);
-      expect(securityCheck.execute).toHaveBeenCalledWith({
+      expect(analyzeCode).toHaveBeenCalledWith(testInput);
+      expect(securityCheck).toHaveBeenCalledWith({
         diff: testInput.diff,
         complexity: 5
       });
 
       // Verify result structure
       expect(result).toEqual({
-        'Analyze Code': mockAnalysisResponse,
-        'Security Check': mockSecurityResponse
+        analysis: mockAnalysisResponse,
+        security: mockSecurityResponse
       });
     });
 
@@ -310,13 +357,13 @@ describe('Workflow', () => {
         name: 'Failing Workflow',
         description: 'A workflow that handles failures'
       }, async (w) => {
-        const builder = w.task('Failing Task', failingTask.execute, { data: 'test input' });
-        return builder;
+        await w.task('Failing Task', failingTask.execute, { data: 'test input' });
+        return {};
       });
 
       await expect(workflow.execute({
         data: 'test input'
-      })).rejects.toThrow(`Workflow 'Failing Workflow' failed: ${error.message}`);
+      })).rejects.toThrow(`Workflow 'Failing Workflow' failed: Task 'Failing Task' failed: ${error.message}`);
 
       expect(failingTask.execute).toHaveBeenCalledTimes(1);
     });
@@ -325,50 +372,237 @@ describe('Workflow', () => {
       type AnalysisResult = typeof mockAnalysisResponse;
       type SecurityResult = typeof mockSecurityResponse;
       
-      type WorkflowOutput = {
-        'Analyze Code': AnalysisResult;
-        'Security Check'?: SecurityResult;
-      };
-
-      const workflow = createWorkflow<{ diff: string }, WorkflowOutput>({
+      const workflow = createWorkflow<{ diff: string }>({
         name: 'Conditional Workflow',
         description: 'A workflow with conditional execution'
       }, async (w) => {
-        const builder = w.task('Analyze Code', analyzeCode.execute, { diff: 'test code' });
+        const analysis = await w.task('Analyze Code', analyzeCode, { diff: 'test code' });
         
-        return builder.when(
-          (results) => {
-            const analysis = results['Analyze Code'];
-            return typeof analysis === 'object' && 
-              'complexity' in analysis && 
-              typeof analysis.complexity === 'number' && 
-              analysis.complexity > 7;
-          },
-          (b) => b.task('Security Check', securityCheck.execute, { 
+        let security = null;
+        if (analysis.complexity > 7) {
+          security = await w.task('Security Check', securityCheck, { 
             diff: 'test code',
-            complexity: 8 // Use fixed value for test
-          })
-        );
+            complexity: analysis.complexity
+          });
+        }
+
+        return {
+          analysis,
+          ...(security ? { security } : {})
+        };
       });
 
       // Test with low complexity
-      analyzeCode.execute.mockResolvedValueOnce({ ...mockAnalysisResponse, complexity: 5 });
+      analyzeCode.mockResolvedValueOnce({ ...mockAnalysisResponse, complexity: 5 });
       let result = await workflow.execute({ diff: 'simple change' });
       expect(result).toEqual({
-        'Analyze Code': { ...mockAnalysisResponse, complexity: 5 }
+        analysis: { ...mockAnalysisResponse, complexity: 5 }
       });
-      expect(securityCheck.execute).not.toHaveBeenCalled();
+      expect(securityCheck).not.toHaveBeenCalled();
 
       // Test with high complexity
-      analyzeCode.execute.mockResolvedValueOnce({ ...mockAnalysisResponse, complexity: 8 });
+      analyzeCode.mockResolvedValueOnce({ ...mockAnalysisResponse, complexity: 8 });
       result = await workflow.execute({ diff: 'complex change' });
       expect(result).toEqual({
-        'Analyze Code': { ...mockAnalysisResponse, complexity: 8 },
-        'Security Check': mockSecurityResponse
+        analysis: { ...mockAnalysisResponse, complexity: 8 },
+        security: mockSecurityResponse
       });
-      expect(securityCheck.execute).toHaveBeenCalledWith({
+      expect(securityCheck).toHaveBeenCalledWith({
         diff: 'test code',
         complexity: 8
+      });
+    });
+
+    test('should provide access to workflow input values', async () => {
+      // Define a workflow with structured input
+      interface TestInput {
+        value1: number;
+        value2: number;
+        operation: 'add' | 'multiply';
+      }
+
+      const testInput: TestInput = {
+        value1: 5,
+        value2: 3,
+        operation: 'multiply'
+      };
+
+      // Mock task that uses input values
+      const calculateResult = jest.fn().mockImplementation(async (input: { a: number, b: number }) => {
+        return input.a * input.b;
+      });
+
+      const workflow = createWorkflow<TestInput>({
+        name: 'Input Access Test',
+        description: 'Tests access to workflow input values'
+      }, async (w) => {
+        // Verify that input values are accessible
+        expect(w.input).toBeDefined();
+        expect(w.input.value1).toBe(testInput.value1);
+        expect(w.input.value2).toBe(testInput.value2);
+        expect(w.input.operation).toBe(testInput.operation);
+
+        // Use the input values in a task
+        const result = await w.task(
+          'Calculate',
+          calculateResult,
+          { a: w.input.value1, b: w.input.value2 }
+        );
+
+        return { result };
+      });
+
+      const result = await workflow.execute(testInput);
+      
+      // Verify the task was called with correct input values
+      expect(calculateResult).toHaveBeenCalledWith({ 
+        a: testInput.value1, 
+        b: testInput.value2 
+      });
+
+      // Verify the result
+      expect(result).toEqual({ result: 15 }); // 5 * 3 = 15
+    });
+  });
+
+  describe('proposed workflow pattern', () => {
+    test('should support parallel execution with dependencies and success states', async () => {
+      // Define task schemas
+      const prAnalysisSchema = z.object({
+        title: z.string(),
+        description: z.string(),
+        changedFiles: z.array(z.string()),
+        complexity: z.number().min(1).max(10)
+      });
+
+      const securitySchema = z.object({
+        vulnerabilities: z.array(z.string()),
+        riskLevel: z.enum(['high', 'medium', 'low']),
+        recommendations: z.array(z.string())
+      });
+
+      const testPlanSchema = z.object({
+        testCases: z.array(z.string()),
+        coverage: z.number().min(0).max(100),
+        estimatedTime: z.number()
+      });
+
+      // Mock task responses
+      const mockPRAnalysis = {
+        title: 'Test PR',
+        description: 'Test description',
+        changedFiles: ['test.ts'],
+        complexity: 5
+      };
+
+      const mockSecurityCheck = {
+        vulnerabilities: [],
+        riskLevel: 'low' as const,
+        recommendations: ['No issues found']
+      };
+
+      const mockTestPlan = {
+        testCases: ['Test case 1'],
+        coverage: 90,
+        estimatedTime: 30
+      };
+
+      // Mock tasks
+      const analyzePR = {
+        name: 'Analyze PR',
+        execute: jest.fn().mockResolvedValue(mockPRAnalysis)
+      };
+
+      const securityCheck = {
+        name: 'Security Check',
+        execute: jest.fn().mockResolvedValue(mockSecurityCheck)
+      };
+
+      const generateTestPlan = {
+        name: 'Generate Test Plan',
+        execute: jest.fn().mockResolvedValue(mockTestPlan)
+      };
+
+      // Define workflow output type
+      type WorkflowOutput = {
+        analysis: typeof mockPRAnalysis;
+        security: typeof mockSecurityCheck;
+        testPlan: typeof mockTestPlan;
+      };
+
+      // Create workflow
+      const workflow = createWorkflow<{ diff: string }>({
+        name: 'Comprehensive PR Review',
+        description: 'Reviews a pull request and generates a test plan'
+      }, async (w) => {
+        // Execute initial tasks in parallel
+        const results = await w.parallel([
+          {
+            name: 'PR Analysis',
+            task: analyzePR.execute,
+            input: { diff: 'test code' }
+          },
+          {
+            name: 'Security Check',
+            task: securityCheck.execute,
+            input: { diff: 'test code', complexity: 5 }
+          }
+        ]);
+
+        const [prAnalysis, securityResults] = results as [typeof mockPRAnalysis, typeof mockSecurityCheck];
+
+        // Handle security check result
+        if (securityResults.riskLevel === 'low') {
+          // Execute test plan task directly
+          const testPlanResult = await generateTestPlan.execute({ 
+            diff: 'test code', 
+            vulnerabilities: [] 
+          });
+          
+          // Return final result with all required fields
+          return w.success({
+            analysis: prAnalysis,
+            security: securityResults,
+            testPlan: testPlanResult
+          });
+        }
+
+        return w.fail('Security check failed');
+      });
+
+      // Execute workflow
+      const result = await workflow.execute({ diff: 'test code' }, {
+        schema: z.object({
+          analysis: prAnalysisSchema.extend({}).passthrough(),
+          security: securitySchema.extend({
+            recommendations: z.array(z.string())
+          }).passthrough(),
+          testPlan: testPlanSchema.extend({}).passthrough()
+        }).transform((val): WorkflowOutput => ({
+          analysis: val.analysis as typeof mockPRAnalysis,
+          security: val.security as typeof mockSecurityCheck,
+          testPlan: val.testPlan as typeof mockTestPlan
+        }))
+      });
+
+      // Verify parallel execution
+      expect(analyzePR.execute).toHaveBeenCalledWith({ diff: 'test code' });
+      expect(securityCheck.execute).toHaveBeenCalledWith({ 
+        diff: 'test code', 
+        complexity: 5 
+      });
+
+      // Verify conditional execution
+      expect(generateTestPlan.execute).toHaveBeenCalledWith({ 
+        diff: 'test code', 
+        vulnerabilities: [] 
+      });
+
+      // Verify final result
+      expect(result).toEqual({
+        analysis: mockPRAnalysis,
+        security: mockSecurityCheck,
+        testPlan: mockTestPlan
       });
     });
   });

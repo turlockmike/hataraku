@@ -1,49 +1,55 @@
 import { z } from 'zod';
 
 // Task execution function type
-type TaskExecutor<TInput = unknown, TOutput = unknown> = (input: TInput) => Promise<TOutput>;
+export type TaskExecutor<TInput = unknown, TOutput = unknown> = (input: TInput) => Promise<TOutput>;
 
 // Workflow builder types
-interface WorkflowBuilder<TResults extends Record<string, unknown> = Record<string, unknown>> {
-  task<TInput, TOutput>(
+interface WorkflowBuilder<TInput = unknown, TResults extends Record<string, unknown> = Record<string, unknown>> {
+  input: TInput;
+  
+  task<TTaskInput, TTaskOutput>(
     name: string,
-    executor: TaskExecutor<TInput, TOutput>,
-    input: TInput
-  ): WorkflowBuilder<TResults & { [K in string]: TOutput }>;
+    executor: TaskExecutor<TTaskInput, TTaskOutput>,
+    input: TTaskInput
+  ): Promise<TTaskOutput>;
   
   when<T extends TResults>(
     condition: (results: T) => boolean,
-    builder: (builder: WorkflowBuilder<T>) => WorkflowBuilder<T>
-  ): WorkflowBuilder<TResults>;
+    builder: (builder: WorkflowBuilder<TInput, T>) => WorkflowBuilder<TInput, T>
+  ): WorkflowBuilder<TInput, TResults>;
   
-  parallel<T extends Record<string, Promise<unknown>>>(
-    tasks: T
-  ): WorkflowBuilder<TResults & { [K in keyof T]: Awaited<T[K]> }>;
+  parallel<TTasks extends ReadonlyArray<{ name: string; task: TaskExecutor<any, any>; input: any; }>>(
+    tasks: TTasks
+  ): Promise<{ [K in keyof TTasks]: TTasks[K] extends { task: TaskExecutor<any, infer TOutput> } ? TOutput : never }>;
+
+  success<T>(result: T): T;
+  
+  fail(message: string): never;
 
   execute(): Promise<TResults>;
 }
 
-export interface WorkflowConfig<TInput = unknown, TOutput = unknown> {
+export interface WorkflowConfig<TInput = unknown> {
   name: string;
   description: string;
-  inputSchema?: z.ZodType<TInput>;
-  outputSchema?: z.ZodType<TOutput>;
   // Event handlers
   onTaskStart?: (taskName: string) => void;
   onTaskComplete?: (taskName: string, result: unknown) => void;
   onWorkflowStart?: (workflowName: string, input: TInput) => void;
-  onWorkflowComplete?: (workflowName: string, output: TOutput) => void;
+  onWorkflowComplete?: (workflowName: string, output: unknown) => void;
   onError?: (error: Error) => void;
-  execute?: (input: TInput) => Promise<TOutput>;
 }
 
-export interface Workflow<TInput = unknown, TOutput = unknown> {
+export interface Workflow<TInput = unknown> {
   name: string;
   description: string;
-  execute(input: TInput): Promise<TOutput>;
+  execute(input: TInput): Promise<unknown>;
+  execute<T>(input: TInput, options: { schema: z.ZodType<T> }): Promise<T>;
 }
 
-class WorkflowBuilderImpl<TResults extends Record<string, unknown> = Record<string, unknown>> implements WorkflowBuilder<TResults> {
+class WorkflowBuilderImpl<TInput = unknown, TResults extends Record<string, unknown> = Record<string, unknown>> implements WorkflowBuilder<TInput, TResults> {
+  public readonly input: TInput;
+  
   private tasks: Array<{
     name: string;
     executor: (input: unknown) => Promise<unknown>;
@@ -52,28 +58,46 @@ class WorkflowBuilderImpl<TResults extends Record<string, unknown> = Record<stri
 
   private conditionalTasks: Array<{
     condition: (results: TResults) => boolean;
-    builder: (builder: WorkflowBuilder<TResults>) => WorkflowBuilder<TResults>;
+    builder: (builder: WorkflowBuilder<TInput, TResults>) => WorkflowBuilder<TInput, TResults>;
   }> = [];
 
-  constructor(private config: WorkflowConfig<unknown, unknown>) {}
+  constructor(private config: WorkflowConfig<TInput>, input: TInput) {
+    this.input = input;
+  }
 
-  task<TInput, TOutput>(
+  async task<TTaskInput, TTaskOutput>(
     name: string,
-    executor: TaskExecutor<TInput, TOutput>,
-    input: TInput
-  ): WorkflowBuilder<TResults & { [K in string]: TOutput }> {
-    this.tasks.push({
-      name,
-      executor: executor as (input: unknown) => Promise<unknown>,
-      input
-    });
-    return this as unknown as WorkflowBuilder<TResults & { [K in string]: TOutput }>;
+    executor: TaskExecutor<TTaskInput, TTaskOutput>,
+    input: TTaskInput
+  ): Promise<TTaskOutput> {
+    // Emit task start event
+    this.config.onTaskStart?.(name);
+
+    try {
+      // Execute task
+      const result = await executor(input);
+
+      // Store result for later use in workflow
+      this.tasks.push({
+        name,
+        executor: async () => result,
+        input
+      });
+
+      // Emit task complete event
+      this.config.onTaskComplete?.(name, result);
+
+      return result;
+    } catch (error) {
+      const taskError = error instanceof Error ? error : new Error(String(error));
+      throw new Error(`Task '${name}' failed: ${taskError.message}`);
+    }
   }
 
   when<T extends TResults>(
     condition: (results: T) => boolean,
-    builder: (builder: WorkflowBuilder<T>) => WorkflowBuilder<T>
-  ): WorkflowBuilder<TResults> {
+    builder: (builder: WorkflowBuilder<TInput, T>) => WorkflowBuilder<TInput, T>
+  ): WorkflowBuilder<TInput, TResults> {
     this.conditionalTasks.push({ 
       condition: (results) => {
         try {
@@ -82,23 +106,34 @@ class WorkflowBuilderImpl<TResults extends Record<string, unknown> = Record<stri
           return false;
         }
       }, 
-      builder: (b) => builder(b as WorkflowBuilder<T>)
+      builder: (b) => builder(b as WorkflowBuilder<TInput, T>)
     });
     return this;
   }
 
-  parallel<T extends Record<string, Promise<unknown>>>(
-    tasks: T
-  ): WorkflowBuilder<TResults & { [K in keyof T]: Awaited<T[K]> }> {
-    const entries = Object.entries(tasks);
-    entries.forEach(([name, promise]) => {
-      this.tasks.push({
-        name,
-        executor: () => promise,
-        input: undefined
-      });
+  parallel<TTasks extends ReadonlyArray<{ name: string; task: TaskExecutor<any, any>; input: any; }>>(
+    tasks: TTasks
+  ): Promise<{ [K in keyof TTasks]: TTasks[K] extends { task: TaskExecutor<any, infer TOutput> } ? TOutput : never }> {
+    const promises = tasks.map(async ({ name, task, input }) => {
+      this.config.onTaskStart?.(name);
+      try {
+        const result = await task(input);
+        this.config.onTaskComplete?.(name, result);
+        return result;
+      } catch (error) {
+        const taskError = error instanceof Error ? error : new Error(String(error));
+        throw new Error(`Task '${name}' failed: ${taskError.message}`);
+      }
     });
-    return this as unknown as WorkflowBuilder<TResults & { [K in keyof T]: Awaited<T[K]> }>;
+    return Promise.all(promises) as any;
+  }
+
+  success<T>(result: T): T {
+    return result;
+  }
+
+  fail(message: string): never {
+    throw new Error(message);
   }
 
   async execute(): Promise<TResults> {
@@ -118,7 +153,7 @@ class WorkflowBuilderImpl<TResults extends Record<string, unknown> = Record<stri
       // Check conditional tasks after each task execution
       for (const conditional of this.conditionalTasks) {
         if (conditional.condition(results as TResults)) {
-          const conditionalBuilder = new WorkflowBuilderImpl<TResults>(this.config);
+          const conditionalBuilder = new WorkflowBuilderImpl<TInput, TResults>(this.config, this.input);
           const builtConditional = conditional.builder(conditionalBuilder);
           const conditionalResults = await builtConditional.execute();
           Object.assign(results, conditionalResults);
@@ -130,13 +165,13 @@ class WorkflowBuilderImpl<TResults extends Record<string, unknown> = Record<stri
   }
 }
 
-type WorkflowBuilderFunction<TInput, TOutput> = 
-  (workflow: WorkflowBuilder<Record<string, TOutput>>) => Promise<TOutput | WorkflowBuilder<Record<string, TOutput>>>;
+type WorkflowBuilderFunction<TInput> = 
+  (workflow: WorkflowBuilder<TInput>) => Promise<unknown | WorkflowBuilder<TInput>>;
 
-export function createWorkflow<TInput = unknown, TOutput = unknown>(
-  config: WorkflowConfig<TInput, TOutput>,
-  builder?: WorkflowBuilderFunction<TInput, TOutput>
-): Workflow<TInput, TOutput> {
+export function createWorkflow<TInput = unknown>(
+  config: WorkflowConfig<TInput>,
+  builder?: WorkflowBuilderFunction<TInput>
+): Workflow<TInput> {
   if (!config.name) {
     throw new Error('name is required');
   }
@@ -144,44 +179,32 @@ export function createWorkflow<TInput = unknown, TOutput = unknown>(
   return {
     name: config.name,
     description: config.description,
-    execute: async (input: TInput): Promise<TOutput> => {
+    execute: async <T = unknown>(input: TInput, options?: { schema: z.ZodType<T> }): Promise<T | unknown> => {
       try {
-        // Validate input if schema is provided
-        if (config.inputSchema) {
-          input = config.inputSchema.parse(input);
-        }
-
         // Notify workflow start
         config.onWorkflowStart?.(config.name, input);
 
-        let output: TOutput;
-
-        if (builder) {
-          // Create workflow builder
-          const workflowBuilder = new WorkflowBuilderImpl<Record<string, TOutput>>(config as WorkflowConfig<unknown, unknown>);
-          
-          // Execute builder function
-          const builderResult = await builder(workflowBuilder);
-          
-          // If builder returns a WorkflowBuilder, execute it
-          output = builderResult instanceof WorkflowBuilderImpl 
-            ? await builderResult.execute() as TOutput
-            : builderResult as TOutput;
-        } else if (config.execute) {
-          output = await config.execute(input);
-        } else {
-          throw new Error('Either builder or execute function is required');
+        if (!builder) {
+          throw new Error('Builder function is required');
         }
 
-        // Validate output if schema is provided
-        if (config.outputSchema) {
-          config.outputSchema.parse(output);
-        }
+        // Create workflow builder with input
+        const workflowBuilder = new WorkflowBuilderImpl<TInput>(config, input);
+        
+        // Execute builder function
+        const builderResult = await builder(workflowBuilder);
+        
+        // Get output
+        const output = builderResult instanceof WorkflowBuilderImpl 
+          ? await builderResult.execute()
+          : builderResult;
 
+        // Get output
+        const result = options?.schema ? options.schema.parse(output) : output;
+        
         // Notify workflow completion
-        config.onWorkflowComplete?.(config.name, output);
-
-        return output;
+        config.onWorkflowComplete?.(config.name, result);
+        return result;
       } catch (error) {
         // Handle validation errors
         if (error instanceof z.ZodError) {
@@ -201,4 +224,4 @@ export function createWorkflow<TInput = unknown, TOutput = unknown>(
       }
     }
   };
-} 
+}
