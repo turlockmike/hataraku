@@ -34,7 +34,7 @@ export function createExecuteCommandTool(config: ExecuteCommandConfig = {}): Too
           if (colorFn) {
             process.stdout.write(colorFn(text));
           } else {
-            process.stdout.write(text);
+            console.log(text);
           }
         });
 
@@ -45,7 +45,7 @@ export function createExecuteCommandTool(config: ExecuteCommandConfig = {}): Too
           if (colorFn) {
             process.stderr.write(colorFn(text));
           } else {
-            process.stderr.write(text);
+            console.error(text);
           }
         });
 

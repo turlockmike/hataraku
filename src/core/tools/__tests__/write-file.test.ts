@@ -81,7 +81,7 @@ describe('writeFileTool', () => {
     }, mockOptions);
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toBe('Line count mismatch: expected 2 but content has 1 lines');
+    expect(result.content[0].text).toBe('Content appears to be truncated or contains omission indicators. File has 1 lines but was predicted to have 2 lines. Please provide complete file content without omissions.');
     expect(mockFs.writeFile).not.toHaveBeenCalled();
   });
 

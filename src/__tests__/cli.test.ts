@@ -59,12 +59,14 @@ describe('CLI', () => {
       delete process.env.ANTHROPIC_API_KEY;
       delete process.env.OPENAI_API_KEY;
       
-      process.argv.push('test task');
+      // Set up program options
+      program.parse(['node', 'cli.js', 'test task', '--provider=openrouter']);
+      const task = program.args[0];
       
-      await main('test task');
+      await main(task);
       
       expect(mockConsoleError).toHaveBeenCalledWith(
-        expect.stringContaining('Error: API key required')
+        chalk.red('Error: API key required. Provide via --api-key or OPENROUTER_API_KEY env var')
       );
     });
   });
@@ -90,16 +92,16 @@ describe('CLI', () => {
     });
     
     it('should execute task in normal mode with streaming (default)', async () => {
-      program.parse(['node', 'cli.js', 'test task', '--no-sound']);
+      program.parse(['node', 'cli.js', 'test task', '--no-sound', '--provider=openrouter']);
       const task = program.args[0];
       
       await main(task);
       
-      expect(mockStdoutWrite).toHaveBeenCalledWith('Task completed successfully');
+      expect(mockStdoutWrite).toHaveBeenCalledWith(chalk.green('Task completed successfully'));
     });
     
     it('should execute task in non-streaming mode', async () => {
-      program.parse(['node', 'cli.js', '--no-stream', 'test task', '--no-sound']);
+      program.parse(['node', 'cli.js', '--no-stream', 'test task', '--no-sound', '--provider=openrouter']);
       const task = program.args[0];
       
       await main(task);
@@ -132,7 +134,7 @@ describe('CLI', () => {
     });
     
     it('should handle interactive mode', async () => {
-      program.parse(['node', 'cli.js', '-i']);
+      program.parse(['node', 'cli.js', '-i', '--provider=openrouter', '--no-sound']);
       const task = program.args[0];
       
       jest.mocked(input).mockResolvedValueOnce('test task').mockResolvedValueOnce('exit');
@@ -140,11 +142,11 @@ describe('CLI', () => {
       await main(task);
       
       expect(input).toHaveBeenCalled();
-      expect(mockStdoutWrite).toHaveBeenCalledWith('Task completed successfully');
+      expect(mockStdoutWrite).toHaveBeenCalledWith(chalk.green('Task completed successfully'));
     });
     
     it('should exit interactive mode when "exit" is entered', async () => {
-      program.parse(['node', 'cli.js', '-i']);
+      program.parse(['node', 'cli.js', '-i', '--provider=openrouter', '--no-sound']);
       const task = program.args[0];
       
       jest.mocked(input).mockResolvedValueOnce('exit');
@@ -164,7 +166,7 @@ describe('CLI', () => {
     });
     
     it('should handle agent errors gracefully', async () => {
-      program.parse(['node', 'cli.js', 'test task']);
+      program.parse(['node', 'cli.js', 'test task', '--provider=openrouter', '--no-sound']);
       const task = program.args[0];
       
       const error = new Error('Agent error');
