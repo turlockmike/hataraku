@@ -110,8 +110,7 @@ const analyzeDiff = createTask({
   agent: codeAnalyzer,
   description: 'Performs initial analysis of code changes',
   schema: codeAnalysisSchema,
-  prompt: (input: { diff: string }) => `Analyze this code diff and provide structured feedback:\n\n${input.diff}`,
-  requiredTools: [readDiff, analyzeComplexity] //Optional, if not provided, all tools registered with the agent will be used.
+  task: (input: { diff: string }) => `Analyze this code diff and provide structured feedback:\n\n${input.diff}`,
 });
 
 // Execute a task

@@ -1,9 +1,8 @@
 import {  LanguageModelV1, generateText, generateObject, streamText, ToolSet, CoreMessage, Message } from 'ai';
 import { z } from 'zod';
+import { AsyncIterableStream } from './types';
 
-const DEFAULT_MAX_STEPS = 10;
-
-type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>;
+const DEFAULT_MAX_STEPS = 25;
 
 interface CallSettings {
   maxTokens?: number;
