@@ -1,0 +1,130 @@
+---
+description: Rules and best practices for writing and running tests
+globs: ["**/*.test.ts", "**/*.spec.ts", "**/*.test.tsx", "**/*.spec.tsx", "**/jest.config.*"]
+---
+
+<rule>
+name: testing_guidelines
+description: Standards and guidelines for test implementation and execution
+filters:
+  - type: file_extension
+    pattern: "\\.(test|spec)\\.(ts|tsx)$"
+  - type: content
+    pattern: "(?s)describe|test|it|expect|jest"
+
+actions:
+  - type: suggest
+    message: |
+      Follow these testing guidelines:
+
+      1. Test Execution:
+         - Run tests with `npm test`
+         - Run single test file: `npm test -- path/to/file.test.ts`
+         - Run tests matching pattern: `npm test -- -t "pattern"`
+         - Watch mode: `npm test -- --watch`
+
+      2. Test Implementation Rules:
+         - Follow TDD approach - implement one test at a time
+         - NEVER increase Jest timeouts
+           ```typescript
+           // ❌ Bad: Increasing timeout
+           jest.setTimeout(10000);
+           
+           // ✅ Good: Fix the underlying performance issue
+           ```
+         - Keep tests focused and independent
+         - Clean up after each test
+
+      3. Snapshot Testing:
+         - Always review snapshot changes carefully
+         - Update snapshots only when changes are intentional:
+           ```bash
+           npm test -- -u
+           ```
+         - Include meaningful snapshot names:
+           ```typescript
+           // ❌ Bad
+           expect(component).toMatchSnapshot();
+           
+           // ✅ Good
+           expect(component).toMatchSnapshot('Button in disabled state');
+           ```
+
+      4. Async Testing:
+         - Use proper async/await syntax
+         - Handle promises correctly
+         - Test both success and error cases
+         ```typescript
+         // ✅ Good async test
+         test('should handle async operation', async () => {
+           expect.assertions(1);
+           try {
+             const result = await asyncOperation();
+             expect(result).toBeDefined();
+           } catch (error) {
+             expect(error).toBeInstanceOf(SpecificError);
+           }
+         });
+         ```
+
+      5. Mocking Guidelines:
+         - Mock external dependencies
+         - Reset mocks between tests
+         - Use jest.spyOn for monitoring
+         ```typescript
+         // ✅ Good mocking practice
+         beforeEach(() => {
+           jest.clearAllMocks();
+         });
+
+         const mockDependency = jest.spyOn(dependency, 'method')
+           .mockImplementation(() => 'mocked');
+         ```
+
+      6. Test Performance:
+         - If tests timeout, investigate the implementation
+         - Use setup/teardown effectively
+         - Minimize unnecessary async operations
+         ```typescript
+         // ❌ Bad: Slow test with real timer
+         test('delayed operation', async () => {
+           await new Promise(r => setTimeout(r, 1000));
+         });
+
+         // ✅ Good: Using fake timers
+         test('delayed operation', () => {
+           jest.useFakeTimers();
+           jest.advanceTimersByTime(1000);
+         });
+         ```
+
+examples:
+  - input: |
+      // ❌ Bad: Test with timeout modification
+      jest.setTimeout(10000);
+      test('slow operation', async () => {
+        await slowOperation();
+      });
+
+      // ✅ Good: Optimized test
+      test('operation performance', async () => {
+        const result = await optimizedOperation();
+        expect(result).toBeDefined();
+      });
+    output: "Performance-focused test implementation"
+
+  - input: |
+      // ❌ Bad: Snapshot without description
+      expect(render(<Component />)).toMatchSnapshot();
+
+      // ✅ Good: Descriptive snapshot
+      expect(render(<Component />)).toMatchSnapshot(
+        'Component in initial state with default props'
+      );
+    output: "Well-documented snapshot test"
+
+metadata:
+  priority: high
+  version: 1.0
+  categories: ["testing", "best-practices", "jest"]
+</rule>

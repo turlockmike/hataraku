@@ -1,0 +1,149 @@
+---
+description: Test-driven development guidelines for implementing features
+globs: ["**/*.test.ts", "**/*.spec.ts", "**/*.test.tsx", "**/*.spec.tsx"]
+---
+
+<rule>
+name: test_driven_development
+description: Guidelines for following test-driven development practices
+filters:
+  - type: file_extension
+    pattern: "\\.(test|spec)\\.(ts|tsx)$"
+  - type: content
+    pattern: "(?s)describe|test|it|expect"
+
+actions:
+  - type: suggest
+    message: |
+      Follow these TDD principles:
+
+      1. Red - Write a Failing Test:
+         ```typescript
+         // ❌ Bad: Testing implementation details first
+         test('user repository should call database', () => {
+           const repo = new UserRepository(db);
+           expect(db.save).toBeCalled();
+         });
+
+         // ✅ Good: Testing behavior first
+         test('should create new user with valid data', () => {
+           const userData = { name: 'John', email: 'john@example.com' };
+           const result = await createUser(userData);
+           expect(result).toHaveProperty('id');
+           expect(result.name).toBe(userData.name);
+         });
+         ```
+
+      2. Green - Write Minimal Code:
+         ```typescript
+         // ❌ Bad: Over-engineering
+         class UserCreator {
+           private validations: ValidationRule[] = [];
+           private hooks: Hook[] = [];  // Not needed yet
+           
+           async createUser(data: UserData) {
+             // Complex implementation with unnecessary features
+           }
+         }
+
+         // ✅ Good: Minimal implementation
+         async function createUser(data: UserData): Promise<User> {
+           return { id: generateId(), ...data };
+         }
+         ```
+
+      3. Refactor - Improve Design:
+         ```typescript
+         // Before refactoring
+         function validateUser(data: any) {
+           if (!data.email) throw new Error('Email required');
+           if (!data.name) throw new Error('Name required');
+         }
+
+         // After refactoring
+         interface UserData {
+           email: string;
+           name: string;
+         }
+
+         class ValidationError extends Error {
+           constructor(field: keyof UserData) {
+             super(`${field} required`);
+           }
+         }
+
+         function validateUser(data: UserData) {
+           for (const [field, value] of Object.entries(data)) {
+             if (!value) throw new ValidationError(field as keyof UserData);
+           }
+         }
+         ```
+
+      Key Principles:
+      - Write tests before implementation
+      - Keep tests focused and fast
+      - Test behavior, not implementation
+      - Use tests as documentation
+      - Maintain short feedback loops
+      - Refactor with confidence
+
+      Test Structure:
+      ```typescript
+      describe('Feature: User Management', () => {
+        // Setup common test data
+        const testUser = { name: 'Test User', email: 'test@example.com' };
+        
+        // Group related tests
+        describe('when creating a new user', () => {
+          test('should succeed with valid data', async () => {
+            const result = await createUser(testUser);
+            expect(result).toBeDefined();
+          });
+
+          test('should fail with invalid data', async () => {
+            await expect(createUser({}))
+              .rejects
+              .toThrow('Validation Error');
+          });
+        });
+      });
+      ```
+
+examples:
+  - input: |
+      // ❌ Bad: Testing multiple behaviors at once
+      test('user management', async () => {
+        const user = await createUser(userData);
+        expect(user.id).toBeDefined();
+        
+        const updated = await updateUser(user.id, newData);
+        expect(updated.name).toBe(newData.name);
+        
+        await deleteUser(user.id);
+        expect(await findUser(user.id)).toBeNull();
+      });
+
+      // ✅ Good: Focused, single-behavior tests
+      describe('User Management', () => {
+        test('should create user with valid data', async () => {
+          const user = await createUser(userData);
+          expect(user.id).toBeDefined();
+        });
+
+        test('should update user details', async () => {
+          const updated = await updateUser(userId, newData);
+          expect(updated.name).toBe(newData.name);
+        });
+
+        test('should delete user', async () => {
+          await deleteUser(userId);
+          expect(await findUser(userId)).toBeNull();
+        });
+      });
+    output: "Well-structured, focused tests"
+
+metadata:
+  priority: high
+  version: 1.0
+  categories: ["testing", "best-practices", "tdd"]
+</rule>
