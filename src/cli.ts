@@ -8,6 +8,7 @@ import { input, select } from '@inquirer/prompts';
 import { version } from '../package.json';
 import { startServer } from './server';
 import { playAudioTool } from './lib/tools/play-audio';
+import { ALL_TOOLS } from './core/tools';
 import * as os from 'os';
 import * as path from 'path';
 
@@ -122,8 +123,11 @@ async function main(task?: string) {
             description: 'A helpful AI assistant that can perform various tasks and answer questions',
             role: `You are a helpful AI assistant that can perform various tasks and answer questions.
                   You should be friendly but professional, and provide clear and concise responses.
-                  When working with code, you should follow best practices and provide explanations.`,
+                  When working with code, you should follow best practices and provide explanations.
+                  You have access to various tools for working with files, executing commands, and more.
+                  Use these tools when appropriate to help accomplish tasks.`,
             model: openrouter.chat(options.model),
+            tools: ALL_TOOLS,
             callSettings: {
                 temperature: 0.7,
                 maxTokens: 2000,
