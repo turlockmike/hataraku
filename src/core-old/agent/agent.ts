@@ -241,7 +241,6 @@ export class Agent {
 
       // Combine all tools
       const allTools = [localThinkingTool, attemptCompletionTool, ...(this.config.tools || [])];
-      console.log('running step # ', attempts);
       const step = await this.runStep(modelStream, allTools);
       
       // Add any tool calls to the thread

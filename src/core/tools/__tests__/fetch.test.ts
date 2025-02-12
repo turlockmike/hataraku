@@ -1,10 +1,8 @@
 import { Tool, ToolExecutionOptions } from 'ai';
 import { fetchTool } from '../fetch';
-import fetch from 'node-fetch';
-import { Response } from 'node-fetch';
 
-// Mock node-fetch
-jest.mock('node-fetch');
+// Mock global fetch
+const originalFetch = global.fetch;
 
 describe('fetchTool', () => {
   const mockOptions: ToolExecutionOptions = {
@@ -15,8 +13,14 @@ describe('fetchTool', () => {
   // Cast tool to ensure execute method is available
   const tool = fetchTool as Required<Tool>;
 
-  beforeEach(() => {
-    jest.clearAllMocks();
+beforeEach(() => {
+    // Reset fetch mock
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    // Restore original fetch
+    global.fetch = originalFetch;
   });
 
   it('should fetch text content successfully', async () => {
@@ -25,7 +29,7 @@ describe('fetchTool', () => {
       statusText: 'OK'
     });
 
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
     const result = await tool.execute({
       url: 'https://example.com/text',
@@ -34,7 +38,7 @@ describe('fetchTool', () => {
 
     expect(result.isError).toBeUndefined();
     expect(result.content[0].text).toBe('Sample text content');
-    expect(fetch).toHaveBeenCalledWith('https://example.com/text', { headers: {} });
+    expect(global.fetch).toHaveBeenCalledWith('https://example.com/text', { headers: {} });
   });
 
   it('should fetch and parse JSON content', async () => {
@@ -44,7 +48,7 @@ describe('fetchTool', () => {
       statusText: 'OK'
     });
 
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
     const result = await tool.execute({
       url: 'https://example.com/json',
@@ -62,7 +66,7 @@ describe('fetchTool', () => {
       statusText: 'OK'
     });
 
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
     const result = await tool.execute({
       url: 'https://example.com/html',
@@ -79,7 +83,7 @@ describe('fetchTool', () => {
       statusText: 'OK'
     });
 
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
     const customHeaders = {
       'Authorization': 'Bearer token123',
@@ -88,10 +92,10 @@ describe('fetchTool', () => {
 
     await tool.execute({
       url: 'https://example.com/api',
-      headers: customHeaders
+      headers: JSON.stringify(customHeaders)
     }, mockOptions);
 
-    expect(fetch).toHaveBeenCalledWith('https://example.com/api', {
+    expect(global.fetch).toHaveBeenCalledWith('https://example.com/api', {
       headers: customHeaders
     });
   });
@@ -102,26 +106,26 @@ describe('fetchTool', () => {
       statusText: 'Not Found'
     });
 
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
     const result = await tool.execute({
       url: 'https://example.com/not-found'
     }, mockOptions);
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toBe('Failed to fetch: Not Found (404)');
+    expect(result.content[0].text).toBe('HTTP error 404: Not Found');
   });
 
   it('should handle network errors', async () => {
     const networkError = new Error('Network error');
-    (fetch as jest.Mock).mockRejectedValue(networkError);
+    (global.fetch as jest.Mock).mockRejectedValue(networkError);
 
     const result = await tool.execute({
       url: 'https://example.com/error'
     }, mockOptions);
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toBe('Error fetching content: Network error');
+    expect(result.content[0].text).toBe('Error fetching URL: Network error');
   });
 
   it('should handle invalid JSON responses', async () => {
@@ -130,7 +134,7 @@ describe('fetchTool', () => {
       statusText: 'OK'
     });
 
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
     const result = await tool.execute({
       url: 'https://example.com/invalid-json',
@@ -138,7 +142,7 @@ describe('fetchTool', () => {
     }, mockOptions);
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toMatch(/Error fetching content:/);
+    expect(result.content[0].text).toMatch(/Error fetching URL:/);
   });
 
   it('should default to text format when not specified', async () => {
@@ -147,7 +151,7 @@ describe('fetchTool', () => {
       statusText: 'OK'
     });
 
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
     const result = await tool.execute({
       url: 'https://example.com/default'

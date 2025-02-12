@@ -4,9 +4,6 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { platform } from 'os';
 import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 
 // Supported image formats
 const SUPPORTED_FORMATS = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'];
@@ -63,14 +60,26 @@ export const showImageTool: Tool = {
       const command = getOpenCommand(absolutePath);
 
       // Execute the command
-      await execAsync(command);
-
-      return {
-        content: [{
-          type: "text",
-          text: `Displaying image: ${imagePath}`
-        }]
-      };
+      return new Promise((resolve) => {
+        exec(command, (error) => {
+          if (error) {
+            resolve({
+              isError: true,
+              content: [{
+                type: "text",
+                text: `Error displaying image: ${error.message}`
+              }]
+            });
+          } else {
+            resolve({
+              content: [{
+                type: "text",
+                text: `Displaying image: ${imagePath}`
+              }]
+            });
+          }
+        });
+      });
     } catch (error) {
       return {
         isError: true,

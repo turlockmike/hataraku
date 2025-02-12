@@ -124,8 +124,6 @@ export class Agent {
         role:'user',
         content: 'Given the following text, extract the following information according to the schema provided:\n\n' + result.text
       })
-
-      console.log('responseMessages', responseMessages)
   
       if (input?.schema) {
         const { object } = await generateObject({

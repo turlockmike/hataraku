@@ -10,8 +10,6 @@ import { insertContentTool } from './insert-content';
 import { applyDiffTool } from './apply-diff';
 import { executeCommandTool } from './execute-command';
 import { listCodeDefinitionsTool } from './list-code-definitions';
-import { useMcpTool } from './use-mcp-tool';
-import { accessMcpResourceTool } from './access-mcp-resource';
 import { playAudioTool } from './play-audio';
 import { showImageTool } from './show-image';
 
@@ -27,8 +25,6 @@ export {
   applyDiffTool,
   executeCommandTool,
   listCodeDefinitionsTool,
-  useMcpTool,
-  accessMcpResourceTool,
   playAudioTool,
   showImageTool
 };
@@ -56,11 +52,6 @@ export const CodeAnalysisTools: Record<string, Tool> = {
   list_code_definitions: listCodeDefinitionsTool
 };
 
-export const McpTools: Record<string, Tool> = {
-  use_mcp_tool: useMcpTool,
-  access_mcp_resource: accessMcpResourceTool
-};
-
 export const MediaTools: Record<string, Tool> = {
   play_audio: playAudioTool,
   show_image: showImageTool
@@ -72,7 +63,6 @@ export const ALL_TOOLS: Record<string, Tool> = {
   ...FileSystemTools,
   ...SystemTools,
   ...CodeAnalysisTools,
-  ...McpTools,
   ...MediaTools
 };
 

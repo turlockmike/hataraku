@@ -7,3 +7,5 @@ If a snapshot test is failing, you MUST ask the user if the snapshot is correct 
 When implementing code, follow the TDD approach. Only attempt to fix 1 test at a time. 
 
 NEVER increase jest timeouts. If a test times out, it's an indiciation of an error in the implementation.
+
+Run tests with npm test
