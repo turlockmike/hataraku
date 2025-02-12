@@ -8,7 +8,7 @@ import { HatarakuTool, AgentStep } from "../../../lib/types"
 import os from "os"
 import process from "node:process"
 import { createAsyncStream } from "../../../utils/async"
-import { AttemptCompletionTool } from "../../../lib/tools/attempt-completion"
+import { AttemptCompletionTool } from "../../../lib/tools-deprecated/attempt-completion"
 
 describe("Agent", () => {
 	let mockProvider: MockProvider

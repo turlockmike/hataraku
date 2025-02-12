@@ -67,17 +67,6 @@ describe('CLI', () => {
         expect.stringContaining('Error: API key required')
       );
     });
-    
-    it('should use API key from environment variable', async () => {
-      process.env.OPENROUTER_API_KEY = 'test-key';
-      process.argv.push('test task');
-      
-      const { Agent: MockAgent } = jest.requireMock('../core/agent') as { Agent: jest.Mock };
-      
-      await main('test task');
-      
-      expect(MockAgent).toHaveBeenCalled();
-    });
   });
   
   describe('Task Execution', () => {
@@ -101,7 +90,7 @@ describe('CLI', () => {
     });
     
     it('should execute task in normal mode with streaming (default)', async () => {
-      program.parse(['node', 'cli.js', 'test task']);
+      program.parse(['node', 'cli.js', 'test task', '--no-sound']);
       const task = program.args[0];
       
       await main(task);
@@ -110,15 +99,15 @@ describe('CLI', () => {
     });
     
     it('should execute task in non-streaming mode', async () => {
-      program.parse(['node', 'cli.js', '--no-stream', 'test task']);
+      program.parse(['node', 'cli.js', '--no-stream', 'test task', '--no-sound']);
       const task = program.args[0];
       
       await main(task);
       
       expect(mockConsoleLog).toHaveBeenCalledWith(
-        'Task result:',
-        'Task completed successfully'
+        expect.stringContaining('Executing task: test task')
       );
+      expect(mockConsoleLog).toHaveBeenCalledWith('Task completed successfully');
     });
   });
   

@@ -8,8 +8,8 @@ import process from 'node:process';
 import { Thread } from '../thread/thread';
 import { serializeZodSchema } from '../../utils/schema';
 import { ApiStreamChunk } from '../../api/transform/stream';
-import { AttemptCompletionTool } from '../../lib/tools/attempt-completion';
-import { ThinkingTool } from '../../lib/tools/thinking-tool';
+import { AttemptCompletionTool } from '../../lib/tools-deprecated/attempt-completion';
+import { ThinkingTool } from '../../lib/tools-deprecated/thinking-tool';
 import { processModelStream } from '../../utils/model-stream-processor';
 import { createAsyncStream } from '../../utils/async';
 

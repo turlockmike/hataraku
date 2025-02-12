@@ -4,13 +4,19 @@ import { Command } from 'commander';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { Agent } from './core/agent';
 import chalk from 'chalk';
-import { input, select } from '@inquirer/prompts';
+import { input } from '@inquirer/prompts';
 import { version } from '../package.json';
 import { startServer } from './server';
-import { playAudioTool } from './lib/tools/play-audio';
+import { playAudioTool } from './lib/tools-deprecated/play-audio';
 import { ALL_TOOLS } from './core/tools';
 import * as os from 'os';
 import * as path from 'path';
+import { PassThrough } from 'stream';
+
+interface CLIOptions {
+    withAudio?: boolean;
+    voice?: string;
+}
 
 const program = new Command();
 
@@ -56,7 +62,7 @@ Examples:
   $ hataraku --provider anthropic --model claude-3 "write a test"           # Uses different provider
   $ OPENROUTER_API_KEY=<key> hataraku "write a test file"                  # Provides API key via env var
   $ hataraku -i                                                             # Run in interactive mode
-  $ hataraku -i "initial task"                                              # Interactive mode with initial task
+  $ hataraku -i "initial task"                                             # Interactive mode with initial task
   $ hataraku --no-sound "create a test file"                               # Run without sound effects
   $ hataraku --no-stream "explain this code"                               # Run without streaming responses
   $ hataraku serve                                                          # Start web interface
@@ -69,36 +75,38 @@ Environment Variables:
         // The task will be handled by main() after parsing
     });
 
-async function promptForNextTask(followUpTasks: string[], defaultTask?: string): Promise<string | null> {
-    const choices = [
-        ...followUpTasks.map((task, index) => ({
-            value: task,
-            label: task,
-            description: `Follow-up task ${index + 1}`
-        })),
-        { value: 'write_own', label: 'Write my own', description: 'Enter a custom task' },
-        { value: 'quit', label: 'Exit', description: 'Exit the program' }
-    ];
+async function processStreams(textStream: AsyncIterable<string>, options: any) {
+    const consoleStream = new PassThrough();
+    const sourceStream = new PassThrough();
+    let fullText = '';  // Collect full text for TTS
 
-    const choice = await select({
-        message: 'Choose your next task:',
-        choices
+    // Convert AsyncIterable to stream
+    (async () => {
+        try {
+            for await (const chunk of textStream) {
+                sourceStream.write(chunk);
+                if (options.withAudio) {
+                    fullText += chunk;  // Collect text for TTS
+                }
+            }
+            sourceStream.end();
+        } catch (err) {
+            sourceStream.destroy(err as Error);
+        }
+    })();
+
+    // Pipe source to console
+    sourceStream.pipe(consoleStream);
+
+    // Set up console output
+    consoleStream.on('data', (chunk) => {
+        process.stdout.write(chunk.toString());
     });
 
-    if (choice === 'quit') {
-        console.log(chalk.yellow('Exiting...'));
-        process.exit(0);
-    }
-
-    if (choice === 'write_own') {
-        const customTask = await input({
-            message: 'Enter your task:',
-            default: defaultTask
-        });
-        return customTask || null;
-    }
-
-    return choice;
+    // Wait for console output to finish
+    await new Promise<void>((resolve) => {
+        consoleStream.on('end', resolve);
+    });
 }
 
 async function main(task?: string) {
@@ -156,16 +164,12 @@ async function main(task?: string) {
                 try {
                     if (options.stream !== false) {
                         const result = await agent.task(taskToRun, { stream: true });
-                        for await (const chunk of result) {
-                            process.stdout.write(chunk);
-                        }
-                        console.log(); // Add newline at end
+                        await processStreams(result, options);
                     } else {
                         const result = await agent.task(taskToRun);
                         console.log(result);
                     }
-
-                    // Play celebration sound if sounds are enabled
+                    // Finally play the celebratory audio
                     if (options.sound) {
                         await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
                     }
@@ -192,16 +196,13 @@ async function main(task?: string) {
             try {
                 if (options.stream !== false) {
                     const result = await agent.task(task, { stream: true });
-                    for await (const chunk of result) {
-                        process.stdout.write(chunk);
-                    }
-                    console.log(); // Add newline at end
+                    await processStreams(result, options);
+                    
                 } else {
                     const result = await agent.task(task);
-                    console.log('Task result:', result);
+                    console.log(result);
+                    // Play the text if audio is enabled
                 }
-
-                // Play celebration sound if sounds are enabled
                 if (options.sound) {
                     await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
                 }
@@ -234,4 +235,60 @@ if (require.main === module) {
 }
 
 // Export for testing
-export { program, main }; 
+export { program, main };
+
+// Use the actual agent implementation
+function createAgent(): Agent {
+    return new Agent({
+        name: 'Hataraku CLI Agent',
+        description: 'A helpful AI assistant that can perform various tasks and answer questions',
+        role: `You are a helpful AI assistant that can perform various tasks and answer questions.
+              You should be friendly but professional, and provide clear and concise responses.
+              When working with code, you should follow best practices and provide explanations.
+              You have access to various tools for working with files, executing commands, and more.
+              Use these tools when appropriate to help accomplish tasks.`,
+        model: createOpenRouter({
+            apiKey: process.env.OPENROUTER_API_KEY || '',
+        }).chat('anthropic/claude-3.5-sonnet'),
+        tools: ALL_TOOLS,
+        callSettings: {
+            temperature: 0.7,
+            maxTokens: 2000,
+        }
+    });
+}
+
+export async function runCLI(input: string, options: CLIOptions = {}): Promise<void> {
+    const agent = createAgent();
+    const sourceStream = new PassThrough();
+    const consoleStream = new PassThrough();
+
+    // Set up console output
+    const consoleOutput = new Promise<void>((resolve, reject) => {
+        consoleStream.on('data', chunk => process.stdout.write(chunk.toString()));
+        consoleStream.on('end', resolve);
+        consoleStream.on('error', reject);
+    });
+
+    // Process agent response
+    try {
+        const agentResponse = await agent.task(input, { stream: false });
+        
+        // Write response to streams
+        sourceStream.write(agentResponse);
+        sourceStream.end();
+
+        // Pipe source to console
+        sourceStream.pipe(consoleStream);
+
+        // Wait for console output to finish
+        await consoleOutput;
+    } catch (error) {
+        console.error('Error:', error);
+        throw error;
+    } finally {
+        // Clean up streams
+        sourceStream.destroy();
+        consoleStream.destroy();
+    }
+} 

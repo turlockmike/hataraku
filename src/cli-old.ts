@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { modelProviderFromConfig } from './api';
-import { CliToolExecutor } from './lib/tools/CliToolExecutor';
+import { CliToolExecutor } from './lib/tools-deprecated/CliToolExecutor';
 import { CliMessageParser } from './lib/parser/CliMessageParser';
 import { openRouterDefaultModelInfo, deepSeekModels } from './shared/api';
 import { McpClient } from './lib/mcp/McpClient';
@@ -13,7 +13,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { input, select } from '@inquirer/prompts';
-import { playAudioTool } from './lib/tools/play-audio';
+import { playAudioTool } from './lib/tools-deprecated/play-audio';
 import { version } from '../package.json';
 import { startServer } from './server';
 

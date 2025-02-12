@@ -1,4 +1,4 @@
-import { getToolDocs } from "../../../lib/tools";
+import { getToolDocs } from "../../../lib/tools-deprecated";
 import { UnifiedTool } from "../../../lib/types";
 
 export function getSharedToolUseSection(): string {
