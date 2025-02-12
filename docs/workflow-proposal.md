@@ -5,6 +5,10 @@ Here's an example of how workflow execution would work with the AI SDK integrati
 
 ```typescript
 import { createAgent, createTask, createTool, createWorkflow } from 'hataraku';
+import { readDiff } from './tools/readDiff';
+import { analyzeComplexity } from './tools/analyzeComplexity';
+import { securityScan } from './tools/securityScan';
+import { testGenerator } from './tools/testGenerator';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
@@ -69,45 +73,44 @@ const generateTestPlan = createTask({
   requiredTools: [testGenerator]
 });
 
+
+
 // Create and execute a workflow
-const reviewWorkflow = createWorkflow({
+const reviewWorkflow = createWorkflow<{ diff: string}, WorkflowOutput>({
   name: 'Comprehensive PR Review',
-  async execute(input: { diff: string }) {
-    // First, analyze the PR
-    const prAnalysis = await analyzePR({ diff: input.diff });
-
-    // Then run security check and test plan generation in parallel
-    const [securityResults, testPlan] = await Promise.all([
-      securityCheck({ 
-        diff: input.diff, 
-        complexity: prAnalysis.complexity 
-      }),
-      generateTestPlan({ 
-        diff: input.diff,
-        vulnerabilities: [] // Will be populated from security check
-      })
-    ]);
-
-    // If high security risks are found, generate a new test plan with focus on vulnerabilities
-    if (securityResults.riskLevel === 'high') {
-      const updatedTestPlan = await generateTestPlan({
-        diff: input.diff,
-        vulnerabilities: securityResults.vulnerabilities
-      });
-      
-      return {
-        analysis: prAnalysis,
-        security: securityResults,
-        testPlan: updatedTestPlan
-      };
+  description: 'Reviews a pull request and generates a test plan',
+  inputSchema: z.object({ diff: z.string() }),
+  outputSchema: z.object({
+    analysis: pullRequestSchema,
+    security: securitySchema,
+    testPlan: testPlanSchema
+  }),
+}, async (w) => {
+  const [prAnalyis, securityCheck] = await w.parallel([
+    {
+      name: 'Analyze Pull Request',
+      task: analyzePR.execute,
+      input: { diff: 'test code' }
+    },
+    {
+      name: 'Security Analysis',
+      task: securityCheck.execute,
+      input: { diff: 'test code', complexity: prAnalyis.complexity }
     }
-
-    return {
-      analysis: prAnalysis,
-      security: securityResults,
-      testPlan: testPlan
-    };
+  ]);
+  let testPlan;
+  if (securityCheck.riskLevel === 'medium') {
+    testPlan = await w.task('Test Plan Generation', generateTestPlan.execute, { diff: 'test code', vulnerabilities: securityCheck.vulnerabilities });
+  } else if (securityCheck.riskLevel === 'low') {
+    testPlan = await w.task('Test Plan Generation', generateTestPlan.execute, { diff: 'test code', vulnerabilities: [] });
+  } else {
+    w.fail('Security check failed');
   }
+  return w.success({
+    analysis: prAnalyis,
+    security: securityCheck,
+    testPlan: testPlan
+  })
 });
 
 // Execute the workflow
