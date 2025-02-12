@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock';
 import chalk from 'chalk';
 import { input } from '@inquirer/prompts';
 import { version } from '../package.json';
@@ -11,6 +12,7 @@ import * as os from 'node:os';
 import { PassThrough } from 'node:stream';
 import { createExecuteCommandTool } from './core/tools/execute-command';
 import { createCLIAgent } from './core/agents';
+import { createBedrockProvider } from './providers/bedrock';
 
 const program = new Command();
 
@@ -41,12 +43,13 @@ program
     .name('hataraku')
     .description('Hataraku is a CLI tool for creating and managing tasks')
     .option('--update', 'Update Hataraku to the latest version')
-    .option('-p, --provider <provider>', 'API provider to use (openrouter, anthropic, openai)', 'openRouter')
-    .option('-m, --model <model>', 'Model ID for the provider (e.g., anthropic/claude-3.5-sonnet)', 'anthropic/claude-3.5-sonnet')
+    .option('-p, --provider <provider>', 'API provider to use (openrouter, anthropic, openai, bedrock)', 'bedrock')
+    .option('-m, --model <model>', 'Model ID for the provider (e.g., anthropic/claude-3.5-sonnet)')
     .option('-k, --api-key <key>', 'API key for the provider (can also use PROVIDER_API_KEY env var)')
     .option('-i, --interactive', 'Run in interactive mode, prompting for tasks')
     .option('--no-sound', 'Disable sound effects')
     .option('--no-stream', 'Disable streaming responses')
+    .option('--region <region>', 'AWS region for Bedrock (defaults to AWS_REGION env var)')
     .argument('[task]', 'Task or question for the AI assistant')
     .version(version)
     .addHelpText('after', `
@@ -54,6 +57,7 @@ Examples:
   $ hataraku "create a hello world html file"                                # Uses default model (claude-3.5-sonnet)
   $ hataraku --model deepseek/deepseek-chat "explain this code"             # Uses different model
   $ hataraku --provider anthropic --model claude-3 "write a test"           # Uses different provider
+  $ hataraku --provider bedrock --model anthropic.claude-3-sonnet-20240229-v1:0 "analyze this code"  # Uses AWS Bedrock
   $ OPENROUTER_API_KEY=<key> hataraku "write a test file"                  # Provides API key via env var
   $ hataraku -i                                                             # Run in interactive mode
   $ hataraku -i "initial task"                                             # Interactive mode with initial task
@@ -64,7 +68,10 @@ Examples:
 Environment Variables:
   OPENROUTER_API_KEY    - API key for OpenRouter
   ANTHROPIC_API_KEY     - API key for Anthropic
-  OPENAI_API_KEY        - API key for OpenAI`)
+  OPENAI_API_KEY        - API key for OpenAI
+  AWS_ACCESS_KEY_ID     - AWS access key ID for Bedrock
+  AWS_SECRET_ACCESS_KEY - AWS secret access key for Bedrock
+  AWS_REGION           - AWS region for Bedrock (defaults to us-east-1)`)
     .action(async (task) => {
         // The task will be handled by main() after parsing
     });
@@ -104,25 +111,32 @@ async function processStreams(textStream: AsyncIterable<string>, options: any) {
     });
 }
 
-
 async function main(task?: string) {
     try {
         const options = program.opts();
 
-        // Check for API key
-        const apiKey = options.apiKey || process.env[`${options.provider.toUpperCase()}_API_KEY`];
-        if (!apiKey) {
-            console.error(chalk.red(`Error: API key required. Provide via --api-key or ${options.provider.toUpperCase()}_API_KEY env var`));
-            return 1;
+        let model;
+        if (options.provider === 'bedrock') {
+            // Use AWS Bedrock
+            const bedrock = await createBedrockProvider();
+            model = bedrock(options.model || 'us.anthropic.claude-3-5-sonnet-20241022-v2:0');
+        } else {
+            // Check for API key for other providers
+            const apiKey = options.apiKey || process.env[`${options.provider.toUpperCase()}_API_KEY`];
+            if (!apiKey) {
+                console.error(chalk.red(`Error: API key required. Provide via --api-key or ${options.provider.toUpperCase()}_API_KEY env var`));
+                return 1;
+            }
+
+            // Initialize OpenRouter client
+            const openrouter = createOpenRouter({
+                apiKey,
+            });
+            model = openrouter.chat(options.model || 'anthropic/claude-3.5-sonnet');
         }
 
-        // Initialize OpenRouter client
-        const openrouter = createOpenRouter({
-            apiKey,
-        });
-
-        // Initialize agent using our new factory function
-        const agent = createCLIAgent(openrouter.chat(options.model), apiKey);
+        // Initialize agent using our factory function
+        const agent = createCLIAgent(model);
 
         if (options.interactive) {
             // Interactive mode
@@ -183,7 +197,6 @@ async function main(task?: string) {
                 } else {
                     const result = await agent.task(task);
                     console.log(result);
-                    // Play the text if audio is enabled
                 }
                 if (options.sound) {
                     await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());

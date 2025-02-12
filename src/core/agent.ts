@@ -93,15 +93,17 @@ export class Agent {
       content: task
     });
     if (input?.stream) {
-      const {textStream} = streamText({
+      const {textStream, } = streamText({
         model: this.model,
         system: this.getSystemPrompt(),
         messages,
         maxSteps,
         tools: this.tools,
         ...this.callSettings,
+        onError: (error) => {
+          console.error('Error streaming text', error)
+        }
       });
-  
       return textStream;
     }
 
