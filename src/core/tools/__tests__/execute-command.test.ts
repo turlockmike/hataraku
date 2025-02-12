@@ -1,5 +1,5 @@
 import { Tool, ToolExecutionOptions } from 'ai';
-import { executeCommandTool } from '../execute-command';
+import { createExecuteCommandTool } from '../execute-command';
 import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import { Readable } from 'stream';
@@ -14,7 +14,7 @@ describe('executeCommandTool', () => {
   };
 
   // Cast tool to ensure execute method is available
-  const tool = executeCommandTool as Required<Tool>;
+  const tool = createExecuteCommandTool() as Required<Tool>;
 
   // Mock process setup helper
   function setupMockProcess(options: {

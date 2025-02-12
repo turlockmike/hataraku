@@ -8,10 +8,13 @@ import { searchFilesTool } from './search-files';
 import { searchAndReplaceTool } from './search-and-replace';
 import { insertContentTool } from './insert-content';
 import { applyDiffTool } from './apply-diff';
-import { executeCommandTool } from './execute-command';
+import { createExecuteCommandTool } from './execute-command';
 import { listCodeDefinitionsTool } from './list-code-definitions';
 import { playAudioTool } from './play-audio';
 import { showImageTool } from './show-image';
+
+// Create the execute command tool with grey output
+const executeCommandTool = createExecuteCommandTool({ outputColor: 'grey' });
 
 // Export individual tools
 export {
