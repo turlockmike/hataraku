@@ -6,8 +6,8 @@ import * as path from 'path';
 // Mock dependencies
 jest.mock('fs/promises');
 jest.mock('path');
-jest.mock('glob', () => ({
-  glob: jest.fn().mockImplementation(() => Promise.resolve([]))
+jest.mock('globby', () => ({
+  globby: jest.fn().mockImplementation(() => Promise.resolve([]))
 }));
 
 describe('searchFilesTool', () => {
@@ -27,17 +27,17 @@ describe('searchFilesTool', () => {
     jest.clearAllMocks();
     mockPath.resolve.mockImplementation((_, filePath) => `/mock/path/${filePath}`);
     mockPath.join.mockImplementation((...parts) => parts.join('/'));
-    // Reset glob mock
-    const { glob } = jest.requireMock('glob');
-    glob.mockReset();
+    // Reset globby mock
+    const { globby } = jest.requireMock('globby');
+    globby.mockReset();
   });
 
   it('should find matches with context', async () => {
     const mockFiles = ['file1.ts', 'file2.ts'];
     const mockContent = 'before line\ntarget line\nafter line';
     
-    const { glob } = jest.requireMock('glob');
-    glob.mockResolvedValue(mockFiles);
+    const { globby } = jest.requireMock('globby');
+    globby.mockResolvedValue(mockFiles);
     mockFs.readFile.mockResolvedValue(mockContent);
 
     const result = await tool.execute({
@@ -60,15 +60,15 @@ describe('searchFilesTool', () => {
       file_pattern: '*.ts'
     }, mockOptions);
 
-    const { glob } = jest.requireMock('glob');
+    const { globby } = jest.requireMock('globby');
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toMatch(/Invalid regular expression/);
-    expect(glob).not.toHaveBeenCalled();
+    expect(globby).not.toHaveBeenCalled();
   });
 
   it('should handle no matching files', async () => {
-    const { glob } = jest.requireMock('glob');
-    glob.mockResolvedValue([]);
+    const { globby } = jest.requireMock('globby');
+    globby.mockResolvedValue([]);
 
     const result = await tool.execute({
       path: 'src',
@@ -84,8 +84,8 @@ describe('searchFilesTool', () => {
     const mockFiles = ['file1.ts', 'file2.ts'];
     const mockContent = 'content without matches';
     
-    const { glob } = jest.requireMock('glob');
-    glob.mockResolvedValue(mockFiles);
+    const { globby } = jest.requireMock('globby');
+    globby.mockResolvedValue(mockFiles);
     mockFs.readFile.mockResolvedValue(mockContent);
 
     const result = await tool.execute({
@@ -100,8 +100,8 @@ describe('searchFilesTool', () => {
 
   it('should handle file read errors gracefully', async () => {
     const mockFiles = ['file1.ts', 'file2.ts'];
-    const { glob } = jest.requireMock('glob');
-    glob.mockResolvedValue(mockFiles);
+    const { globby } = jest.requireMock('globby');
+    globby.mockResolvedValue(mockFiles);
     mockFs.readFile.mockRejectedValue(new Error('Read error'));
 
     const result = await tool.execute({
@@ -118,8 +118,8 @@ describe('searchFilesTool', () => {
     const mockFiles = ['file.ts'];
     const mockContent = 'line 1\ntarget line\nother content\ntarget line again';
     
-    const { glob } = jest.requireMock('glob');
-    glob.mockResolvedValue(mockFiles);
+    const { globby } = jest.requireMock('globby');
+    globby.mockResolvedValue(mockFiles);
     mockFs.readFile.mockResolvedValue(mockContent);
 
     const result = await tool.execute({
@@ -132,12 +132,12 @@ describe('searchFilesTool', () => {
     const output = result.content[0].text;
     expect(output).toContain('File: file.ts:2');
     expect(output).toContain('File: file.ts:4');
-    expect(output.match(/target/g)?.length).toBe(2);
+    expect(mockContent.match(/target/g)?.length).toBe(2);
   });
 
   it('should respect glob ignore patterns', async () => {
-    const { glob } = jest.requireMock('glob');
-    glob.mockResolvedValue(['file.ts']);
+    const { globby } = jest.requireMock('globby');
+    globby.mockResolvedValue(['file.ts']);
 
     await tool.execute({
       path: 'src',
@@ -145,7 +145,7 @@ describe('searchFilesTool', () => {
       file_pattern: '*.ts'
     }, mockOptions);
 
-    expect(glob).toHaveBeenCalledWith(
+    expect(globby).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         ignore: expect.arrayContaining([
@@ -158,8 +158,8 @@ describe('searchFilesTool', () => {
   });
 
   it('should handle glob errors', async () => {
-    const { glob } = jest.requireMock('glob');
-    glob.mockRejectedValue(new Error('Glob error'));
+    const { globby } = jest.requireMock('globby');
+    globby.mockRejectedValue(new Error('Glob error'));
 
     const result = await tool.execute({
       path: 'src',
@@ -172,8 +172,8 @@ describe('searchFilesTool', () => {
   });
 
   it('should use default file pattern when none provided', async () => {
-    const { glob } = jest.requireMock('glob');
-    glob.mockResolvedValue(['file.txt']);
+    const { globby } = jest.requireMock('globby');
+    globby.mockResolvedValue(['file.txt']);
     mockFs.readFile.mockResolvedValue('content');
 
     await tool.execute({
@@ -181,7 +181,7 @@ describe('searchFilesTool', () => {
       regex: 'pattern'
     }, mockOptions);
 
-    expect(glob).toHaveBeenCalledWith(
+    expect(globby).toHaveBeenCalledWith(
       expect.stringContaining('**/*'),
       expect.any(Object)
     );

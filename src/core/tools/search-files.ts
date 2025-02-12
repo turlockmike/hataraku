@@ -2,7 +2,7 @@ import { Tool } from 'ai';
 import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { glob } from 'glob';
+import { globby } from 'globby';
 
 async function searchInFile(filePath: string, regex: RegExp): Promise<string[]> {
   const content = await fs.readFile(filePath, 'utf-8');
@@ -18,9 +18,11 @@ async function searchInFile(filePath: string, regex: RegExp): Promise<string[]> 
       matches.push(
         `File: ${filePath}:${i + 1}`,
         '```',
-        ...lines.slice(start, end).map((line, index) => 
-          `${start + index + 1}${start + index === i ? ' >' : '  '} ${line}`
-        ),
+        ...lines.slice(start, end).map((line, index) => {
+          const lineNum = start + index + 1;
+          const prefix = start + index === i ? ' > ' : '  ';
+          return `${lineNum}${prefix}${line}`;
+        }),
         '```\n'
       );
     }
@@ -55,9 +57,9 @@ export const searchFilesTool: Tool = {
 
       // Find files to search
       const pattern = path.join(absolutePath, file_pattern || '**/*');
-      const files = glob.sync(pattern, {
+      const files = await globby(pattern, {
         ignore: ['**/node_modules/**', '**/dist/**', '**/build/**'],
-        nodir: true
+        onlyFiles: true
       });
 
       if (files.length === 0) {
