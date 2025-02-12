@@ -19,7 +19,7 @@ async function main() {
 
     // Analyze text
     console.log(chalk.cyan('🤖 Analyzing text...'));
-    const analysis = await analyzerTasks.analyze.execute({ text }, { schema: analysisSchema });
+    const analysis = await analyzerTasks.analyze.execute({ text });
 
     // Display structured results
     console.log(chalk.cyan('\n📤 Analysis Results:'));

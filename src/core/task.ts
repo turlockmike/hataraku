@@ -51,16 +51,19 @@ export class Task<TInput = unknown, TOutput = unknown> {
     /**
      * Execute the task with the given input
      */
-    async execute(input: TInput): Promise<string>;
+    async execute(input: TInput): Promise<TOutput>;
     async execute(input: TInput, options: { stream: true }): Promise<AsyncIterable<string> & ReadableStream<string>>;
-    async execute<T>(input: TInput, options: { schema: z.ZodType<T> }): Promise<T>;
-    async execute(input: TInput, options?: { stream?: boolean; schema?: z.ZodType<any> }): Promise<string | AsyncIterableStream<string> | any> {
+    async execute(input: TInput, options?: { stream?: boolean }): Promise<TOutput | AsyncIterableStream<string>> {
         const prompt = this.getTaskPrompt(input);
-        const defaultOptions = { 
-            stream: undefined,
-            schema: this.schema 
-        };
-        return this.agent.task(prompt, options || defaultOptions);
+        
+        if (options?.stream) {
+            return this.agent.task(prompt, { stream: true });
+        }
+        if (this.schema) {
+            const result = await this.agent.task<TOutput>(prompt, { schema: this.schema });
+            return result;
+        }
+        return this.agent.task(prompt) as Promise<TOutput>;
     }
 
     /**

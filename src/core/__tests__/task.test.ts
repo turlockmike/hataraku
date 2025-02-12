@@ -81,7 +81,7 @@ describe('Task', () => {
             const mockModel = new MockLanguageModelV1({
                 defaultObjectGenerationMode: 'json',
                 doGenerate: async () => ({
-                    text: '{"result":"Success"}',
+                    text: JSON.stringify({ result: 'Success' }),
                     finishReason: 'stop',
                     usage: { promptTokens: 10, completionTokens: 20 },
                     rawCall: { rawPrompt: null, rawSettings: {} }
@@ -89,7 +89,9 @@ describe('Task', () => {
             });
 
             const schemaAgent = new Agent({
-                ...validConfig.agent,
+                name: 'Test Agent',
+                description: 'A test agent',
+                role: 'test',
                 model: mockModel
             });
 
@@ -123,7 +125,9 @@ describe('Task', () => {
             });
 
             const streamAgent = new Agent({
-                ...validConfig.agent,
+                name: 'Test Agent',
+                description: 'A test agent',
+                role: 'test',
                 model: mockModel
             });
 
@@ -208,7 +212,9 @@ describe('createTask', () => {
         });
 
         const streamAgent = new Agent({
-            ...validConfig.agent,
+            name: 'Test Agent',
+            description: 'A test agent',
+            role: 'test',
             model: mockModel
         });
 
@@ -226,14 +232,14 @@ describe('createTask', () => {
         expect(chunks).toEqual(['streaming', 'result']);
     });
 
-    it('should handle typed inputs and outputs', async () => {
+    it('should handle typed inputs and outputs with schema validation', async () => {
         interface Input { message: string }
         interface Output { result: string }
         
         const mockModel = new MockLanguageModelV1({
             defaultObjectGenerationMode: 'json',
             doGenerate: async () => ({
-                text: '{"result":"Success"}',
+                text: JSON.stringify({ result: 'Success' }),
                 finishReason: 'stop',
                 usage: { promptTokens: 10, completionTokens: 20 },
                 rawCall: { rawPrompt: null, rawSettings: {} }
@@ -241,13 +247,16 @@ describe('createTask', () => {
         });
 
         const schemaAgent = new Agent({
-            ...validConfig.agent,
+            name: 'Test Agent',
+            description: 'A test agent',
+            role: 'test',
             model: mockModel
         });
 
         const schema = z.object({ result: z.string() });
         const taskConfig: TaskConfig<Input, Output> = {
-            ...validConfig,
+            name: 'Test Task',
+            description: 'A test task',
             agent: schemaAgent,
             task: (input: Input) => `Test prompt: ${input.message}`,
             schema
