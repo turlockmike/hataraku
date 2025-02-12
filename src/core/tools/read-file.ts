@@ -28,6 +28,16 @@ export const readFileTool: Tool = {
       // Read file content
       const content = await fs.readFile(absolutePath, 'utf-8');
       
+      // Handle empty files
+      if (!content.trim()) {
+        return {
+          content: [{
+            type: "text",
+            text: ""
+          }]
+        };
+      }
+
       // Add line numbers
       const numberedLines = content.split('\n').map((line, index) => 
         `${index + 1} | ${line}`
@@ -40,11 +50,12 @@ export const readFileTool: Tool = {
         }]
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
         content: [{
           type: "text",
-          text: `Error reading file: ${error.message}`
+          text: `Error reading file: ${errorMessage}`
         }]
       };
     }

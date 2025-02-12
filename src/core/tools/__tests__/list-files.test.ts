@@ -1,12 +1,11 @@
 import { Tool, ToolExecutionOptions } from 'ai';
 import { listFilesTool } from '../list-files';
-import * as fs from 'fs/promises';
-import { Stats, Dirent } from 'fs';
 import * as path from 'path';
+import { listFiles } from '../../../services/glob/list-files';
 
-// Mock fs and path modules
-jest.mock('fs/promises');
+// Mock dependencies
 jest.mock('path');
+jest.mock('../../../services/glob/list-files');
 
 describe('listFilesTool', () => {
   const mockOptions: ToolExecutionOptions = {
@@ -18,38 +17,21 @@ describe('listFilesTool', () => {
   const tool = listFilesTool as Required<Tool>;
 
   // Mock implementations
-  const mockFs = fs as jest.Mocked<typeof fs>;
   const mockPath = path as jest.Mocked<typeof path>;
-
-  // Helper to create mock Dirent
-  function createMockDirent(name: string, isDir: boolean): Dirent {
-    return {
-      name,
-      isDirectory: () => isDir,
-      isFile: () => !isDir,
-      isBlockDevice: () => false,
-      isCharacterDevice: () => false,
-      isFIFO: () => false,
-      isSocket: () => false,
-      isSymbolicLink: () => false
-    } as Dirent;
-  }
+  const mockListFiles = listFiles as jest.MockedFunction<typeof listFiles>;
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockPath.resolve.mockImplementation((_, filePath) => `/mock/path/${filePath}`);
-    mockPath.relative.mockImplementation((_, filePath) => filePath.replace('/mock/path/', ''));
+    mockPath.relative.mockImplementation((from, to) => to.replace(`${from}/`, '').replace(/\\/g, '/'));
   });
 
   it('should list files in a directory non-recursively', async () => {
-    const mockDirents = [
-      createMockDirent('file1.txt', false),
-      createMockDirent('file2.js', false),
-      createMockDirent('subdir', true)
-    ];
-
-    mockFs.readdir.mockResolvedValue(mockDirents);
-    mockFs.stat.mockResolvedValue({ isDirectory: () => true } as Stats);
+    mockListFiles.mockResolvedValue([[
+      '/mock/path/test-dir/file1.txt',
+      '/mock/path/test-dir/file2.js',
+      '/mock/path/test-dir/subdir/'
+    ], false]);
 
     const result = await tool.execute({
       path: 'test-dir',
@@ -58,24 +40,15 @@ describe('listFilesTool', () => {
 
     expect(result.isError).toBeUndefined();
     expect(result.content[0].text).toBe('file1.txt\nfile2.js\nsubdir');
-    expect(mockFs.readdir).toHaveBeenCalledWith('/mock/path/test-dir', { withFileTypes: true });
+    expect(mockListFiles).toHaveBeenCalledWith('/mock/path/test-dir', false, 1000);
   });
 
   it('should list files recursively', async () => {
-    const mockDirents = [
-      createMockDirent('file1.txt', false),
-      createMockDirent('subdir', true)
-    ];
-
-    const mockSubDirents = [
-      createMockDirent('subfile1.js', false),
-      createMockDirent('subfile2.css', false)
-    ];
-
-    mockFs.stat.mockResolvedValue({ isDirectory: () => true } as Stats);
-    mockFs.readdir
-      .mockResolvedValueOnce(mockDirents)
-      .mockResolvedValueOnce(mockSubDirents);
+    mockListFiles.mockResolvedValue([[
+      '/mock/path/test-dir/file1.txt',
+      '/mock/path/test-dir/subdir/subfile1.js',
+      '/mock/path/test-dir/subdir/subfile2.css'
+    ], false]);
 
     const result = await tool.execute({
       path: 'test-dir',
@@ -91,8 +64,7 @@ describe('listFilesTool', () => {
   });
 
   it('should handle empty directories', async () => {
-    mockFs.readdir.mockResolvedValue([]);
-    mockFs.stat.mockResolvedValue({ isDirectory: () => true } as Stats);
+    mockListFiles.mockResolvedValue([[], false]);
 
     const result = await tool.execute({
       path: 'empty-dir'
@@ -103,30 +75,29 @@ describe('listFilesTool', () => {
   });
 
   it('should handle directory not found', async () => {
-    mockFs.stat.mockRejectedValue(new Error('Directory not found'));
+    mockListFiles.mockRejectedValue(new Error('Directory not found'));
 
     const result = await tool.execute({
       path: 'non-existent-dir'
     }, mockOptions);
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toBe('Directory not found: non-existent-dir');
+    expect(result.content[0].text).toBe('Error listing files: Directory not found');
   });
 
   it('should handle path that is not a directory', async () => {
-    mockFs.stat.mockResolvedValue({ isDirectory: () => false } as Stats);
+    mockListFiles.mockRejectedValue(new Error('Path is not a directory'));
 
     const result = await tool.execute({
       path: 'file.txt'
     }, mockOptions);
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toBe('Path is not a directory: file.txt');
+    expect(result.content[0].text).toBe('Error listing files: Path is not a directory');
   });
 
   it('should handle read directory errors', async () => {
-    mockFs.stat.mockResolvedValue({ isDirectory: () => true } as Stats);
-    mockFs.readdir.mockRejectedValue(new Error('Permission denied'));
+    mockListFiles.mockRejectedValue(new Error('Permission denied'));
 
     const result = await tool.execute({
       path: 'protected-dir'
@@ -137,25 +108,11 @@ describe('listFilesTool', () => {
   });
 
   it('should handle deep recursive structures', async () => {
-    const mockStructure: Record<string, Dirent[]> = {
-      'dir1': [
-        createMockDirent('file1.txt', false),
-        createMockDirent('subdir1', true)
-      ],
-      'dir1/subdir1': [
-        createMockDirent('file2.js', false),
-        createMockDirent('subdir2', true)
-      ],
-      'dir1/subdir1/subdir2': [
-        createMockDirent('file3.css', false)
-      ]
-    };
-
-    mockFs.stat.mockResolvedValue({ isDirectory: () => true } as Stats);
-    mockFs.readdir.mockImplementation((dirPath) => {
-      const normalizedDir = String(dirPath).replace('/mock/path/', '');
-      return Promise.resolve(mockStructure[normalizedDir] || []);
-    });
+    mockListFiles.mockResolvedValue([[
+      '/mock/path/dir1/file1.txt',
+      '/mock/path/dir1/subdir1/file2.js',
+      '/mock/path/dir1/subdir1/subdir2/file3.css'
+    ], false]);
 
     const result = await tool.execute({
       path: 'dir1',

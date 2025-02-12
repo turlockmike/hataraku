@@ -16,7 +16,7 @@ export const writeFileTool: Tool = {
       
       // Validate line count matches content
       const actualLineCount = content.split('\n').length;
-      if (actualLineCount !== line_count) {
+      if (line_count !== 0 && actualLineCount !== line_count) {
         return {
           isError: true,
           content: [{
@@ -26,14 +26,16 @@ export const writeFileTool: Tool = {
         };
       }
 
+      // Check if file exists before writing
+      const fileExists = await fs.access(absolutePath).then(() => true, () => false);
+
       // Create directories if they don't exist
       await fs.mkdir(path.dirname(absolutePath), { recursive: true });
       
       // Write the file
       await fs.writeFile(absolutePath, content, 'utf-8');
       
-      const action = await fs.access(absolutePath).then(() => 'updated', () => 'created');
-      
+      const action = fileExists ? 'updated' : 'created';
       return {
         content: [{
           type: "text",
@@ -41,11 +43,12 @@ export const writeFileTool: Tool = {
         }]
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
         content: [{
           type: "text",
-          text: `Error writing file: ${error.message}`
+          text: `Error writing file: ${errorMessage}`
         }]
       };
     }
