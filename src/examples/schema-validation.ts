@@ -1,17 +1,20 @@
 import assert from 'node:assert';
-import { Agent } from '../core-old/agent';
+import { Agent } from '../core/agent';
 import { z } from 'zod';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
 
 async function main() {
   // Initialize the agent with basic configuration
   const agent = new Agent({
     name: 'schema-validation-example',
-    model: {
-      apiProvider: 'openrouter',
-      apiModelId: 'anthropic/claude-3-sonnet-20240229'
-    },
-    tools: [], // No tools needed for this example
+    model: openrouter.chat('anthropic/claude-3.5-sonnet'),
+    tools: {}, // No tools needed for this example
     role: 'You are a helpful assistant that provides structured data.',
+    description: 'You are a helpful assistant that provides structured data.'
   });
   
 
@@ -23,19 +26,17 @@ async function main() {
     phone: z.string().optional(),
   });
 
-  const {content} = await agent.task({
-    role: 'user',
-    content: 'Generate a mock user profile',
-    outputSchema: simpleSchema,
+  const result = await agent.task('Generate a mock user profile', {
+    schema: simpleSchema,
   });
-  assert(typeof content.age === 'number');
-  assert(typeof content.email === 'string');
-  assert(typeof content.firstName === 'string');
-  assert(typeof content.lastName === 'string');
-  assert(content.phone === undefined || typeof content.phone === 'string');
+  assert(typeof result.age === 'number');
+  assert(typeof result.email === 'string');
+  assert(typeof result.firstName === 'string');
+  assert(typeof result.lastName === 'string');
+  assert(result.phone === undefined || typeof result.phone === 'string');
 
   // Generate a pretty print of the result
-  console.log(JSON.stringify(content, null, 2));
+  console.log(JSON.stringify(result, null, 2));
 
 }
 

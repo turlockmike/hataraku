@@ -1,6 +1,8 @@
 import {  LanguageModelV1, generateText, generateObject, streamText, ToolSet, CoreMessage, Message } from 'ai';
 import { z } from 'zod';
 
+const DEFAULT_MAX_STEPS = 10;
+
 type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>;
 
 interface CallSettings {
@@ -74,11 +76,19 @@ export class Agent {
     `
   }
 
+  /**
+   * Execute a task with the agent.
+   * @param task - The task to execute.
+   * @param input - The input to the task.
+   * @returns The response from the task.
+   */
+  async task(task: string, input?: TaskInput & {stream: false | undefined}): Promise<string>;
   async task(task: string, input?: TaskInput & { stream: true }): Promise<AsyncIterableStream<string>>;
   async task<T>(task: string, input?: TaskInput<T> & { schema: z.ZodType<T> }): Promise<T>;
   async task(task: string, input?: TaskInput): Promise<string>;
   async task<T>(task: string, input?: TaskInput<T> & { stream?: boolean; schema?: z.ZodType<T> }): Promise<string | AsyncIterableStream<string> | T> {
     const messages = input?.messages || [];
+    const maxSteps = this.callSettings.maxSteps || DEFAULT_MAX_STEPS;
     messages.push({
       role: 'user',
       content: task
@@ -88,6 +98,7 @@ export class Agent {
         model: this.model,
         system: this.getSystemPrompt(),
         messages,
+        maxSteps,
         tools: this.tools,
         ...this.callSettings,
       });
@@ -103,6 +114,7 @@ export class Agent {
         model: this.model,
         system: this.getSystemPrompt(),
         messages: messages,
+        maxSteps,
         tools: this.tools,
         ...this.callSettings,
       })
@@ -119,7 +131,7 @@ export class Agent {
         const { object } = await generateObject({
           model: this.model,
           system: this.getSystemPrompt(),
-          messages: messages,
+          messages: responseMessages,
           schema: input.schema,
           ...this.callSettings,
         });
@@ -134,6 +146,7 @@ export class Agent {
         model: this.model,
         system: this.getSystemPrompt(),
         messages: messages,
+        maxSteps,
         schema: input.schema,
         ...this.callSettings,
       });
@@ -144,6 +157,8 @@ export class Agent {
       model: this.model,
       system: this.getSystemPrompt(),
       messages: messages,
+      tools: this.tools,
+      maxSteps,
       ...this.callSettings,
     });
     return result.text;

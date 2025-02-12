@@ -1,5 +1,9 @@
-import { Agent } from '../core-old/agent';
-import { AgentConfig, TaskInput } from '../core-old/agent/types/config';
+import { Agent } from '../core/agent';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
 
 async function main() {
   // Get query from command line arguments
@@ -10,31 +14,21 @@ async function main() {
     process.exit(1);
   }
 
-  // Create agent config with OpenRouter/Sonnet model
-  const config: AgentConfig = {
-    name: 'Simple Task Agent',
-    model: {
-      apiProvider: 'openrouter',
-      apiModelId: 'deepseek/deepseek-chat'
-    },
-    // No tools needed for this simple task
-  };
-
   // Create and initialize agent
-  const agent = new Agent(config);
-
-  // Create task input
-  const task = {
-    role: 'user' as const,
-    content: query
-  };
+  const agent = new Agent(
+    {
+      name: 'Simple Task Agent',
+      description: 'A simple agent that can answer questions',
+      role: 'You are a helpful assistant that can answer questions',
+      model: openrouter.chat('anthropic/claude-3.5-sonnet')
+    }
+  );
 
   try {
     // Execute task and get complete response
     console.log('\nResponse:\n');
-    const response = await agent.task(task);
-    console.log(await response.content);
-    console.log('metadata:', await response.metadata);
+    const response = await agent.task(query);
+    console.log(await response);
     console.log(); // Add newline at end
   } catch (error) {
     console.error('Error:', error);
