@@ -1,189 +1,192 @@
-# Model Context Protocol (MCP) in Hataraku CLI
+# MCP (Model Context Protocol) Integration
 
-The Model Context Protocol (MCP) enables communication between Hataraku CLI and locally running MCP servers that provide additional tools and resources to extend Hataraku's capabilities.
+The MCP integration allows Hataraku to communicate with external tools through the Model Context Protocol. This enables agents to use various tools like Jira, GitHub, and other MCP-compatible services.
 
-## Understanding MCP
+## Configuration
 
-MCP servers operate in a non-interactive environment and communicate with Hataraku CLI through a standardized protocol. Each server can provide:
+MCP tools can be configured in three ways:
 
-- Tools: Executable functions that can perform actions
-- Resources: Data sources that can be accessed
-- Resource Templates: Dynamic resource patterns
-
-## Built-in MCP Servers
-
-Hataraku CLI comes with two built-in MCP servers:
-
-1. mcp-rand
-   - Tools for random number generation, UUIDs, and more
-   - Example: `generate_uuid`, `generate_random_number`
-
-2. extend-mcp
-   - Integration tools for GitHub and JIRA
-   - Example: `github_create_pr`, `jira_create_ticket`
-
-## Creating an MCP Server
-
-1. Create a new project using the MCP SDK:
-```bash
-npx @modelcontextprotocol/create-server my-server
-cd my-server
-npm install
-```
-
-2. Implement your server in `src/index.ts`:
-```typescript
-#!/usr/bin/env node
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-    CallToolRequestSchema,
-    ErrorCode,
-    ListToolsRequestSchema,
-    McpError,
-} from '@modelcontextprotocol/sdk/types.js';
-
-class MyServer {
-    private server: Server;
-
-    constructor() {
-        this.server = new Server(
-            {
-                name: 'my-server',
-                version: '0.1.0',
-            },
-            {
-                capabilities: {
-                    tools: {},
-                },
-            }
-        );
-
-        this.setupToolHandlers();
-        
-        this.server.onerror = (error) => console.error('[MCP Error]', error);
-        process.on('SIGINT', async () => {
-            await this.server.close();
-            process.exit(0);
-        });
+1. Default Configuration (JSON)
+```json
+// ~/.hataraku/mcp_settings.json
+{
+  "mcpServers": {
+    "extend-cli": {
+      "command": "ec",
+      "args": ["mcp"],
+      "env": {
+        "HOME": "${HOME}"
+      }
     }
-
-    private setupToolHandlers() {
-        this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-            tools: [
-                {
-                    name: 'my_tool',
-                    description: 'Description of my tool',
-                    inputSchema: {
-                        type: 'object',
-                        properties: {
-                            param1: {
-                                type: 'string',
-                                description: 'Parameter description',
-                            },
-                        },
-                        required: ['param1'],
-                    },
-                },
-            ],
-        }));
-
-        this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-            if (request.params.name !== 'my_tool') {
-                throw new McpError(
-                    ErrorCode.MethodNotFound,
-                    `Unknown tool: ${request.params.name}`
-                );
-            }
-
-            // Implement your tool logic here
-            return {
-                content: [
-                    {
-                        type: 'text',
-                        text: 'Tool result',
-                    },
-                ],
-            };
-        });
-    }
-
-    async run() {
-        const transport = new StdioServerTransport();
-        await this.server.connect(transport);
-        console.error('My MCP server running on stdio');
-    }
+  }
 }
-
-const server = new MyServer();
-server.run().catch(console.error);
 ```
 
-3. Build your server:
-```bash
-npm run build
+2. Custom Configuration File
+```typescript
+const tools = await getMcpTools({
+  configPath: '/path/to/my/mcp_settings.json'
+});
 ```
 
-## Installing an MCP Server
+3. Inline Configuration
+```typescript
+const tools = await getMcpTools({
+  config: {
+    mcpServers: {
+      'extend-cli': {
+        command: 'ec',
+        args: ['mcp'],
+        env: {
+          HOME: process.env.HOME,
+        },
+        disabledTools: ['jira_update_ticket'], // Optionally disable specific tools
+      },
+    },
+  },
+});
+```
 
-1. Add your server to Hataraku's MCP settings file at `~/.hataraku/mcp_settings.json`:
+## Environment Variables
+
+Configuration values can include environment variable references using ${VAR_NAME} syntax:
+
 ```json
 {
-    "mcpServers": {
-        "my-server": {
-            "command": "node",
-            "args": ["/path/to/my-server/build/index.js"],
-            "env": {
-                "MY_ENV_VAR": "value"
-            }
-        }
+  "mcpServers": {
+    "jira": {
+      "command": "jira-cli",
+      "args": ["mcp"],
+      "env": {
+        "JIRA_API_KEY": "${JIRA_API_KEY}",
+        "JIRA_HOST": "${JIRA_HOST}"
+      }
     }
+  }
 }
 ```
 
-2. Your server will be automatically loaded when Hataraku starts.
+## Usage Examples
 
-## Using MCP Tools
+### Basic Usage
+```typescript
+import { getMcpTools } from '@hataraku/core';
 
-Use MCP tools in your tasks with the `use_mcp_tool` command:
+// Get MCP tools using default config
+const tools = await getMcpTools();
 
-```xml
-<use_mcp_tool>
-<server_name>my-server</server_name>
-<tool_name>my_tool</tool_name>
-<arguments>
-{
-    "param1": "value"
+// Create an agent with MCP tools
+const agent = createAgent({
+  name: 'MCP-enabled Agent',
+  description: 'An agent that can use MCP tools',
+  role: 'You are a helpful assistant that can use various tools.',
+  model: model,
+  tools: tools,
+});
+```
+
+### Jira Integration Example
+```typescript
+import { getMcpTools } from '@hataraku/core';
+
+async function main() {
+  // Configure MCP tools
+  const tools = await getMcpTools({
+    config: {
+      mcpServers: {
+        'extend-cli': {
+          command: 'ec',
+          args: ['mcp'],
+          env: {
+            HOME: process.env.HOME,
+          },
+        },
+      },
+    },
+  });
+
+  // Get Jira ticket
+  const ticketId = 'EX-14';
+  const result = await tools['extend-cli_jira_get_ticket'].execute(
+    { ticketId },
+    { toolCallId: 'test-call', messages: [] }
+  );
+
+  console.log('Ticket Details:', result);
 }
-</arguments>
-</use_mcp_tool>
 ```
 
-## Best Practices
-
-1. **Error Handling**: Always provide clear error messages when tools fail
-2. **Input Validation**: Use JSON Schema to validate tool inputs
-3. **Documentation**: Document your tools and their parameters clearly
-4. **Environment Variables**: Use environment variables for sensitive configuration
-5. **Stateless Design**: Design tools to be stateless where possible
-
-## Debugging
-
-1. Use the `--debug` flag with Hataraku CLI to see detailed MCP interactions:
-```bash
-Hataraku "Your task" --debug
+### Tool Execution Monitoring
+```typescript
+const tools = await getMcpTools({
+  config: {
+    mcpServers: {
+      'extend-cli': {
+        command: 'ec',
+        args: ['mcp'],
+      },
+    },
+  },
+  onToolCall: (serverName, toolName, args, resultPromise) => {
+    console.log(`Executing ${serverName}/${toolName} with args:`, args);
+    resultPromise.then(
+      result => console.log(`Tool execution succeeded:`, result),
+      error => console.error(`Tool execution failed:`, error)
+    );
+  },
+});
 ```
 
-2. Check your server's stderr output in the debug logs
+## Error Handling
 
-3. Verify server connection status with:
-```bash
-Hataraku "What tools are available?" --tools
+The MCP integration includes robust error handling:
+
+1. Configuration Errors
+```typescript
+try {
+  await getMcpTools({ configPath: '/invalid/path' });
+} catch (error) {
+  if (error instanceof McpConfigError) {
+    console.error('Configuration error:', error.message);
+    if (error.originalError) {
+      console.error('Original error:', error.originalError);
+    }
+  }
+}
 ```
 
-## Common Issues
+2. Tool Execution Errors
+```typescript
+try {
+  await tools['extend-cli_jira_get_ticket'].execute(
+    { ticketId: 'INVALID-1' },
+    { toolCallId: 'test-call', messages: [] }
+  );
+} catch (error) {
+  if (error instanceof McpToolError) {
+    console.error(
+      `Error executing ${error.serverName}/${error.toolName}:`,
+      error.originalError
+    );
+  }
+}
+```
 
-1. **Server Not Found**: Check the path in your MCP settings
-2. **Connection Failed**: Ensure the server executable has proper permissions
-3. **Tool Not Found**: Verify the tool name matches exactly
-4. **Invalid Arguments**: Check the tool's input schema
+## Troubleshooting
+
+Common issues and solutions:
+
+1. Tool Not Found
+- Ensure the MCP server is installed and running
+- Check the command and args in your configuration
+- Verify the tool name matches what's provided by the server
+
+2. Configuration Errors
+- Validate your JSON configuration syntax
+- Ensure all required environment variables are set
+- Check file permissions for config files
+
+3. Tool Execution Errors
+- Verify the tool's required arguments
+- Check server-specific authentication (e.g., Jira API tokens)
+- Look for error details in the McpToolError

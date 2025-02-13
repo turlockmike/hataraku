@@ -7,7 +7,9 @@ import {
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
+import chalk from 'chalk';
 import { McpConfig } from './config';
+import { McpToolResponse, ParsedMcpToolResponse } from './types';
 
 interface McpConnection {
     name: string;
@@ -35,6 +37,11 @@ export class McpClient {
 
     constructor() {
         this.defaultConfigPath = path.join(os.homedir(), '.hataraku', 'mcp_settings.json');
+        // Bind methods to ensure correct 'this' context
+        this.disconnectServer = this.disconnectServer.bind(this);
+        this.connectToServer = this.connectToServer.bind(this);
+        this.getServerTools = this.getServerTools.bind(this);
+        this.callTool = this.callTool.bind(this);
     }
 
     /**
@@ -153,13 +160,16 @@ export class McpClient {
         }
     }
 
-    private async disconnectServer(name: string): Promise<void> {
+    /**
+     * Disconnect from a specific server
+     */
+    async disconnectServer(name: string): Promise<void> {
         const connection = this.connections.get(name);
         if (connection) {
             try {
                 await connection.client.close();
             } catch (error) {
-                console.error(`Error disconnecting from server ${name}:`, error);
+                console.error(chalk.red(`Error disconnecting from server ${name}:`, error));
             }
             this.connections.delete(name);
         }
@@ -198,15 +208,15 @@ export class McpClient {
                 })) || [],
             };
         } catch (error) {
-            console.error(`Error fetching tools for server ${serverName}:`, error);
+            console.error(chalk.red(`Error fetching tools from server ${serverName}:`, error));
             return { serverName, tools: [] };
         }
     }
 
     /**
-     * Call a tool on a specific server
+     * Call a tool on a specific server and parse its response
      */
-    async callTool(serverName: string, toolName: string, args: Record<string, unknown>) {
+    async callTool<T = any>(serverName: string, toolName: string, args: Record<string, unknown>): Promise<ParsedMcpToolResponse<T>> {
         if (!this.initialized) {
             throw new Error('MCP servers have not been initialized');
         }
@@ -220,7 +230,7 @@ export class McpClient {
             throw new Error(`Server "${serverName}" is not connected (status: ${connection.status})`);
         }
 
-        return await connection.client.request(
+        const response = await connection.client.request(
             {
                 method: "tools/call",
                 params: {
@@ -229,6 +239,26 @@ export class McpClient {
                 },
             },
             CallToolResultSchema
-        );
+        ) as McpToolResponse;
+
+        if (response.isError) {
+            throw new Error(`Tool ${serverName}/${toolName} returned an error`);
+        }
+
+        // Parse the response content
+        const content = response.content[0]?.text;
+        if (!content) {
+            throw new Error(`Tool ${serverName}/${toolName} returned no content`);
+        }
+
+        try {
+            const data = JSON.parse(content);
+            return {
+                data,
+                raw: response
+            };
+        } catch (error) {
+            throw new Error(`Failed to parse response from ${serverName}/${toolName}`);
+        }
     }
 }

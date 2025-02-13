@@ -23,12 +23,41 @@ export interface McpConfig {
 }
 
 /**
+ * Interpolate environment variables in a string
+ * Supports ${VAR_NAME} syntax
+ */
+export function interpolateEnvVars(value: string): string {
+  return value.replace(/\${([^}]+)}/g, (_, varName) => {
+    const envValue = process.env[varName];
+    if (envValue === undefined) {
+      throw new Error(`Environment variable ${varName} is not set`);
+    }
+    return envValue;
+  });
+}
+
+/**
+ * Transform a string by interpolating environment variables
+ */
+const envString = z.string().transform((str) => interpolateEnvVars(str));
+
+/**
+ * Transform an array of strings by interpolating environment variables
+ */
+const envStringArray = z.array(envString);
+
+/**
+ * Transform a record of strings by interpolating environment variables
+ */
+const envStringRecord = z.record(envString);
+
+/**
  * Zod schema for validating MCP server configuration
  */
 export const McpServerConfigSchema = z.object({
-  command: z.string().min(1),
-  args: z.array(z.string()),
-  env: z.record(z.string()).optional(),
+  command: envString,
+  args: envStringArray,
+  env: envStringRecord.optional(),
   disabledTools: z.array(z.string()).optional(),
 });
 
@@ -44,4 +73,16 @@ export const McpConfigSchema = z.object({
  */
 export function isMcpConfig(value: unknown): value is McpConfig {
   return McpConfigSchema.safeParse(value).success;
-} 
+}
+
+/**
+ * Parse and validate MCP configuration, interpolating environment variables
+ * @throws {Error} if validation fails or required environment variables are missing
+ */
+export function parseMcpConfig(value: unknown): McpConfig {
+  const result = McpConfigSchema.safeParse(value);
+  if (!result.success) {
+    throw new Error(`Invalid MCP configuration: ${result.error.message}`);
+  }
+  return result.data;
+}
