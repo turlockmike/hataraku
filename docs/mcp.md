@@ -1,192 +1,208 @@
-# MCP (Model Context Protocol) Integration
+# Hataraku MCP Server Documentation
 
-The MCP integration allows Hataraku to communicate with external tools through the Model Context Protocol. This enables agents to use various tools like Jira, GitHub, and other MCP-compatible services.
+## Overview
+The Hataraku MCP server exposes Hataraku tasks as MCP tools, allowing other applications to leverage Hataraku's task execution capabilities through the Model Context Protocol.
 
-## Configuration
+## Server Setup Guide
 
-MCP tools can be configured in three ways:
+### Installation
+1. Install dependencies:
+```bash
+npm install @modelcontextprotocol/sdk
+```
 
-1. Default Configuration (JSON)
-```json
-// ~/.hataraku/mcp_settings.json
+2. Import the server:
+```typescript
+import { HatarakuMcpServer } from './core/mcp/server/hatarakuMcpServer';
+```
+
+### Configuration
+The server uses the following default configuration:
+```typescript
 {
-  "mcpServers": {
-    "extend-cli": {
-      "command": "ec",
-      "args": ["mcp"],
-      "env": {
-        "HOME": "${HOME}"
-      }
-    }
+  name: 'hataraku-mcp-server',
+  version: '1.0.0',
+  capabilities: {
+    tools: {}
   }
 }
 ```
 
-2. Custom Configuration File
+### Starting the Server
 ```typescript
-const tools = await getMcpTools({
-  configPath: '/path/to/my/mcp_settings.json'
-});
+const server = new HatarakuMcpServer();
+await server.start();
 ```
 
-3. Inline Configuration
-```typescript
-const tools = await getMcpTools({
-  config: {
-    mcpServers: {
-      'extend-cli': {
-        command: 'ec',
-        args: ['mcp'],
-        env: {
-          HOME: process.env.HOME,
-        },
-        disabledTools: ['jira_update_ticket'], // Optionally disable specific tools
-      },
-    },
-  },
-});
-```
+## Available Tools
+The server automatically discovers and exposes all tasks defined in `src/core/tasks/` as MCP tools. Currently available tools:
 
-## Environment Variables
-
-Configuration values can include environment variable references using ${VAR_NAME} syntax:
-
+### Code Analysis Tool
+- Name: `Analyze Code`
+- Description: Analyze code for complexity and issues
+- Input Schema:
 ```json
 {
-  "mcpServers": {
-    "jira": {
-      "command": "jira-cli",
-      "args": ["mcp"],
-      "env": {
-        "JIRA_API_KEY": "${JIRA_API_KEY}",
-        "JIRA_HOST": "${JIRA_HOST}"
-      }
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Code to analyze"
+    },
+    "stream": {
+      "type": "boolean",
+      "description": "Enable streaming output",
+      "optional": true
     }
   }
 }
 ```
 
-## Usage Examples
-
-### Basic Usage
-```typescript
-import { getMcpTools } from '@hataraku/core';
-
-// Get MCP tools using default config
-const tools = await getMcpTools();
-
-// Create an agent with MCP tools
-const agent = createAgent({
-  name: 'MCP-enabled Agent',
-  description: 'An agent that can use MCP tools',
-  role: 'You are a helpful assistant that can use various tools.',
-  model: model,
-  tools: tools,
-});
-```
-
-### Jira Integration Example
-```typescript
-import { getMcpTools } from '@hataraku/core';
-
-async function main() {
-  // Configure MCP tools
-  const tools = await getMcpTools({
-    config: {
-      mcpServers: {
-        'extend-cli': {
-          command: 'ec',
-          args: ['mcp'],
-          env: {
-            HOME: process.env.HOME,
-          },
-        },
-      },
+### Bug Analysis Tool
+- Name: `Debug Issue`
+- Description: Analyze bug reports and provide solutions
+- Input Schema:
+```json
+{
+  "type": "object",
+  "properties": {
+    "description": {
+      "type": "string",
+      "description": "Bug description"
     },
-  });
-
-  // Get Jira ticket
-  const ticketId = 'EX-14';
-  const result = await tools['extend-cli_jira_get_ticket'].execute(
-    { ticketId },
-    { toolCallId: 'test-call', messages: [] }
-  );
-
-  console.log('Ticket Details:', result);
-}
-```
-
-### Tool Execution Monitoring
-```typescript
-const tools = await getMcpTools({
-  config: {
-    mcpServers: {
-      'extend-cli': {
-        command: 'ec',
-        args: ['mcp'],
-      },
+    "stackTrace": {
+      "type": "string",
+      "description": "Stack trace if available",
+      "optional": true
     },
-  },
-  onToolCall: (serverName, toolName, args, resultPromise) => {
-    console.log(`Executing ${serverName}/${toolName} with args:`, args);
-    resultPromise.then(
-      result => console.log(`Tool execution succeeded:`, result),
-      error => console.error(`Tool execution failed:`, error)
-    );
-  },
-});
-```
-
-## Error Handling
-
-The MCP integration includes robust error handling:
-
-1. Configuration Errors
-```typescript
-try {
-  await getMcpTools({ configPath: '/invalid/path' });
-} catch (error) {
-  if (error instanceof McpConfigError) {
-    console.error('Configuration error:', error.message);
-    if (error.originalError) {
-      console.error('Original error:', error.originalError);
+    "reproduction": {
+      "type": "string",
+      "description": "Steps to reproduce",
+      "optional": true
+    },
+    "stream": {
+      "type": "boolean",
+      "description": "Enable streaming output",
+      "optional": true
     }
   }
 }
 ```
 
-2. Tool Execution Errors
-```typescript
-try {
-  await tools['extend-cli_jira_get_ticket'].execute(
-    { ticketId: 'INVALID-1' },
-    { toolCallId: 'test-call', messages: [] }
-  );
-} catch (error) {
-  if (error instanceof McpToolError) {
-    console.error(
-      `Error executing ${error.serverName}/${error.toolName}:`,
-      error.originalError
-    );
+### PR Review Tool
+- Name: `Review Pull Request`
+- Description: Review code changes and provide feedback
+- Input Schema:
+```json
+{
+  "type": "object",
+  "properties": {
+    "diff": {
+      "type": "string",
+      "description": "PR diff content"
+    },
+    "description": {
+      "type": "string",
+      "description": "PR description"
+    },
+    "stream": {
+      "type": "boolean",
+      "description": "Enable streaming output",
+      "optional": true
+    }
   }
 }
 ```
 
-## Troubleshooting
+### Refactoring Plan Tool
+- Name: `Plan Refactoring`
+- Description: Create a structured plan for code refactoring
+- Input Schema:
+```json
+{
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Code to refactor"
+    },
+    "goals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Refactoring goals"
+    },
+    "stream": {
+      "type": "boolean",
+      "description": "Enable streaming output",
+      "optional": true
+    }
+  }
+}
+```
 
-Common issues and solutions:
+## Integration Guide
 
-1. Tool Not Found
-- Ensure the MCP server is installed and running
-- Check the command and args in your configuration
-- Verify the tool name matches what's provided by the server
+### Connecting to the Server
+```typescript
+import { McpClient } from '@modelcontextprotocol/sdk/client';
 
-2. Configuration Errors
-- Validate your JSON configuration syntax
-- Ensure all required environment variables are set
-- Check file permissions for config files
+const client = new McpClient();
+await client.connect('stdio'); // or other transport
+```
 
-3. Tool Execution Errors
-- Verify the tool's required arguments
-- Check server-specific authentication (e.g., Jira API tokens)
-- Look for error details in the McpToolError
+### Using Tools
+```typescript
+// List available tools
+const tools = await client.listTools();
+
+// Execute a tool
+const result = await client.callTool('Analyze Code', {
+  code: 'function example() { return true; }'
+});
+```
+
+### Error Handling
+The server uses standard MCP error codes:
+- `MethodNotFound`: Tool not found
+- `InvalidRequest`: Invalid tool arguments or execution error
+- `ExecutionError`: Task execution failed
+
+Example error handling:
+```typescript
+try {
+  await client.callTool('NonexistentTool', {});
+} catch (error) {
+  if (error instanceof McpError) {
+    console.error(`MCP Error: ${error.code} - ${error.message}`);
+  }
+}
+```
+
+### Streaming Support
+All tools support streaming output by setting the `stream` parameter:
+```typescript
+const result = await client.callTool('Analyze Code', {
+  code: 'function example() { return true; }',
+  stream: true
+});
+
+for await (const chunk of result.content[0].stream) {
+  console.log(chunk);
+}
+```
+
+## Future Enhancements
+1. Task Filtering
+   - Allow configuring which tasks are exposed as tools
+   - Support task versioning
+
+2. Advanced Configuration
+   - Custom task discovery paths
+   - Tool-specific settings
+
+3. Monitoring & Metrics
+   - Task execution statistics
+   - Performance monitoring
+   - Usage analytics

@@ -1,51 +1,36 @@
-const CallToolResultSchema = {
-  parse: jest.fn().mockReturnValue({})
-}
-
-const ListToolsResultSchema = {
-  parse: jest.fn().mockReturnValue({
-    tools: []
-  })
-}
-
-const ListResourcesResultSchema = {
-  parse: jest.fn().mockReturnValue({
-    resources: []
-  })
-}
-
-const ListResourceTemplatesResultSchema = {
-  parse: jest.fn().mockReturnValue({
-    resourceTemplates: []
-  })
-}
-
-const ReadResourceResultSchema = {
-  parse: jest.fn().mockReturnValue({
-    contents: []
-  })
-}
-
 const ErrorCode = {
-  InvalidRequest: 'InvalidRequest',
-  MethodNotFound: 'MethodNotFound',
-  InvalidParams: 'InvalidParams',
-  InternalError: 'InternalError'
-}
+  InvalidRequest: 'INVALID_REQUEST',
+  MethodNotFound: 'METHOD_NOT_FOUND',
+  ExecutionError: 'EXECUTION_ERROR',
+  InvalidParams: 'INVALID_PARAMS'
+};
 
 class McpError extends Error {
   constructor(code, message) {
-    super(message)
-    this.code = code
+    super(message);
+    this.code = code;
+    this.name = 'McpError';
   }
 }
 
+const ListToolsRequestSchema = {
+  name: 'listTools',
+  method: 'tools/list',
+  params: {}
+};
+
+const CallToolRequestSchema = {
+  name: 'callTool',
+  method: 'tools/call',
+  params: {
+    name: '',
+    arguments: {}
+  }
+};
+
 module.exports = {
-  CallToolResultSchema,
-  ListToolsResultSchema,
-  ListResourcesResultSchema,
-  ListResourceTemplatesResultSchema,
-  ReadResourceResultSchema,
   ErrorCode,
-  McpError
-}
+  McpError,
+  ListToolsRequestSchema,
+  CallToolRequestSchema
+};

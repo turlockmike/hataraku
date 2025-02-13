@@ -63,6 +63,7 @@ export async function getMcpTools(options?: McpToolOptions): Promise<{ tools: To
             const qualifiedName = `${serverName}_${tool.name}`;
             
             toolset[qualifiedName] = {
+                name: tool.name,
                 description: tool.description,
                 parameters: jsonSchema(tool.inputSchema),
                 execute: async <T = any>(args: any): Promise<ParsedMcpToolResponse<T>> => {
