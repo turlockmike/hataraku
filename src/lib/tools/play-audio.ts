@@ -2,7 +2,8 @@ import { UnifiedTool } from '../types';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as sound from 'sound-play';
-import { getPlayAudioDescription } from '../../core/prompts/tools';
+import { getPlayAudioDescription } from '../../core-old/prompts/tools';
+
 
 export interface PlayAudioInput {
     path: string;
@@ -27,8 +28,16 @@ export const playAudioTool: UnifiedTool<PlayAudioInput, PlayAudioOutput> = {
     description: getPlayAudioDescription(),
     parameters: {
         path: {
-            required: true,
+            required: false,
             description: 'The path to the audio file to play'
+        },
+        text: {
+            required: false,
+            description: 'Text to speak using text-to-speech'
+        },
+        voice: {
+            required: false,
+            description: 'The voice to use for text-to-speech (e.g., af_heart, am_michael)'
         }
     },
     // JSON Schema for input validation
@@ -38,9 +47,18 @@ export const playAudioTool: UnifiedTool<PlayAudioInput, PlayAudioOutput> = {
             path: {
                 type: 'string',
                 description: 'The path to the audio file to play'
+            },
+            text: {
+                type: 'string',
+                description: 'Text to speak using text-to-speech'
+            },
+            voice: {
+                type: 'string',
+                description: 'The voice to use for text-to-speech'
             }
         },
-        required: ['path'],
+        // At least one of path or text must be provided
+        required: [],
         additionalProperties: false
     },
     // JSON Schema for output validation
@@ -64,9 +82,11 @@ export const playAudioTool: UnifiedTool<PlayAudioInput, PlayAudioOutput> = {
         additionalProperties: false
     },
     // Implementation
-    async execute({ path: audioPath }: PlayAudioInput, cwd: string): Promise<PlayAudioOutput> {
+    async execute(input: PlayAudioInput, cwd: string): Promise<PlayAudioOutput> {
         try {
-            const absolutePath = resolvePath(audioPath, cwd);
+            // Handle audio file playback
+            
+            const absolutePath = resolvePath(input.path, cwd);
             
             // Check if file exists
             try {
@@ -94,8 +114,9 @@ export const playAudioTool: UnifiedTool<PlayAudioInput, PlayAudioOutput> = {
 
             return {
                 success: true,
-                message: `Audio playback started: ${audioPath}`
+                message: `Audio playback started: ${input.path}`
             };
+        
         } catch (error) {
             return {
                 success: false,

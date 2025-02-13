@@ -1,6 +1,6 @@
 import express, { Request, Response, RequestHandler } from 'express';
-import { TaskLoop } from './core/task-loop';
-import { CliToolExecutor } from './lib/tools/CliToolExecutor';
+import { TaskLoop } from './core-old/task-loop';
+import { CliToolExecutor } from './lib/tools-deprecated/CliToolExecutor';
 import { CliMessageParser } from './lib/parser/CliMessageParser';
 import { McpClient } from './lib/mcp/McpClient';
 import { modelProviderFromConfig } from './api';

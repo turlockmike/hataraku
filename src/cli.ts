@@ -1,21 +1,18 @@
 #!/usr/bin/env node
 
-import { modelProviderFromConfig } from './api';
-import { CliToolExecutor } from './lib/tools/CliToolExecutor';
-import { CliMessageParser } from './lib/parser/CliMessageParser';
-import { openRouterDefaultModelInfo, deepSeekModels } from './shared/api';
-import { McpClient } from './lib/mcp/McpClient';
-import { TaskLoop } from './core/task-loop';
-import { TaskHistory } from './core/TaskHistory';
-import chalk from 'chalk';
 import { Command } from 'commander';
-import * as os from 'os';
-import * as path from 'path';
-import { execSync } from 'child_process';
-import { input, select } from '@inquirer/prompts';
-import { playAudioTool } from './lib/tools/play-audio';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock';
+import chalk from 'chalk';
+import { input } from '@inquirer/prompts';
 import { version } from '../package.json';
 import { startServer } from './server';
+import { playAudioTool } from './lib/tools-deprecated/play-audio';
+import * as os from 'node:os';
+import { PassThrough } from 'node:stream';
+import { createExecuteCommandTool } from './core/tools/execute-command';
+import { createCLIAgent } from './core/agents';
+import { createBedrockProvider } from './providers/bedrock';
 
 const program = new Command();
 
@@ -46,156 +43,100 @@ program
     .name('hataraku')
     .description('Hataraku is a CLI tool for creating and managing tasks')
     .option('--update', 'Update Hataraku to the latest version')
-    .option('-p, --provider <provider>', 'API provider to use (openrouter, anthropic, openai)', 'openRouter')
-    .option('-m, --model <model>', 'Model ID for the provider (e.g., anthropic/claude-3.5-sonnet:beta, deepseek/deepseek-chat)', 'anthropic/claude-3.5-sonnet')
+    .option('-p, --provider <provider>', 'API provider to use (openrouter, bedrock)')
+    .option('-m, --model <model>', 'Model ID for the provider (e.g., anthropic/claude-3.5-sonnet). Check with the provider for available models.')
     .option('-k, --api-key <key>', 'API key for the provider (can also use PROVIDER_API_KEY env var)')
-    .option('-a, --max-attempts <number>', 'Maximum number of consecutive mistakes before exiting (default: 3)')
-    .option('-l, --list-history', 'List recent tasks from history')
     .option('-i, --interactive', 'Run in interactive mode, prompting for tasks')
     .option('--no-sound', 'Disable sound effects')
+    .option('--no-stream', 'Disable streaming responses')
+    .option('--region <region>', 'AWS region for Bedrock (defaults to AWS_REGION env var)')
     .argument('[task]', 'Task or question for the AI assistant')
     .version(version)
     .addHelpText('after', `
 Examples:
-  $ hataraku "create a hello world html file"                                # Uses default model (claude-3.5-sonnet:beta)
+  $ hataraku "create a hello world html file"                                # Uses default model (claude-3.5-sonnet)
   $ hataraku --model deepseek/deepseek-chat "explain this code"             # Uses different model
   $ hataraku --provider anthropic --model claude-3 "write a test"           # Uses different provider
+  $ hataraku --provider bedrock --model anthropic.claude-3-sonnet-20240229-v1:0 "analyze this code"  # Uses AWS Bedrock
   $ OPENROUTER_API_KEY=<key> hataraku "write a test file"                  # Provides API key via env var
   $ hataraku -i                                                             # Run in interactive mode
-  $ hataraku -i "initial task"                                              # Interactive mode with initial task
+  $ hataraku -i "initial task"                                             # Interactive mode with initial task
   $ hataraku --no-sound "create a test file"                               # Run without sound effects
-  $ hataraku --update                                                       # Update Hataraku to the latest version
+  $ hataraku --no-stream "explain this code"                               # Run without streaming responses
   $ hataraku serve                                                          # Start web interface
 
 Environment Variables:
   OPENROUTER_API_KEY    - API key for OpenRouter
   ANTHROPIC_API_KEY     - API key for Anthropic
   OPENAI_API_KEY        - API key for OpenAI
-
-Output:
-  - Results are shown in green
-  - Usage information in yellow
-  - "thinking..." indicator shows when processing
-
-Task History:
-  - Tasks are saved in ~/.hataraku/logs/
-  - Use --list-history to view recent tasks
-  - Each task includes:
-    * Task ID and timestamp
-    * Input/output tokens
-    * Cost information
-    * Full conversation history`)
+  AWS_ACCESS_KEY_ID     - AWS access key ID for Bedrock
+  AWS_SECRET_ACCESS_KEY - AWS secret access key for Bedrock
+  AWS_REGION           - AWS region for Bedrock (defaults to us-east-1)`)
     .action(async (task) => {
-        await main(task);
+        // The task will be handled by main() after parsing
     });
 
-async function promptForNextTask(followUpTasks: string[], defaultTask?: string): Promise<string | null> {
-    // Create choices array with follow-up tasks and additional options
-    const choices = [
-        ...followUpTasks.map((task, index) => ({
-            value: task, // Use the actual task text as the value
-            label: task,
-            description: `Follow-up task ${index + 1}`
-        })),
-        { value: 'write_own', label: 'Write my own', description: 'Enter a custom task' },
-        { value: 'quit', label: 'Exit', description: 'Exit the program' }
-    ];
+async function processStreams(textStream: AsyncIterable<string>, options: any) {
+    const consoleStream = new PassThrough();
+    const sourceStream = new PassThrough();
+    let fullText = '';  // Collect full text for TTS
 
-    const choice = await select({
-        message: 'Choose your next task:',
-        choices
+    // Convert AsyncIterable to stream
+    (async () => {
+        try {
+            for await (const chunk of textStream) {
+                sourceStream.write(chunk);
+                if (options.withAudio) {
+                    fullText += chunk;  // Collect text for TTS
+                }
+            }
+            sourceStream.end();
+        } catch (err) {
+            sourceStream.destroy(err as Error);
+        }
+    })();
+
+    // Pipe source to console
+    sourceStream.pipe(consoleStream);
+
+    // Set up console output with color
+    consoleStream.on('data', (chunk) => {
+        // Color the agent's output in green
+        process.stdout.write(chalk.green(chunk.toString()));
     });
 
-    if (choice === 'quit') {
-        console.log(chalk.yellow('Exiting...'));
-        process.exit(0);
-    }
-
-    if (choice === 'write_own') {
-        const customTask = await input({
-            message: 'Enter your task:',
-            default: defaultTask
-        });
-        return customTask || null;
-    }
-
-    // Since we're using the actual task text as the value, we can return it directly
-    return choice;
+    // Wait for console output to finish
+    await new Promise<void>((resolve) => {
+        consoleStream.on('end', resolve);
+    });
 }
 
 async function main(task?: string) {
     try {
         const options = program.opts();
 
-        // Handle update flag
-        if (options.update) {
-            console.log(chalk.yellow('Checking for updates...'));
-            try {
-                // Use npm to update the package globally
-                execSync('npm install -g hataraku@latest', { stdio: 'inherit' });
-                console.log(chalk.green('Successfully updated Hataraku to the latest version!'));
-                process.exit(0);
-            } catch (error) {
-                console.error(chalk.red('Error updating Hataraku:'), error);
-                console.log(chalk.yellow('Try running with sudo if you get permission errors.'));
-                process.exit(1);
+        let model;
+        if (options.provider === 'bedrock') {
+            // Use AWS Bedrock
+            const bedrock = await createBedrockProvider();
+            model = bedrock(options.model || 'us.anthropic.claude-3-5-sonnet-20241022-v2:0');
+        } else {
+            // Check for API key for other providers
+            const apiKey = options.apiKey || process.env[`${options.provider.toUpperCase()}_API_KEY`];
+            if (!apiKey) {
+                console.error(chalk.red(`Error: API key required. Provide via --api-key or ${options.provider.toUpperCase()}_API_KEY env var`));
+                return 1;
             }
+
+            // Initialize OpenRouter client
+            const openrouter = createOpenRouter({
+                apiKey,
+            });
+            model = openrouter.chat(options.model || 'anthropic/claude-3.5-sonnet');
         }
 
-        // Check for API key
-        const apiKey = options.apiKey || process.env[`${options.provider.toUpperCase()}_API_KEY`];
-        if (!apiKey) {
-            console.error(chalk.red(`Error: API key required. Provide via --api-key or ${options.provider.toUpperCase()}_API_KEY env var`));
-            process.exit(1);
-        }
-
-        // Initialize components
-        const apiHandler = modelProviderFromConfig({
-            apiProvider: options.provider.toLowerCase(),
-            [`${options.provider}ApiKey`]: apiKey,
-            ...(options.model && {
-                [`${options.provider}ModelId`]: options.model,
-                [`${options.provider}ModelInfo`]: options.model.startsWith('deepseek/')
-                    ? deepSeekModels['deepseek-chat']
-                    : openRouterDefaultModelInfo
-            })
-        });
-
-        const toolExecutor = new CliToolExecutor(process.cwd());
-        const messageParser = new CliMessageParser();
-        const mcpClient = new McpClient();
-
-        // Initialize TaskHistory
-        const taskHistory = new TaskHistory();
-
-        // Handle history listing
-        if (options.listHistory) {
-            const tasks = await taskHistory.listTasks();
-            console.log(chalk.yellow(`Task history location: ${path.join(os.homedir(), '.hataraku', 'logs')}\n`));
-            if (tasks.length === 0) {
-                console.log('No task history found.');
-            } else {
-                console.log('Recent tasks:');
-                for (const task of tasks) {
-                    const date = new Date(task.timestamp).toLocaleString();
-                    console.log(chalk.green(`${task.taskId} (${date}):`));
-                    console.log(`  ${task.task}\n`);
-                }
-            }
-            process.exit(0);
-        }
-
-        // Initialize task loop
-        const taskLoop = new TaskLoop(
-            apiHandler,
-            toolExecutor,
-            mcpClient,
-            messageParser,
-            parseInt(options.maxAttempts),
-            options.interactive,
-            process.cwd(),
-            { sound: options.sound }
-        );
+        // Initialize agent using our factory function
+        const agent = createCLIAgent(model);
 
         if (options.interactive) {
             // Interactive mode
@@ -208,56 +149,125 @@ async function main(task?: string) {
                         default: task // Use provided task argument as default if available
                     });
 
-                    if (taskToRun === 'exit') {
+                    if (!taskToRun || taskToRun === 'exit') {
                         console.log(chalk.yellow('Exiting interactive mode.'));
-                        process.exit(0);
+                        return 0;
                     }
                 }
 
-                if (taskToRun) {
-                    const result = await taskLoop.run(taskToRun);
-                    // Play celebration sound if sounds are enabled
+                console.log(chalk.blue('\nExecuting task:', taskToRun));
+                
+                try {
+                    if (options.stream !== false) {
+                        const result = await agent.task(taskToRun, { stream: true });
+                        await processStreams(result, options);
+                    } else {
+                        const result = await agent.task(taskToRun);
+                        console.log(result);
+                    }
+                    // Finally play the celebratory audio
                     if (options.sound) {
                         await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
                     }
 
-                    // Handle follow-up tasks if they exist
-                    if (result.followUpTasks && result.followUpTasks.length > 0) {
-                        const nextTask = await promptForNextTask(result.followUpTasks);
-                        if (nextTask) {
-                            await runInteractiveTask(nextTask);
-                            return;
-                        }
-                    }
-
-                    // If no follow-up tasks or user didn't select one, prompt for new task
-                    await runInteractiveTask();
+                    // Prompt for next task
+                    return runInteractiveTask();
+                } catch (error) {
+                    console.error(chalk.red('Error executing task:'), error);
+                    return runInteractiveTask();
                 }
             }
 
-            await runInteractiveTask(task);
+            return runInteractiveTask(task);
         } else {
             // Normal mode
             if (!task) {
                 console.error(chalk.red('Error: Please provide a task or question'));
                 program.help();
+                return 1;
             }
-            await taskLoop.run(task);
-            // Play celebration sound if sounds are enabled
-            if (options.sound) {
-                await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
-            }
-            process.exit(0);
-        }
 
+            console.log(chalk.blue('\nExecuting task:', task));
+
+            try {
+                if (options.stream !== false) {
+                    const result = await agent.task(task, { stream: true });
+                    await processStreams(result, options);
+                    
+                } else {
+                    const result = await agent.task(task);
+                    console.log(result);
+                }
+                if (options.sound) {
+                    await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
+                }
+                return 0;
+            } catch (error) {
+                console.error(chalk.red('Error executing task:'), error);
+                return 1;
+            }
+        }
     } catch (error) {
         console.error(chalk.red('Error:'), error);
         console.error(chalk.yellow('\nDebug Information:'));
         console.error(chalk.yellow(`Provider: ${program.opts().provider}`));
         console.error(chalk.yellow(`Model: ${program.opts().model}`));
-        process.exit(1);
+        return 1;
     }
 }
 
-// Parse command line arguments
-program.parse();
+// Only run the program if this file is being run directly
+if (require.main === module) {
+    // Parse command line arguments
+    program.parse();
+    const task = program.args[0];
+    main(task).then((code) => {
+        process.exit(code);
+    }).catch((error) => {
+        console.error(chalk.red('Fatal error:'), error);
+        process.exit(1);
+    });
+}
+
+// Export for testing
+export { program, main };
+
+// Export runCLI function for programmatic use
+export async function runCLI(input: string): Promise<void> {
+    const openrouter = createOpenRouter({
+        apiKey: process.env.OPENROUTER_API_KEY || '',
+    });
+
+    const agent = createCLIAgent(openrouter.chat('anthropic/claude-3.5-sonnet'));
+    const sourceStream = new PassThrough();
+    const consoleStream = new PassThrough();
+
+    // Set up console output
+    const consoleOutput = new Promise<void>((resolve, reject) => {
+        consoleStream.on('data', chunk => process.stdout.write(chunk.toString()));
+        consoleStream.on('end', resolve);
+        consoleStream.on('error', reject);
+    });
+
+    // Process agent response
+    try {
+        const agentResponse = await agent.task(input, { stream: false });
+        
+        // Write response to streams
+        sourceStream.write(agentResponse);
+        sourceStream.end();
+
+        // Pipe source to console
+        sourceStream.pipe(consoleStream);
+
+        // Wait for console output to finish
+        await consoleOutput;
+    } catch (error) {
+        console.error('Error:', error);
+        throw error;
+    } finally {
+        // Clean up streams
+        sourceStream.destroy();
+        consoleStream.destroy();
+    }
+} 

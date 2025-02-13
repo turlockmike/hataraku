@@ -1,5 +1,5 @@
 import { ApiStreamChunk } from '../api/transform/stream';
-import { TaskInput } from '../core/agent/types/config';
+import { TaskInput } from '../core-old/agent/types/config';
 import { XMLStreamParser } from './xml-stream-processor';
 import { HatarakuTool } from '../lib/types';
 

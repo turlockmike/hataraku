@@ -25,6 +25,16 @@
     "sdk"
   ],
   "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "default": "./dist/core/index.js"
+    }
+  },
   "bin": {
     "hataraku": "./dist/cli.js"
   },
@@ -36,12 +46,17 @@
   "scripts": {
     "build": "npm run check-types && npm run lint && node esbuild.js --cli --production",
     "dev": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/cli.ts",
-    "example": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/simple-task.ts",
+    "example": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/query.ts",
     "example:stream": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/streaming-task.ts",
     "example:schema": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/schema-validation.ts",
     "example:thread": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/thread-reuse.ts",
     "example:tool": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/tool-use.ts",
     "example:multi": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/multi-step-task.ts",
+    "example:workflow": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/workflow-parallel.ts",
+    "example:math": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/math-simple.ts",
+    "example:basic": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/basic-task.ts",
+    "example:structured": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/structured-task.ts",
+    "example:tool-schema": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/tool-and-schema.ts",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "check-types": "tsc --noEmit",
@@ -75,19 +90,23 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^1.1.6",
     "@anthropic-ai/bedrock-sdk": "^0.10.2",
     "@anthropic-ai/sdk": "^0.26.0",
     "@anthropic-ai/vertex-sdk": "^0.4.1",
     "@aws-sdk/client-bedrock-runtime": "^3.706.0",
+    "@aws-sdk/credential-providers": "^3.744.0",
     "@google/generative-ai": "^0.18.0",
     "@inquirer/prompts": "^3.3.0",
     "@mistralai/mistralai": "^1.0.0",
     "@modelcontextprotocol/sdk": "^1.0.1",
+    "@openrouter/ai-sdk-provider": "^0.2.1",
     "@types/clone-deep": "^4.0.4",
     "@types/express": "^5.0.0",
     "@types/node-fetch": "^2.6.12",
     "@types/pdf-parse": "^1.1.4",
     "@types/turndown": "^5.0.5",
+    "ai": "4.1.34",
     "axios": "^1.7.4",
     "chalk": "^4.1.2",
     "cheerio": "^1.0.0",

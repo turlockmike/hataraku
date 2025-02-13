@@ -1,8 +1,8 @@
 import { processModelStream } from '../model-stream-processor';
 import { ApiStreamChunk } from '../../api/transform/stream';
-import { TaskInput } from '../../core/agent/types/config';
-import { AttemptCompletionTool } from '../../lib/tools/attempt-completion';
-import { ThinkingTool } from '../../lib/tools/thinking-tool';
+import { TaskInput } from '../../core-old/agent/types/config';
+import { AttemptCompletionTool } from '../../lib/tools-deprecated/attempt-completion';
+import { ThinkingTool } from '../../lib/tools-deprecated/thinking-tool';
 import { HatarakuTool } from '../../lib/types';
 import { createMockStream as createOutputMockStream } from '../../lib/testing/mock-stream';
 

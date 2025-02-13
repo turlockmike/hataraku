@@ -19,3 +19,4 @@ roo-cline-*.vsix
 # Local configuration
 .env
 .agent/
+.aider*
