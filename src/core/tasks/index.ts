@@ -45,10 +45,10 @@ export function createCodeAnalysisTask(agent: Agent) {
         description: 'Analyze code for complexity, potential issues, and improvement suggestions',
         agent,
         schema: codeAnalysisSchema,
-        task: (input: { code: string }) => `
+        task: (input: string) => `
             Analyze the following code and provide detailed feedback:
             
-            ${input.code}
+            ${input}
             
             Focus on:
             1. Code complexity and maintainability
@@ -67,14 +67,11 @@ export function createBugAnalysisTask(agent: Agent) {
         description: 'Analyze bug reports and provide root cause analysis with fix suggestions',
         agent,
         schema: bugAnalysisSchema,
-        task: (input: { description: string, stackTrace?: string, reproduction?: string }) => `
+        task: (input: string) => `
             Analyze the following bug report and provide a detailed analysis:
             
             Description:
-            ${input.description}
-            
-            ${input.stackTrace ? `Stack Trace:\n${input.stackTrace}\n` : ''}
-            ${input.reproduction ? `Reproduction Steps:\n${input.reproduction}\n` : ''}
+            ${input}
             
             Provide:
             1. Root cause analysis
@@ -91,14 +88,11 @@ export function createPRReviewTask(agent: Agent) {
         description: 'Review code changes and provide structured feedback',
         agent,
         schema: prReviewSchema,
-        task: (input: { diff: string, description: string }) => `
+        task: (input: string) => `
             Review the following pull request and provide detailed feedback:
             
             PR Description:
-            ${input.description}
-            
-            Changes:
-            ${input.diff}
+            ${input}
             
             Provide a thorough review focusing on:
             1. Code quality and best practices
@@ -118,14 +112,11 @@ export function createRefactoringPlanTask(agent: Agent) {
         description: 'Create a structured plan for code refactoring',
         agent,
         schema: refactoringPlanSchema,
-        task: (input: { code: string, goals: string[] }) => `
+        task: (input: string) => `
             Create a refactoring plan for the following code:
             
             Code:
-            ${input.code}
-            
-            Goals:
-            ${input.goals.map(goal => `- ${goal}`).join('\n')}
+            ${input}
             
             Provide a detailed plan including:
             1. Clear, achievable steps

@@ -31,11 +31,11 @@ const buildConfig = {
 	sourcemap: !production,
 	logLevel: "silent",
 	plugins: [esbuildProblemMatcherPlugin],
-	entryPoints: ["src/cli.ts"],
+	entryPoints: ["src/cli.ts", "src/examples/hataraku-mcp.ts", "src/core/index.ts"],
 	format: "cjs",
 	sourcesContent: false,
 	platform: "node",
-	outfile: "dist/cli.js",
+	outdir: "dist",
 	external: [
 		"vscode", // Mark vscode as external to avoid build errors
 		"web-tree-sitter", // Tree-sitter needs to be external

@@ -6,12 +6,12 @@ import { SystemPromptBuilder } from '../prompts/prompt-builder';
 import { getHatarakuToolDocs } from '../../lib';
 import process from 'node:process';
 import { Thread } from '../thread/thread';
-import { serializeZodSchema } from '../../utils/schema';
 import { ApiStreamChunk } from '../../api/transform/stream';
 import { AttemptCompletionTool } from '../../lib/tools-deprecated/attempt-completion';
 import { ThinkingTool } from '../../lib/tools-deprecated/thinking-tool';
 import { processModelStream } from '../../utils/model-stream-processor';
 import { createAsyncStream } from '../../utils/async';
+import { zodToJsonSchema, zodToSchemaString } from '../../utils/schema';
 
 /**
 * Core Agent class that serves as the primary entry point for the Hataraku SDK.
@@ -217,7 +217,7 @@ export class Agent {
       // Build the message content.
       let messageContent = `<task>${currentInput}</task>`;
       if (input.outputSchema) {
-        const schemaStr = serializeZodSchema(input.outputSchema);
+        const schemaStr = zodToSchemaString(input.outputSchema);
         messageContent += `<output_schema>${schemaStr}</output_schema>`;
       }
       // Only add message if there's actual content
