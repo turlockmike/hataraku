@@ -15,9 +15,11 @@ async function main() {
 
     // Perform additions in parallel
     console.log(chalk.cyan('\n📊 Executing additions...'));
-    const firstSum = await mathTasks.add.execute({ a: firstPair[0], b: firstPair[1] });
+    const [firstSum, secondSum] = await Promise.all([
+      mathTasks.add.execute({ a: firstPair[0], b: firstPair[1] }),
+      mathTasks.add.execute({ a: secondPair[0], b: secondPair[1] })
+    ]);
     console.log(chalk.gray(`   First addition: ${firstPair[0]} + ${firstPair[1]} = ${firstSum}`));
-    const secondSum = await mathTasks.add.execute({ a: secondPair[0], b: secondPair[1] });
     console.log(chalk.gray(`   Second addition: ${secondPair[0]} + ${secondPair[1]} = ${secondSum}`));
     console.log(chalk.cyan('\n📊 Multiplying results...'));
     const finalProduct = Number(await mathTasks.multiply.execute({ 

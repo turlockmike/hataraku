@@ -130,13 +130,14 @@ export class Agent {
       messages.push(responseMessages[responseMessages.length - 1])
       messages.push({
         role: 'user',
-        content: 'Based on the last response, please format the information according to the schema provided'
+        content: 'Based on the last response, please create a response that matches the schema provided. It must be valid JSON and match the schema exactly.'
       })
-
-      const { object, response } = await generateObject({
+      const { object } = await generateObject({
         model: this.model,
+        mode: 'json', // For some reason it doesn't work without this value.
         system: this.getSystemPrompt(),
         messages: messages,
+        maxRetries: 2,
         maxSteps,
         schema: input.schema,
         ...this.callSettings,
@@ -149,6 +150,7 @@ export class Agent {
         model: this.model,
         system: this.getSystemPrompt(),
         messages: messages,
+        maxRetries: 2,
         maxSteps,
         schema: input.schema,
         ...this.callSettings,
