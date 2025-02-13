@@ -7,7 +7,7 @@ async function main() {
 
   try {
     // Configure MCP tools
-    const { tools: mcpTools, cleanup } = await getMcpTools({
+    const { tools: mcpTools, disconnect: cleanup } = await getMcpTools({
       config: {
         mcpServers: {
           'extend-cli': {
@@ -41,6 +41,7 @@ async function main() {
       console.log(chalk.gray('   Updated:', ticket.updated));
       console.log(chalk.gray('   URL:', ticket.url));
       console.log();
+
 
     } finally {
       await cleanup();

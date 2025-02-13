@@ -165,7 +165,7 @@ describe('MCP Tool Wrapper', () => {
 
     describe('Cleanup', () => {
         it('disconnects all servers on cleanup', async () => {
-            const { cleanup } = await getMcpTools();
+            const { disconnect: cleanup } = await getMcpTools();
             await cleanup();
             expect(mockClient.disconnectServer).toHaveBeenCalledWith('test-server');
         });

@@ -1,10 +1,8 @@
-import { ToolSet, ToolExecutionOptions } from 'ai';
+import { ToolSet, ToolExecutionOptions, jsonSchema } from 'ai';
 import { McpClient } from "./McpClient";
 import { McpConfig, McpConfigSchema, isMcpConfig } from './config';
 import { McpTool, ParsedMcpToolResponse } from './types';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
+import { readFile } from 'node:fs/promises';
 
 interface McpToolOptions {
     // Optional path to config file, defaults to ~/.hataraku/mcp_settings.json
@@ -18,7 +16,7 @@ interface McpToolOptions {
 /**
  * Creates a set of tools from MCP servers that can be passed to an Agent
  */
-export async function getMcpTools(options?: McpToolOptions): Promise<{ tools: ToolSet; cleanup: () => Promise<void> }> {
+export async function getMcpTools(options?: McpToolOptions): Promise<{ tools: ToolSet; disconnect: () => Promise<void> }> {
     const client = new McpClient();
     
     // If config provided, validate and use it directly
@@ -30,7 +28,7 @@ export async function getMcpTools(options?: McpToolOptions): Promise<{ tools: To
     } 
     // If configPath provided, load and validate from that path
     else if (options?.configPath) {
-        const configContent = await fs.readFile(options.configPath, 'utf-8');
+        const configContent = await readFile(options.configPath, 'utf-8');
         let config: unknown;
         try {
             config = JSON.parse(configContent);
@@ -66,7 +64,7 @@ export async function getMcpTools(options?: McpToolOptions): Promise<{ tools: To
             
             toolset[qualifiedName] = {
                 description: tool.description,
-                parameters: tool.inputSchema,
+                parameters: jsonSchema(tool.inputSchema),
                 execute: async <T = any>(args: any): Promise<ParsedMcpToolResponse<T>> => {
                     const resultPromise = client.callTool<T>(serverName, tool.name, args);
 
@@ -80,9 +78,10 @@ export async function getMcpTools(options?: McpToolOptions): Promise<{ tools: To
         }
     }
 
+    
     return {
         tools: toolset,
-        cleanup: async () => {
+        disconnect: async () => {
             for (const serverName of servers) {
                 await client.disconnectServer(serverName);
             }
