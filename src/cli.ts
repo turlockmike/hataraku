@@ -2,15 +2,12 @@
 
 import { Command } from 'commander';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock';
 import chalk from 'chalk';
 import { input } from '@inquirer/prompts';
 import { version } from '../package.json';
 import { startServer } from './server';
 import { playAudioTool } from './lib/tools-deprecated/play-audio';
-import * as os from 'node:os';
 import { PassThrough } from 'node:stream';
-import { createExecuteCommandTool } from './core/tools/execute-command';
 import { createCLIAgent } from './core/agents';
 import { createBedrockProvider } from './providers/bedrock';
 

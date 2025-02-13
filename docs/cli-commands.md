@@ -97,46 +97,6 @@ hataraku "play a sound when the task completes"
 hataraku "fetch the latest version of Node.js and tell me what's new"
 ```
 
-## Audio Features
-```bash
-# Use Kokoro TTS with default voice (af_heart)
-hataraku --with-audio "read this text aloud"
-
-# Specify a different voice
-hataraku --with-audio --voice af_bella "read with a different voice"
-
-# Complex text with specific voice
-hataraku --with-audio --voice am_michael "explain this code with a male voice"
-
-# British accent
-hataraku --with-audio --voice bf_emma "read with British accent"
-
-# Combine with other features
-hataraku --with-audio --voice af_bella --no-stream "generate and read a story"
-
-# Interactive mode with voice
-hataraku -i --with-audio --voice am_fenrir "start an interactive session with voice"
-```
-
-### Available Voices
-
-#### American English (Female)
-- af_heart (default) - High quality female voice
-- af_bella - High quality energetic female voice
-- af_nicole - Good quality with headphone optimization
-- af_sarah, af_kore - Medium quality voices
-
-#### American English (Male)
-- am_michael - Good quality male voice
-- am_fenrir - Good quality male voice
-- am_puck - Good quality male voice
-
-#### British English
-- bf_emma - Good quality British female voice
-- bm_george - Medium quality British male voice
-
-Note: Voice quality ratings are based on the model's training duration and target quality metrics.
-
 ## Setup Requirements
 
 Before running these commands, ensure you have:
