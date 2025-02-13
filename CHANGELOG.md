@@ -1,5 +1,12 @@
 # hataraku
 
+## 0.3.0
+
+### Minor Changes
+
+-   added mcp
+-   Redid infrastructure completely
+
 ## 0.2.0
 
 ### Minor Changes
