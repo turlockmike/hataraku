@@ -1,8 +1,7 @@
 import {  LanguageModelV1, generateText, generateObject, streamText, ToolSet, CoreMessage, Message } from 'ai';
 import { z } from 'zod';
 import { AsyncIterableStream } from './types';
-import { writeFileSync } from 'node:fs';
-
+import { Thread } from './thread/thread';
 const DEFAULT_MAX_STEPS = 25;
 
 interface CallSettings {
@@ -82,19 +81,22 @@ export class Agent {
    * @param input - The input to the task.
    * @returns The response from the task.
    */
-  async task(task: string, input?: TaskInput & {stream: false | undefined}): Promise<string>;
-  async task(task: string, input?: TaskInput & { stream: true }): Promise<AsyncIterableStream<string>>;
-  async task<T>(task: string, input?: TaskInput<T> & { schema: z.ZodType<T> }): Promise<T>;
-  async task(task: string, input?: TaskInput): Promise<string>;
-  async task<T>(task: string, input?: TaskInput<T> & { stream?: boolean; schema?: z.ZodType<T> }): Promise<string | AsyncIterableStream<string> | T> {
-    const messages: CoreMessage[] = input?.messages || [];
+  async task(task: string, input?: TaskInput & {stream: false | undefined, thread?: Thread}): Promise<string>;
+  async task(task: string, input?: TaskInput & { stream: true, thread?: Thread}): Promise<AsyncIterableStream<string>>;
+  async task<T>(task: string, input?: TaskInput<T> & { schema: z.ZodType<T>, thread?: Thread}): Promise<T>;
+  async task(task: string, input?: TaskInput & { thread?: Thread}): Promise<string>;
+  async task<T>(task: string, input?: TaskInput<T> & { stream?: boolean; schema?: z.ZodType<T>, thread?: Thread}): Promise<string | AsyncIterableStream<string> | T> {
+    const messages: CoreMessage[] = input?.messages || input?.thread?.getFormattedMessages() || [];
     const maxSteps = this.callSettings.maxSteps || DEFAULT_MAX_STEPS;
     messages.push({
       role: 'user',
       content: task
     });
+    if (input?.thread) {
+      input.thread.addMessage('user', task);
+    }
     if (input?.stream) {
-      const {textStream, } = streamText({
+      const {textStream} = streamText({
         model: this.model,
         system: this.getSystemPrompt(),
         messages,
@@ -103,8 +105,14 @@ export class Agent {
         ...this.callSettings,
         onError: (error) => {
           console.error('Error streaming text', error)
+        },
+        onFinish: (result) => {
+          if (input?.thread) {
+            input.thread.addMessage('assistant', result.text);
+          }
         }
       });
+
       return textStream;
     }
 
@@ -121,17 +129,13 @@ export class Agent {
         ...this.callSettings,
       })
       const responseMessages: CoreMessage[] = result.response.messages
-      responseMessages.push({
-        role:'user',
-        content: 'Given the following text, extract the following information according to the schema provided:\n\n' + result.text
-      })
-
-      // Should contain the initial user message, the final assistant message and the new user message to format the response
-      messages.push(responseMessages[responseMessages.length - 1])
       messages.push({
         role: 'user',
         content: 'Based on the last response, please create a response that matches the schema provided. It must be valid JSON and match the schema exactly.'
       })
+      if (input?.thread) {
+        input.thread.addMessage('user', 'Based on the last response, please create a response that matches the schema provided. It must be valid JSON and match the schema exactly.')
+      }
       const { object } = await generateObject({
         model: this.model,
         mode: 'json', // For some reason it doesn't work without this value.
@@ -142,6 +146,10 @@ export class Agent {
         schema: input.schema,
         ...this.callSettings,
       });
+
+      if (input?.thread) {
+        input.thread.addMessage('assistant', JSON.stringify(object));
+      }
       return object;
     }
 
@@ -155,6 +163,9 @@ export class Agent {
         schema: input.schema,
         ...this.callSettings,
       });
+      if (input?.thread) {
+        input.thread.addMessage('assistant', JSON.stringify(result.object));
+      }
       return result.object;
     }
 
@@ -166,6 +177,9 @@ export class Agent {
       maxSteps,
       ...this.callSettings,
     });
+    if (input?.thread) {
+      input.thread.addMessage('assistant', result.text);
+    }
     return result.text;
   }
 }
