@@ -1,6 +1,6 @@
 import { exec } from "child_process"
 import { promisify } from "util"
-import { truncateOutput } from "../integrations/misc/extract-text"
+import { truncateOutput } from "../core/misc/extract-text"
 
 const execAsync = promisify(exec)
 const GIT_OUTPUT_LINE_LIMIT = 500

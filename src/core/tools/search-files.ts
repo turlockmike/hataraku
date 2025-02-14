@@ -44,13 +44,13 @@ export const searchFilesTool: Tool = {
       
       // Validate regex
       try {
-        new RegExp(regex);
+        regex = new RegExp(regex);
       } catch (error) {
         return {
           isError: true,
           content: [{
             type: "text",
-            text: `Invalid regular expression: ${error.message}`
+            text: `Invalid regular expression: ${error instanceof Error ? error.message : 'Unknown error'}`
           }]
         };
       }
@@ -80,7 +80,9 @@ export const searchFilesTool: Tool = {
           const matches = await searchInFile(file, searchRegex);
           allMatches.push(...matches);
         } catch (error) {
-          console.warn(`Error searching file ${file}: ${error.message}`);
+          console.warn(`Error searching file ${file}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          // Continue with other files instead of returning null
+          continue;
         }
       }
 
@@ -88,7 +90,7 @@ export const searchFilesTool: Tool = {
         return {
           content: [{
             type: "text",
-            text: `No matches found for pattern: ${regex}`
+            text: `No matches found for pattern: ${regex.source}`
           }]
         };
       }
@@ -104,7 +106,7 @@ export const searchFilesTool: Tool = {
         isError: true,
         content: [{
           type: "text",
-          text: `Error searching files: ${error.message}`
+          text: `Error searching files: ${error instanceof Error ? error.message : 'Unknown error'}`
         }]
       };
     }

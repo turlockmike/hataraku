@@ -5,35 +5,12 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import chalk from 'chalk';
 import { input } from '@inquirer/prompts';
 import { version } from '../package.json';
-import { startServer } from './server';
-import { playAudioTool } from './lib/tools-deprecated/play-audio';
 import { PassThrough } from 'node:stream';
 import { createCLIAgent } from './core/agents';
-import { createBedrockProvider } from './providers/bedrock';
+import { createBedrockProvider } from './core/providers/bedrock';
+import { playAudioTool } from './core/tools/play-audio';
 
 const program = new Command();
-
-// Add serve command first
-program
-    .command('serve')
-    .description('Start the web interface')
-    .option('-p, --port <number>', 'Port to run the server on', '3000')
-    .action(async (options) => {
-        const port = parseInt(options.port);
-        const apiKey = program.opts().apiKey || process.env[`${program.opts().provider.toUpperCase()}_API_KEY`];
-        
-        if (!apiKey) {
-            console.error(chalk.red(`Error: API key required. Provide via --api-key or ${program.opts().provider.toUpperCase()}_API_KEY env var`));
-            process.exit(1);
-        }
-
-        try {
-            await startServer(port, apiKey, program.opts().provider.toLowerCase(), program.opts().model);
-        } catch (error) {
-            console.error(chalk.red('Error starting server:'), error);
-            process.exit(1);
-        }
-    });
 
 // Add default command
 program
@@ -164,7 +141,7 @@ async function main(task?: string) {
                     }
                     // Finally play the celebratory audio
                     if (options.sound) {
-                        await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
+                        await playAudioTool.execute({ path: 'audio/celebration.wav' }, {toolCallId: 'celebration', messages: []});
                     }
 
                     // Prompt for next task
@@ -196,7 +173,7 @@ async function main(task?: string) {
                     console.log(result);
                 }
                 if (options.sound) {
-                    await playAudioTool.execute({ path: 'audio/celebration.wav' }, process.cwd());
+                    await playAudioTool.execute({ path: 'audio/celebration.wav' }, {toolCallId: 'celebration', messages: []});
                 }
                 return 0;
             } catch (error) {

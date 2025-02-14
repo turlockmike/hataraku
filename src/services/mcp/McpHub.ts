@@ -226,8 +226,10 @@ export class McpHub {
 			const alwaysAllowConfig = config.mcpServers[serverName]?.alwaysAllow || []
 
 			const tools = (response?.tools || []).map(tool => ({
-				...tool,
-				alwaysAllow: alwaysAllowConfig.includes(tool.name)
+				name: tool.name || 'unknown_tool',
+				description: tool.description,
+				inputSchema: tool.inputSchema,
+				alwaysAllow: alwaysAllowConfig.includes(tool.name || 'unknown_tool')
 			}))
 
 			return tools
@@ -241,7 +243,13 @@ export class McpHub {
 			const response = await this.connections
 				.find((conn) => conn.server.name === serverName)
 				?.client.request({ method: "resources/list" }, ListResourcesResultSchema)
-			return response?.resources || []
+			
+			return (response?.resources || []).map(resource => ({
+				uri: resource.uri || '',
+				name: resource.name || '',
+				description: resource.description,
+				mimeType: resource.mimeType
+			}))
 		} catch (error) {
 			return []
 		}
@@ -252,7 +260,13 @@ export class McpHub {
 			const response = await this.connections
 				.find((conn) => conn.server.name === serverName)
 				?.client.request({ method: "resources/templates/list" }, ListResourceTemplatesResultSchema)
-			return response?.resourceTemplates || []
+			
+			return (response?.resourceTemplates || []).map(template => ({
+				uriTemplate: template.uriTemplate || '',
+				name: template.name || '',
+				description: template.description,
+				mimeType: template.mimeType
+			}))
 		} catch (error) {
 			return []
 		}
@@ -353,20 +367,26 @@ export class McpHub {
 	async readResource(serverName: string, uri: string): Promise<McpResourceResponse> {
 		const connection = this.connections.find((conn) => conn.server.name === serverName)
 		if (!connection) {
-			throw new Error(`No connection found for server: ${serverName}`)
+			throw new Error(`Server "${serverName}" not found`)
 		}
-		if (connection.server.disabled) {
-			throw new Error(`Server "${serverName}" is disabled`)
-		}
-		return await connection.client.request(
+
+		const response = await connection.client.request(
 			{
 				method: "resources/read",
-				params: {
-					uri,
-				},
+				params: { uri },
 			},
 			ReadResourceResultSchema,
 		)
+
+		return {
+			_meta: response._meta || {},
+			contents: (response.contents || []).map(content => ({
+				uri: content.uri || '',
+				mimeType: content.mimeType as string | undefined,
+				text: content.text as string | undefined,
+				blob: content.blob as string | undefined
+			}))
+		}
 	}
 
 	async callTool(
@@ -376,24 +396,61 @@ export class McpHub {
 	): Promise<McpToolCallResponse> {
 		const connection = this.connections.find((conn) => conn.server.name === serverName)
 		if (!connection) {
-			throw new Error(
-				`No connection found for server: ${serverName}. Please make sure to use MCP servers available under 'Connected MCP Servers'.`,
-			)
-		}
-		if (connection.server.disabled) {
-			throw new Error(`Server "${serverName}" is disabled and cannot be used`)
+			throw new Error(`Server "${serverName}" not found`)
 		}
 
-		return await connection.client.request(
+		const response = await connection.client.request(
 			{
 				method: "tools/call",
 				params: {
 					name: toolName,
-					arguments: toolArguments,
+					arguments: toolArguments || {},
 				},
 			},
 			CallToolResultSchema,
 		)
+
+		return {
+			_meta: response._meta || {},
+			content: (response.content || []).map(item => {
+				if (!item || typeof item !== 'object' || !('type' in item)) {
+					throw new Error('Invalid content item in response')
+				}
+
+				const typedItem = item as { type: string; text?: unknown; data?: unknown; mimeType?: unknown; resource?: unknown }
+				
+				switch (typedItem.type) {
+					case 'text':
+						return {
+							type: 'text' as const,
+							text: String(typedItem.text || '')
+						}
+					case 'image':
+						return {
+							type: 'image' as const,
+							data: String(typedItem.data || ''),
+							mimeType: String(typedItem.mimeType || 'image/png')
+						}
+					case 'resource':
+						if (!typedItem.resource || typeof typedItem.resource !== 'object') {
+							throw new Error('Invalid resource in response')
+						}
+						const resource = typedItem.resource as { uri?: unknown; mimeType?: unknown; text?: unknown; blob?: unknown }
+						return {
+							type: 'resource' as const,
+							resource: {
+								uri: String(resource.uri || ''),
+								mimeType: resource.mimeType as string | undefined,
+								text: resource.text as string | undefined,
+								blob: resource.blob as string | undefined
+							}
+						}
+					default:
+						throw new Error(`Unknown content type: ${String(typedItem.type)}`)
+				}
+			}),
+			isError: response.isError
+		}
 	}
 
 	async dispose(): Promise<void> {

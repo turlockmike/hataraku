@@ -33,10 +33,6 @@ jest.mock('util', () => ({
   })
 }))
 
-// Mock extract-text
-jest.mock('../../integrations/misc/extract-text', () => ({
-  truncateOutput: jest.fn(text => text)
-}))
 
 describe('git utils', () => {
   // Get the mock with proper typing

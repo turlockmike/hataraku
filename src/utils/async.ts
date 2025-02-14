@@ -4,7 +4,7 @@ export function createAsyncStream<T>(): AsyncGenerator<T> & { push(item: T): voi
     let finished = false;
     let resolver: ((result: IteratorResult<T>) => void) | null = null;
 
-    const generator: AsyncGenerator<T> = {
+    const generator = {
       async next(): Promise<IteratorResult<T>> {
         if (buffer.length > 0) {
           return { value: buffer.shift()!, done: false };
@@ -25,7 +25,8 @@ export function createAsyncStream<T>(): AsyncGenerator<T> & { push(item: T): voi
         return { value: undefined as any, done: true };
       },
       [Symbol.asyncIterator]() { return this; },
-      async [Symbol.asyncDispose]() {
+      // Implement dispose method without using Symbol.asyncDispose
+      async dispose() {
         finished = true;
       }
     };
@@ -49,4 +50,4 @@ export function createAsyncStream<T>(): AsyncGenerator<T> & { push(item: T): voi
     };
 
     return { ...generator, ...stream } as AsyncGenerator<T> & { push(item: T): void; end(): void };
-  }
+}
