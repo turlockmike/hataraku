@@ -1,5 +1,11 @@
 # hataraku
 
+## 0.4.0
+
+### Minor Changes
+
+-   added mcp
+
 ## 0.3.0
 
 ### Minor Changes

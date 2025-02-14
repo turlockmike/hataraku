@@ -1,5 +1,0 @@
----
-"hataraku": minor
----
-
-added mcp
