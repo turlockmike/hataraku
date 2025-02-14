@@ -91,6 +91,7 @@ jobs:
       pull-requests: write
     if: >
         github.event_name == 'pull_request' &&
+        (github.event.action == 'opened' || github.event.action == 'labeled' || github.event.action == 'synchronize') &&
         github.event.pull_request.base.ref == 'main' &&
         github.actor == 'github-actions[bot]' &&
         contains(github.event.pull_request.title, 'Changeset version bump')
