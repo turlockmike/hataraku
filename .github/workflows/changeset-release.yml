@@ -21,9 +21,13 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install Dependencies
         run: npm install
+
+      - name: Build
+        run: npm run build
 
       - name: Create Release Pull Request or Publish
         id: changesets
