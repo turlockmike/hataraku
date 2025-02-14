@@ -1,6 +1,10 @@
-const esbuild = require("esbuild")
-const fs = require("fs")
-const path = require("path")
+import * as esbuild from 'esbuild';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const production = process.argv.includes("--production")
 const watch = process.argv.includes("--watch")
@@ -31,21 +35,18 @@ const buildConfig = {
 	sourcemap: !production,
 	logLevel: "silent",
 	plugins: [esbuildProblemMatcherPlugin],
-	entryPoints: ["src/cli.ts", "src/examples/hataraku-mcp.ts", "src/core/index.ts"],
+	entryPoints: ["src/cli.ts", "src/examples/hataraku-mcp.ts"],
 	format: "cjs",
 	sourcesContent: false,
 	platform: "node",
 	outdir: "dist",
+	outExtension: { '.js': '.cjs' },
 	external: [
-		"vscode", // Mark vscode as external to avoid build errors
 		"web-tree-sitter", // Tree-sitter needs to be external
 		"puppeteer-core", // Puppeteer needs to be external
 		"node:worker_threads", // Node worker threads need to be external
 		"worker_threads", // Also mark without node: prefix
 	],
-	define: {
-		'process.env.VSCODE': 'undefined' // Define vscode as undefined for CLI build
-	}
 }
 
 async function main() {
@@ -56,7 +57,7 @@ async function main() {
 		await ctx.rebuild()
 		await ctx.dispose()
 		// Add shebang and make executable after build
-		const cliPath = path.join(__dirname, 'dist/cli.js')
+		const cliPath = path.join(__dirname, 'dist/cli.cjs')
 		const content = fs.readFileSync(cliPath, 'utf8')
 		// Remove any existing shebang line
 		const contentWithoutShebang = content.replace(/^#!.*\n/, '');

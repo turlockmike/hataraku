@@ -61,7 +61,7 @@ describe('searchFilesTool', () => {
     }, mockOptions);
 
     const { globby } = jest.requireMock('globby');
-    expect(result.isError).toBe(true);
+  expect(result.isError).toBe(true);
     expect(result.content[0].text).toMatch(/Invalid regular expression/);
     expect(globby).not.toHaveBeenCalled();
   });

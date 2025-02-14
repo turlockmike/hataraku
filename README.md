@@ -75,6 +75,7 @@ Hataraku provides a powerful SDK for building AI-powered development tools and w
 
 ### Core Components
 
+- **Tool**: Define reusable machine executable tools with input/output schemas
 - **Agent**: Create autonomous agents with specific roles and capabilities
 - **Task**: Define reusable tasks with input/output schemas
 - **Workflow**: Build complex workflows with conditional branching and parallel execution

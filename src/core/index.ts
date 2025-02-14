@@ -11,6 +11,10 @@ export {
     type StreamingTaskResult
 } from './agent';
 
+export {
+    createBedrockProvider
+} from './providers/bedrock';
+
 // Task exports
 export {
     Task,

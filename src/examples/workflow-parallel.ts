@@ -222,9 +222,4 @@ async function main() {
 }
 
 // Run the example if this file is executed directly
-if (require.main === module) {
-  main().catch(error => {
-    console.error(chalk.red('\n❌ Error:'), error);
-    process.exit(1);
-  });
-}
+main()

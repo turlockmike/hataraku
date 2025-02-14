@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist/esm",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationDir": "./dist/types",
+    "sourceMap": true,
+    "declarationMap": true,
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "target": "ES2020"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/**/__tests__/*", "src/**/*.test.ts", "src/**/__mocks__/*", "src/examples/*"]
+} 

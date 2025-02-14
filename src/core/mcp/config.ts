@@ -7,7 +7,7 @@ export interface McpServerConfig {
   /** Command to run the server */
   command: string;
   /** Arguments to pass to the command */
-  args: string[];
+  args?: string[];
   /** Environment variables to set when running the server */
   env?: Record<string, string>;
   /** List of tool names to disable from this server */
@@ -56,17 +56,24 @@ const envStringRecord = z.record(envString);
  */
 export const McpServerConfigSchema = z.object({
   command: envString,
-  args: envStringArray,
+  args: envStringArray.optional(),
   env: envStringRecord.optional(),
   disabledTools: z.array(z.string()).optional(),
-});
+}).strict().transform((data): McpServerConfig => ({
+  command: data.command,
+  args: data.args || [],
+  env: data.env,
+  disabledTools: data.disabledTools
+}));
 
 /**
  * Zod schema for validating complete MCP configuration
  */
 export const McpConfigSchema = z.object({
   mcpServers: z.record(McpServerConfigSchema),
-});
+}).strict().transform((data): McpConfig => ({
+  mcpServers: data.mcpServers
+}));
 
 /**
  * Type guard to check if a value is a valid MCP configuration

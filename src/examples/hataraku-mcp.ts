@@ -1,7 +1,5 @@
 import { HatarakuMcpServer } from '../core/mcp/server/hatarakuMcpServer';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { LanguageModelV1 } from 'ai';
-import { createBedrockProvider } from '../providers/bedrock';
+import { createBedrockProvider } from '../core/providers/bedrock';
 
 /**
  * This example demonstrates running Hataraku as an MCP server.
@@ -52,8 +50,5 @@ async function startServer() {
 }
 
 // Start server when run directly
-if (require.main === module) {
-  startServer().catch(console.error);
-}
 
-export { HatarakuMcpServer };
+startServer()
