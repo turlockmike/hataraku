@@ -1,5 +1,11 @@
 # hataraku
 
+## 0.5.0
+
+### Minor Changes
+
+-   change to cjs
+
 ## 0.4.2
 
 ### Patch Changes
