@@ -1,5 +1,11 @@
 # hataraku
 
+## 0.5.1
+
+### Patch Changes
+
+-   remove bad dep
+
 ## 0.5.0
 
 ### Minor Changes
