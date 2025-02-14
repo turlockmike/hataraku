@@ -21,14 +21,14 @@ module.exports = {
         '@modelcontextprotocol/sdk/(.*)': '<rootDir>/src/__mocks__/@modelcontextprotocol/sdk/$1',
         '^delay$': '<rootDir>/src/__mocks__/delay.js',
         '^p-wait-for$': '<rootDir>/src/__mocks__/p-wait-for.js',
-        '^globby$': '<rootDir>/src/__mocks__/globby.js',
+        '^fast-glob$': '<rootDir>/src/__mocks__/fast-glob.js',
         '^serialize-error$': '<rootDir>/src/__mocks__/serialize-error.js',
         '^strip-ansi$': '<rootDir>/src/__mocks__/strip-ansi.js',
         '^default-shell$': '<rootDir>/src/__mocks__/default-shell.js',
         '^os-name$': '<rootDir>/src/__mocks__/os-name.js'
     },
     transformIgnorePatterns: [
-        'node_modules/(?!(@modelcontextprotocol|delay|p-wait-for|globby|serialize-error|strip-ansi|default-shell|os-name)/)'
+        'node_modules/(?!(@modelcontextprotocol|delay|p-wait-for|fast-glob|serialize-error|strip-ansi|default-shell|os-name)/)'
     ],
     setupFiles: [],
     forceExit: true,

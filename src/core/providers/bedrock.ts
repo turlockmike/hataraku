@@ -1,5 +1,5 @@
 import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock';
-import { fromIni } from '@aws-sdk/credential-providers';
+import { fromIni } from '@aws-sdk/credential-provider-ini';
 
 // Configure AWS SDK to use credentials from config file
 process.env.AWS_SDK_LOAD_CONFIG = '1';
