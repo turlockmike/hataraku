@@ -1,236 +1,39 @@
-name: Changeset Release
-run-name: Changeset Release ${{ github.actor != 'github-actions[bot]' && '- Create PR' || '- Update Changelog' }}
+name: Release
 
 on:
-  workflow_dispatch:
-  pull_request:
-    types: [closed, opened, labeled, synchronize]
-
-env:
-  REPO_PATH: ${{ github.repository }}
-  GIT_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'main' }}
+  push:
+    branches:
+      - main
 
 jobs:
-  # Job 1: Create version bump PR when changesets are merged to main
-  changeset-pr-version-bump:
-    if: >
-      ( github.event_name == 'pull_request' &&
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.base.ref == 'main' &&
-      github.actor != 'github-actions[bot]' ) ||
-      github.event_name == 'workflow_dispatch'
+  release:
+    name: Release
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - name: Git Checkout
+      - name: Checkout Repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ env.GIT_REF }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
-            
+
       - name: Install Dependencies
         run: npm install
 
-      # Check if there are any new changesets to process
-      - name: Check for changesets
-        id: check-changesets
-        run: |
-          NEW_CHANGESETS=$(find .changeset -name "*.md" ! -name "README.md" | wc -l | tr -d ' ')
-          echo "Changesets diff with previous version: $NEW_CHANGESETS"
-          echo "new_changesets=$NEW_CHANGESETS" >> $GITHUB_OUTPUT
-          
-          if [ "$NEW_CHANGESETS" = "0" ]; then
-            echo "No changesets found - this is expected if you haven't created a changeset yet"
-            echo "To create a changeset, run: npm run changeset"
-            exit 0
-          fi
-
-      # Create version bump PR using changesets/action if there are new changesets
-      - name: Changeset Pull Request
-        if: steps.check-changesets.outputs.new_changesets != '0'
+      - name: Create Release Pull Request or Publish
         id: changesets
-        continue-on-error: true
         uses: changesets/action@v1
-        with:
-          commit: "changeset version bump"
-          title: "Changeset version bump"
-          version: npm run version-packages
-          publish: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Check Changeset Result
-        if: steps.check-changesets.outputs.new_changesets != '0'
-        run: |
-          if [[ "${{ steps.changesets.outcome }}" == "failure" ]]; then
-            ERROR_MSG="${{ steps.changesets.outputs.error }}"
-            if [[ $ERROR_MSG == *"No commits between"* ]] || [[ $ERROR_MSG == *"No unreleased changesets found"* ]]; then
-              echo "No changes to version - this is expected when all changesets are already processed"
-              exit 0
-            else
-              echo "Changeset action failed with unexpected error: $ERROR_MSG"
-              exit 1
-            fi
-          fi
-
-  # Job 2: Process version bump PR created by github-actions[bot]
-  changeset-pr-edit-approve:
-    name: Auto approve and merge Bump version PRs
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    if: >
-        github.event_name == 'pull_request' &&
-        (github.event.action == 'opened' || github.event.action == 'labeled' || github.event.action == 'synchronize') &&
-        github.event.pull_request.base.ref == 'main' &&
-        github.actor == 'github-actions[bot]' &&
-        contains(github.event.pull_request.title, 'Changeset version bump')
-    steps:
-      - name: Determine checkout ref
-        id: checkout-ref
-        run: |
-          echo "Event action: ${{ github.event.action }}"
-          echo "Actor: ${{ github.actor }}"
-          echo "Head ref: ${{ github.head_ref }}"
-          echo "PR SHA: ${{ github.event.pull_request.head.sha }}"
-
-          if [[ "${{ github.event.action }}" == "opened" && "${{ github.actor }}" == "github-actions[bot]" ]]; then
-            echo "Using branch ref: ${{ github.head_ref }}"  
-            echo "git_ref=${{ github.head_ref }}" >> $GITHUB_OUTPUT
-          else
-            echo "Using SHA ref: ${{ github.event.pull_request.head.sha }}"
-            echo "git_ref=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Checkout Repo
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
-          ref: ${{ steps.checkout-ref.outputs.git_ref }}
-
-      # Get current and previous versions to edit changelog entry
-      - name: Get version
-        id: get_version
-        run: |
-          VERSION=$(git show HEAD:package.json | jq -r '.version')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          PREV_VERSION=$(git show origin/main:package.json | jq -r '.version')
-          echo "prev_version=$PREV_VERSION" >> $GITHUB_OUTPUT
-          echo "version=$VERSION"
-          echo "prev_version=$PREV_VERSION"
-
-      # Update CHANGELOG.md with proper format
-      - name: Update Changelog Format
-        if: ${{ !contains(github.event.pull_request.labels.*.name, 'changelog-ready') }}
-        env:
-          VERSION: ${{ steps.get_version.outputs.version }}
-          PREV_VERSION: ${{ steps.get_version.outputs.prev_version }}
-        run: python .github/scripts/overwrite_changeset_changelog.py
-
-      # Commit and push changelog updates
-      - name: Push Changelog updates
-        if: ${{ !contains(github.event.pull_request.labels.*.name, 'changelog-ready') }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          echo "Running git add and commit..."
-          git add CHANGELOG.md
-          git commit -m "Updating CHANGELOG.md format"
-          git status
-          echo "--------------------------------------------------------------------------------"
-          echo "Pushing to remote..."
-          echo "--------------------------------------------------------------------------------"
-          git push
-
-      # Add label to indicate changelog has been formatted
-      - name: Add changelog-ready label
-        if: ${{ !contains(github.event.pull_request.labels.*.name, 'changelog-ready') }}
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              labels: ['changelog-ready']
-            });
-
-      # Auto-approve PR only after it has been labeled
-      - name: Auto approve PR
-        if: contains(github.event.pull_request.labels.*.name, 'changelog-ready')
-        uses: hmarr/auto-approve-action@v4
-        with:
-          review-message: "I'm approving since it's a bump version PR"
-      
-      # Auto-merge PR
-      - name: Automerge on PR
-        if: contains(github.event.pull_request.labels.*.name, 'changelog-ready')
-        run: gh pr merge --auto --merge ${{ github.event.pull_request.number }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # Job 3: Create GitHub Release and Publish to NPM when version bump PR is merged
-  release:
-    name: Create Release
-    needs: changeset-pr-edit-approve
-    if: >
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.base.ref == 'main' &&
-      github.actor == 'github-actions[bot]' &&
-      contains(github.event.pull_request.title, 'Changeset version bump')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Build
-        run: npm run build
-
-      - name: Get version
-        id: get_version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
-
-      - name: Create GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION=${{ steps.get_version.outputs.version }}
-          gh release create "v$VERSION" \
-            --title "v$VERSION" \
-            --notes-file CHANGELOG.md
-
-      - name: Publish to NPM
+      - name: Publish
+        if: steps.changesets.outputs.hasChangesets == 'false'
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public
