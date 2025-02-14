@@ -2,7 +2,7 @@ import { Tool } from 'ai';
 import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { globby } from 'globby';
+import fg from 'fast-glob';
 
 async function searchInFile(filePath: string, regex: RegExp): Promise<string[]> {
   const content = await fs.readFile(filePath, 'utf-8');
@@ -57,7 +57,7 @@ export const searchFilesTool: Tool = {
 
       // Find files to search
       const pattern = path.join(absolutePath, file_pattern || '**/*');
-      const files = await globby(pattern, {
+      const files = await fg(pattern, {
         ignore: ['**/node_modules/**', '**/dist/**', '**/build/**'],
         onlyFiles: true
       });

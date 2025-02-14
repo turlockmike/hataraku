@@ -1,4 +1,4 @@
-import { globby, Options } from "globby"
+import fg from "fast-glob"
 import os from "os"
 import * as path from "path"
 import { arePathsEqual } from "../../utils/path"
@@ -41,12 +41,12 @@ export async function listFiles(dirPath: string, recursive: boolean, limit: numb
 		dot: true, // do not ignore hidden files/directories
 		absolute: true,
 		markDirectories: true, // Append a / on any directories matched (/ is used on windows as well, so dont use path.sep)
-		gitignore: recursive, // globby ignores any files that are gitignored
+		gitignore: recursive, // fast-glob also supports gitignore
 		ignore: recursive ? dirsToIgnore : undefined, // just in case there is no gitignore, we ignore sensible defaults
 		onlyFiles: false, // true by default, false means it will list directories on their own too
 	}
 	// * globs all files in one dir, ** globs files in nested directories
-	const files = recursive ? await globbyLevelByLevel(limit, options) : (await globby("*", options)).slice(0, limit)
+	const files = recursive ? await globbyLevelByLevel(limit, options) : (await fg("*", options)).slice(0, limit)
 	return [files, files.length >= limit]
 }
 
@@ -58,18 +58,18 @@ Breadth-first traversal of directory structure level by level up to a limit:
    - Minimizes risk of missing deeply nested files
 
 - Notes:
-   - Relies on globby to mark directories with /
+   - Relies on fast-glob to mark directories with /
    - Potential for loops if symbolic links reference back to parent (we could use followSymlinks: false but that may not be ideal for some projects and it's pointless if they're not using symlinks wrong)
    - Timeout mechanism prevents infinite loops
 */
-async function globbyLevelByLevel(limit: number, options?: Options) {
+async function globbyLevelByLevel(limit: number, options?: fg.Options) {
 	let results: Set<string> = new Set()
 	let queue: string[] = ["*"]
 
 	const globbingProcess = async () => {
 		while (queue.length > 0 && results.size < limit) {
 			const pattern = queue.shift()!
-			const filesAtLevel = await globby(pattern, options)
+			const filesAtLevel = await fg(pattern, options)
 
 			for (const file of filesAtLevel) {
 				if (results.size >= limit) {
