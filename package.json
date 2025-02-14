@@ -24,16 +24,12 @@
     "ai",
     "sdk"
   ],
-  "type": "module",
   "main": "./dist/cjs/core/index.js",
-  "module": "./dist/esm/core/index.js",
   "types": "./dist/types/core/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/types/core/index.d.ts",
-      "import": "./dist/esm/core/index.js",
-      "require": "./dist/cjs/core/index.js",
-      "default": "./dist/esm/core/index.js"
+      "require": "./dist/cjs/core/index.js"
     }
   },
   "bin": {
@@ -47,10 +43,9 @@
   ],
   "scripts": {
     "build:clean": "rm -rf dist",
-    "build:esm": "tsc -p tsconfig.build.json",
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "build:audio": "mkdir -p dist/audio && cp -r src/audio/* dist/audio/",
-    "build": "npm run build:clean && npm run build:esm && npm run build:cjs && npm run build:cli && npm run build:audio",
+    "build": "npm run build:clean && npm run build:cjs && npm run build:cli && npm run build:audio",
     "build:cli": "node esbuild.js --cli --production",
     "dev": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/cli.ts",
     "example": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/query.ts",
@@ -82,7 +77,7 @@
     "access": "public"
   },
   "devDependencies": {
-    "@changesets/cli": "2.27.12",
+    "@changesets/cli": "^2.27.12",
     "@changesets/types": "^6.0.0",
     "@types/diff": "^5.2.1",
     "@types/jest": "^29.5.14",
