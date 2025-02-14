@@ -2,7 +2,7 @@ import { createAgent } from '../core/agent';
 import { getMcpTools } from '../core/mcp/toolWrapper';
 import { JiraGetTicketTool } from '../core/mcp/types';
 import chalk from 'chalk';
-import { createBedrockProvider } from '../providers/bedrock';
+import { createBedrockProvider } from '../core/providers/bedrock';
 
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant that can use various tools to accomplish tasks.

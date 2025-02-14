@@ -78,7 +78,4 @@ async function main() {
   }
 }
 
-// Run the demo if this file is executed directly
-if (require.main === module) {
-  main().catch(console.error);
-} 
+main()

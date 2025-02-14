@@ -45,7 +45,4 @@ async function main() {
   }
 }
 
-// Run the example if this file is executed directly
-if (require.main === module) {
-  main();
-} 
+main()

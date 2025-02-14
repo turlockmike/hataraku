@@ -14,7 +14,6 @@ roo-cline-*.vsix
 
 # Test environment
 .test_env
-.vscode-test/
 
 # Local configuration
 .env

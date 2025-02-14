@@ -17,8 +17,7 @@ jest.mock('@inquirer/prompts', () => ({
   select: jest.fn()
 }));
 jest.mock('../core/agent');
-jest.mock('../lib/tools/play-audio');
-jest.mock('../server');
+jest.mock('../core/tools/play-audio');
 
 // Mock process.exit to prevent tests from actually exiting
 const mockExit = jest.spyOn(process, 'exit').mockImplementation((code?: number | string | null | undefined) => {
