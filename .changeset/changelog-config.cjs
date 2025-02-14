@@ -17,4 +17,4 @@ const changelogFunctions = {
   getDependencyReleaseLine,
 };
 
-module.exports = changelogFunctions;
+module.exports = changelogFunctions; 
