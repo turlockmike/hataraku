@@ -1,5 +1,0 @@
----
-"hataraku": patch
----
-
-fixed types
