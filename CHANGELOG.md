@@ -1,5 +1,11 @@
 # hataraku
 
+## 0.4.1
+
+### Patch Changes
+
+-   removed old unused code, fixed exports
+
 ## 0.4.0
 
 ### Minor Changes
