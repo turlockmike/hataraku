@@ -1,0 +1,5 @@
+---
+"hataraku": patch
+---
+
+basic
