@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createAgent } from '../agent';
 import { MockLanguageModelV1 } from 'ai/test';
 import { Tool } from 'ai';
+import { Thread } from '../thread';
 
 
 describe('Agent', () => {
@@ -201,7 +202,7 @@ describe('Agent', () => {
       ).rejects.toThrow();
     });
 
-    it('should include message history and system prompt in API calls', async () => {
+    it('should include threads message history and system prompt in API calls', async () => {
       const mockDoGenerate = jest.fn().mockImplementation(async (options) => ({
         text: 'Test response',
         finishReason: 'stop',
@@ -219,12 +220,13 @@ describe('Agent', () => {
         tools: {}
       });
 
-      const messages = [
-        { role: 'user' as const, content: 'Previous message 1' },
-        { role: 'assistant' as const, content: 'Previous response 1' }
-      ];
 
-      await agent.task('Current message', { messages });
+      const thread = new Thread();
+      thread.addMessage('user', 'Previous message 1');
+      thread.addMessage('assistant', 'Previous response 1');
+     
+
+      await agent.task('Current message', { thread });
 
       expect(mockDoGenerate).toHaveBeenCalledWith(expect.objectContaining({
         prompt: expect.arrayContaining([
