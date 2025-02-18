@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Agent } from '../agent';
-import { createTask, TaskConfig } from '../task';
+import { createTask } from '../task';
 
 // Schema definitions
 const codeAnalysisSchema = z.object({
@@ -44,7 +44,7 @@ export function createCodeAnalysisTask(agent: Agent) {
         name: 'Analyze Code',
         description: 'Analyze code for complexity, potential issues, and improvement suggestions',
         agent,
-        schema: codeAnalysisSchema,
+        outputSchema: codeAnalysisSchema,
         task: (input: string) => `
             Analyze the following code and provide detailed feedback:
             
@@ -66,7 +66,7 @@ export function createBugAnalysisTask(agent: Agent) {
         name: 'Debug Issue',
         description: 'Analyze bug reports and provide root cause analysis with fix suggestions',
         agent,
-        schema: bugAnalysisSchema,
+        outputSchema: bugAnalysisSchema,
         task: (input: string) => `
             Analyze the following bug report and provide a detailed analysis:
             
@@ -87,7 +87,7 @@ export function createPRReviewTask(agent: Agent) {
         name: 'Review Pull Request',
         description: 'Review code changes and provide structured feedback',
         agent,
-        schema: prReviewSchema,
+        outputSchema: prReviewSchema,
         task: (input: string) => `
             Review the following pull request and provide detailed feedback:
             
@@ -111,7 +111,7 @@ export function createRefactoringPlanTask(agent: Agent) {
         name: 'Plan Refactoring',
         description: 'Create a structured plan for code refactoring',
         agent,
-        schema: refactoringPlanSchema,
+        outputSchema: refactoringPlanSchema,
         task: (input: string) => `
             Create a refactoring plan for the following code:
             

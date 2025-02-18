@@ -25,10 +25,12 @@
     "sdk"
   ],
   "main": "./dist/cjs/core/index.js",
+  "module": "./dist/esm/core/index.js",
   "types": "./dist/types/core/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/types/core/index.d.ts",
+      "import": "./dist/esm/core/index.js",
       "require": "./dist/cjs/core/index.js"
     }
   },

@@ -1,10 +1,8 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+import { McpError } from '@modelcontextprotocol/sdk/types.js';
 import { HatarakuMcpServer } from '../../../core/mcp/server/hatarakuMcpServer';
 import { Task } from '../../../core/task';
 import { Agent } from '../../../core/agent';
-import { createAgent } from '../../../core/agent';
 import { LanguageModelV1 } from 'ai';
 import { TaskToolAdapter } from '../../../core/mcp/server/taskToolAdapter';
 
@@ -14,7 +12,7 @@ jest.mock('@modelcontextprotocol/sdk/server/stdio.js');
 jest.mock('../../../core/mcp/server/taskToolAdapter');
 
 // Mock task factory functions
-jest.mock('../../../core/tasks', () => {
+jest.mock('../../../core/task', () => {
   let mockAgent: Agent | null = null;
   let shouldFail = false;
   
@@ -128,7 +126,7 @@ describe('HatarakuMcpServer', () => {
     jest.clearAllMocks();
 
     // Get mock tasks module
-    mockTasks = jest.requireMock('../../../core/tasks');
+    mockTasks = jest.requireMock('../../../core/task');
     mockTasks.__setShouldFail(false);
   });
 

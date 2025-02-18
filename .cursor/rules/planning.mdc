@@ -2,3 +2,8 @@
 description: This rule is helpful for the planning phase of implementation
 globs: 
 ---
+When asked to come up with an implementation plan. It should have the following components.
+
+1. A list of small tasks to do to complete the plan
+2. For each task, some psuedocode of what will change with a brief explanation
+3. Some design questions. Don't assume the user knows everything, scrutinize the ticket and focus on producing best outcomes based on what the user actually needs. 

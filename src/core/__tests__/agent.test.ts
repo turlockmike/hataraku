@@ -2,10 +2,11 @@ import { z } from 'zod';
 import { createAgent } from '../agent';
 import { MockLanguageModelV1 } from 'ai/test';
 import { Tool } from 'ai';
-import { Thread } from '../thread';
-
+import { Thread } from '../thread/thread';
+import { ValidationError } from '../errors';
 
 describe('Agent', () => {
+  // Rest of the file content remains the same...
   // Create a mock tool for testing
   const mockTool: Tool = {
     description: 'A mock tool for testing',
@@ -26,6 +27,7 @@ describe('Agent', () => {
         role: 'You are a test agent',
         description: 'A test agent',
         model: new MockLanguageModelV1({
+          defaultObjectGenerationMode: 'json',
           doGenerate: async () => ({
             text: 'Test response',
             finishReason: 'stop',
@@ -67,6 +69,7 @@ describe('Agent', () => {
         role: 'You are a test agent',
         description: 'A test agent',
         model: new MockLanguageModelV1({
+          defaultObjectGenerationMode: 'json',
           doGenerate: async () => ({
             text: 'Test response',
             finishReason: 'stop',
@@ -80,8 +83,59 @@ describe('Agent', () => {
       });
 
       const result = await agent.task('Test task input');
-
       expect(result).toBe('Test response');
+    });
+
+    it('should validate input against custom schema', async () => {
+      const agent = createAgent({
+        name: 'Test Agent',
+        role: 'You are a test agent',
+        description: 'A test agent',
+        model: new MockLanguageModelV1({
+          defaultObjectGenerationMode: 'json',
+          doGenerate: async () => ({
+            text: JSON.stringify({ name: 'John', role: 'admin', action: 'create' }),
+            finishReason: 'stop',
+            usage: { promptTokens: 10, completionTokens: 20 },
+            rawCall: { rawPrompt: null, rawSettings: {} }
+          })
+        }),
+        tools: {}
+      });
+
+      const schema = z.object({
+        name: z.string().min(1),
+        role: z.enum(['admin', 'user', 'guest']),
+        action: z.string()
+      }).passthrough();
+
+      const result = await agent.task('Test input', { schema });
+      expect(result).toEqual({
+        name: 'John',
+        role: 'admin',
+        action: 'create'
+      });
+
+      // Test invalid response
+      const agentWithInvalidResponse = createAgent({
+        name: 'Test Agent',
+        role: 'You are a test agent',
+        description: 'A test agent',
+        model: new MockLanguageModelV1({
+          defaultObjectGenerationMode: 'json',
+          doGenerate: async () => ({
+            text: JSON.stringify({ name: '', role: 'invalid', action: 'delete' }),
+            finishReason: 'stop',
+            usage: { promptTokens: 10, completionTokens: 20 },
+            rawCall: { rawPrompt: null, rawSettings: {} }
+          })
+        }),
+        tools: {}
+      });
+
+      await expect(
+        agentWithInvalidResponse.task('Test input', { schema })
+      ).rejects.toThrow();
     });
 
     it('should execute a task with tool calls', async () => {
@@ -92,27 +146,28 @@ describe('Agent', () => {
         model: new MockLanguageModelV1({
           defaultObjectGenerationMode: 'json',
           doGenerate: async (options) => {
-            if (options.mode.type === 'object-json') {
+            // If mode is object-json, return a valid JSON object
+            if (options.mode?.type === 'object-json') {
               return {
-                text: `{"content":"Hello, world!"}`,
+                text: JSON.stringify({ content: 'Hello, world!' }),
                 finishReason: 'stop',
                 usage: { promptTokens: 10, completionTokens: 20 },
                 rawCall: { rawPrompt: null, rawSettings: {} }
-              }
-            } else {
-              return {
-                text: 'Test response',
-                toolCalls: [{
-                  toolCallId: 'call-1',
-                  toolCallType: 'function',
-                  toolName: 'mock_tool',
-                  args: JSON.stringify({ input: 'test input' })
-                }],
-                finishReason: 'stop',
-                usage: { promptTokens: 10, completionTokens: 20 },
-                rawCall: { rawPrompt: null, rawSettings: {} }
-              }
+              };
             }
+            // Otherwise return a tool call
+            return {
+              text: 'Using tool...',
+              toolCalls: [{
+                toolCallId: 'call-1',
+                toolCallType: 'function',
+                toolName: 'mock_tool',
+                args: JSON.stringify({ input: 'test input' })
+              }],
+              finishReason: 'stop',
+              usage: { promptTokens: 10, completionTokens: 20 },
+              rawCall: { rawPrompt: null, rawSettings: {} }
+            };
           }
         }),
         tools: {
@@ -123,7 +178,7 @@ describe('Agent', () => {
       const result = await agent.task('Test task input', {
         schema: z.object({
           content: z.string()
-        })
+        }).passthrough()
       });
 
       expect(result).toEqual({
@@ -137,6 +192,7 @@ describe('Agent', () => {
         role: 'You are a test agent',
         description: 'A test agent',
         model: new MockLanguageModelV1({
+          defaultObjectGenerationMode: 'json',
           doStream: async () => ({
             stream: new ReadableStream({
               async start(controller) {
@@ -172,38 +228,8 @@ describe('Agent', () => {
       expect(chunks).toEqual(['This', ' is', ' a', ' test']);
     });
 
-    it('should validate output against schema', async () => {
-      const agent = createAgent({
-        name: 'Test Agent',
-        role: 'You are a test agent',
-        description: 'A test agent',
-        model: new MockLanguageModelV1({
-          doGenerate: async () => ({
-            defaultObjectGenerationMode: 'json',
-            text: 'Invalid response',
-            finishReason: 'stop',
-            usage: { promptTokens: 10, completionTokens: 20 },
-            rawCall: { rawPrompt: null, rawSettings: {} }
-          })
-        }),
-        tools: {
-          mock_tool: mockTool
-        }
-      });
-
-      const schema = z.object({
-        count: z.number()
-      });
-
-      await expect(
-        agent.task('Test task input', {
-          schema
-        })
-      ).rejects.toThrow();
-    });
-
     it('should include threads message history and system prompt in API calls', async () => {
-      const mockDoGenerate = jest.fn().mockImplementation(async (options) => ({
+      const mockDoGenerate = jest.fn().mockImplementation(async () => ({
         text: 'Test response',
         finishReason: 'stop',
         usage: { promptTokens: 10, completionTokens: 20 },
@@ -215,16 +241,15 @@ describe('Agent', () => {
         role: 'You are a test agent',
         description: 'A test agent',
         model: new MockLanguageModelV1({
+          defaultObjectGenerationMode: 'json',
           doGenerate: mockDoGenerate
         }),
         tools: {}
       });
 
-
       const thread = new Thread();
       thread.addMessage('user', 'Previous message 1');
       thread.addMessage('assistant', 'Previous response 1');
-     
 
       await agent.task('Current message', { thread });
 
@@ -254,7 +279,7 @@ describe('Agent', () => {
     });
 
     it('should pass through call settings to the model', async () => {
-      const mockDoGenerate = jest.fn().mockImplementation(async (options) => ({
+      const mockDoGenerate = jest.fn().mockImplementation(async () => ({
         text: 'Test response',
         finishReason: 'stop',
         usage: { promptTokens: 10, completionTokens: 20 },
@@ -266,6 +291,7 @@ describe('Agent', () => {
         role: 'You are a test agent',
         description: 'A test agent',
         model: new MockLanguageModelV1({
+          defaultObjectGenerationMode: 'json',
           doGenerate: mockDoGenerate
         }),
         tools: {},
@@ -293,14 +319,16 @@ describe('Agent', () => {
         model: new MockLanguageModelV1({
           defaultObjectGenerationMode: 'json',
           doGenerate: async (options) => {
+            // If mode is object-json, return a valid JSON object
             if (options.mode?.type === 'object-json') {
               return {
-                text: '{"content":"Executed mock tool with input: test input"}',
+                text: JSON.stringify({ content: 'Executed mock tool with input: test input' }),
                 finishReason: 'stop',
                 usage: { promptTokens: 10, completionTokens: 20 },
                 rawCall: { rawPrompt: null, rawSettings: {} }
               };
             }
+            // Otherwise return a tool call
             return {
               text: 'Tool response',
               toolCalls: [{
@@ -320,15 +348,14 @@ describe('Agent', () => {
         }
       });
 
-      const messages = [
-        { role: 'user' as const, content: 'Previous message' }
-      ];
+      const thread = new Thread();
+      thread.addMessage('user', 'Previous message');
 
       const result = await agent.task('Use the tool', {
-        messages,
+        thread,
         schema: z.object({
           content: z.string()
-        })
+        }).passthrough()
       });
 
       expect(result).toEqual({

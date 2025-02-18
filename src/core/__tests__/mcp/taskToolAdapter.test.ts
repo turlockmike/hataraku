@@ -69,7 +69,7 @@ describe('TaskToolAdapter', () => {
       description: 'Task with schema',
       agent: mockAgent,
       task: (input) => `Process ${input.message} ${input.count} times`,
-      schema: inputSchema
+      inputSchema: inputSchema
     });
 
     const adapter = new TaskToolAdapter();
@@ -170,7 +170,7 @@ describe('TaskToolAdapter', () => {
       description: 'Task with output schema',
       agent: mockAgent,
       task: 'test output schema',
-      schema: outputSchema
+      outputSchema: outputSchema
     });
 
     const adapter = new TaskToolAdapter();

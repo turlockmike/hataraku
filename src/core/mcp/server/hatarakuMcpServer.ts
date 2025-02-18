@@ -10,7 +10,7 @@ import {
   createBugAnalysisTask,
   createPRReviewTask,
   createRefactoringPlanTask
-} from '../../tasks';
+} from '../../sample-tasks';
 import { appendFileSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -51,7 +51,7 @@ export class HatarakuMcpServer {
   private adapter: TaskToolAdapter;
   private agent: Agent;
 
-  constructor(model: LanguageModelV1) {
+  constructor(model: LanguageModelV1, defaultAgent?: Agent) {
     this.server = new Server(
       {
         name: 'hataraku-mcp-server',
@@ -66,20 +66,12 @@ export class HatarakuMcpServer {
     this.tasks = new Map();
     this.adapter = new TaskToolAdapter();
 
-    this.agent = createAgent({
+    this.agent = defaultAgent ?? createAgent({
       name: 'hataraku-task-agent',
       description: 'Agent for executing Hataraku tasks',
       role: 'A software development assistant that helps with code analysis, review, and improvement',
       model
     });
-
-    // In test environment, the mock will handle setting the agent
-    if (process.env.NODE_ENV === 'test') {
-      const tasks = require('../../tasks');
-      if (tasks.__setMockAgent) {
-        tasks.__setMockAgent(this.agent);
-      }
-    }
   }
 
   async start() {

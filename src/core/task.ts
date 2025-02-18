@@ -1,20 +1,23 @@
 import { z } from 'zod';
-import { Agent } from './agent';
-import { AsyncIterableStream } from './types';
-import { Thread } from './thread/thread';
-export interface TaskConfig<TInput = unknown, TOutput = unknown> {
+import { Agent } from './agent.js';
+import { AsyncIterableStream } from './types.js';
+import { Thread } from './thread/thread.js';
+
+export interface TaskConfig<TInput, TOutput = unknown> {
     name: string;
     description: string;
     agent: Agent;
-    schema?: z.ZodType<TOutput>;
+    inputSchema?: z.ZodType<TInput>;
+    outputSchema?: z.ZodType<TOutput>;
     task: string | ((input: TInput) => string);
 }
 
-export class Task<TInput = unknown, TOutput = unknown> {
+export class Task<TInput = string, TOutput = unknown> {
     public readonly name: string;
     public readonly description: string;
     private readonly agent: Agent;
-    private readonly schema?: z.ZodType<TOutput>;
+    private readonly inputSchema: z.ZodType<TInput>;
+    private readonly outputSchema?: z.ZodType<TOutput>;
     private readonly task: string | ((input: TInput) => string);
 
     constructor(config: TaskConfig<TInput, TOutput>) {
@@ -22,7 +25,8 @@ export class Task<TInput = unknown, TOutput = unknown> {
         this.name = config.name;
         this.description = config.description;
         this.agent = config.agent;
-        this.schema = config.schema;
+        this.inputSchema = config.inputSchema ?? (z.string() as unknown as z.ZodType<TInput, z.ZodTypeDef, TInput>);
+        this.outputSchema = config.outputSchema;
         this.task = config.task;
     }
 
@@ -54,13 +58,17 @@ export class Task<TInput = unknown, TOutput = unknown> {
     async execute(input: TInput): Promise<TOutput>;
     async execute(input: TInput, options: { stream: true, thread?: Thread }): Promise<AsyncIterable<string> & ReadableStream<string>>;
     async execute(input: TInput, options?: { stream?: boolean, thread?: Thread }): Promise<TOutput | AsyncIterableStream<string>> {
-        const prompt = this.getTaskPrompt(input);
+        // Validate input against schema
+        const validInput = await this.inputSchema.parseAsync(input);
+        
+        // Generate prompt with validated input
+        const prompt = this.getTaskPrompt(validInput);
         
         if (options?.stream) {
             return this.agent.task(prompt, { stream: true, thread: options.thread });
         }
-        if (this.schema) {
-            const result = await this.agent.task<TOutput>(prompt, { schema: this.schema, thread: options?.thread });
+        if (this.outputSchema) {
+            const result = await this.agent.task<TOutput>(prompt, { schema: this.outputSchema, thread: options?.thread });
             return result;
         }
         return this.agent.task(prompt, { thread: options?.thread }) as Promise<TOutput>;
@@ -82,8 +90,29 @@ export class Task<TInput = unknown, TOutput = unknown> {
  * @param config The task configuration
  * @returns A Task instance
  */
-export function createTask<TInput = unknown, TOutput = unknown>(
+export function createTask<TOutput = unknown>(
+    config: Omit<TaskConfig<string, TOutput>, 'inputSchema'> & { inputSchema?: z.ZodString }
+): Task<string, TOutput>;
+
+export function createTask<TInput, TOutput = unknown>(
     config: TaskConfig<TInput, TOutput>
-): Task<TInput, TOutput> {
-    return new Task<TInput, TOutput>(config);
-} 
+): Task<TInput, TOutput>;
+
+export function createTask<TInput, TOutput = unknown>(config: any): Task<TInput, TOutput> {
+    return new Task<TInput, TOutput>({
+        ...config,
+        inputSchema: config.inputSchema ?? z.string()
+    });
+}
+
+/**
+ * Helper function to create a task that accepts string input
+ */
+export function createStringTask<TOutput = unknown>(
+    config: Omit<TaskConfig<string, TOutput>, 'inputSchema'> & { inputSchema?: z.ZodString }
+): Task<string, TOutput> {
+    return new Task<string, TOutput>({
+        ...config,
+        inputSchema: config.inputSchema ?? z.string()
+    });
+}
