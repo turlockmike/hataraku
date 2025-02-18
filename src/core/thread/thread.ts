@@ -1,6 +1,5 @@
 import { Anthropic } from '@anthropic-ai/sdk';
 import { MessageRole } from '../../lib/types';
-import { ThreadStorage } from './storage';
 import { randomUUID as uuid} from 'node:crypto';
 import { CoreMessage } from 'ai';
 
@@ -41,6 +40,10 @@ export interface FileContextOptions {
   filename: string;
   mimeType: string;
   metadata?: Record<string, any>;
+}
+
+export interface ThreadStorage {
+  save(state: ThreadState): Promise<void>;
 }
 
 export class Thread {

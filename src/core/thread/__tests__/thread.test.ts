@@ -1,7 +1,7 @@
 import { Thread } from '../thread';
 import fs from 'fs';
 import path from 'path';
-import { MemoryThreadStorage } from '../storage';
+import { MemoryThreadStorage } from '../memory-storage';
 
 describe('Thread', () => {
   let thread: Thread;

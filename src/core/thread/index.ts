@@ -1,2 +1,3 @@
 export * from './thread';
-export * from './storage';
+export * from './memory-storage';
+export * from './file-storage';
