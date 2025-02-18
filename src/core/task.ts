@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Agent } from './agent';
 import { AsyncIterableStream } from './types';
-
+import { Thread } from './thread/thread';
 export interface TaskConfig<TInput = unknown, TOutput = unknown> {
     name: string;
     description: string;
@@ -52,18 +52,18 @@ export class Task<TInput = unknown, TOutput = unknown> {
      * Execute the task with the given input
      */
     async execute(input: TInput): Promise<TOutput>;
-    async execute(input: TInput, options: { stream: true }): Promise<AsyncIterable<string> & ReadableStream<string>>;
-    async execute(input: TInput, options?: { stream?: boolean }): Promise<TOutput | AsyncIterableStream<string>> {
+    async execute(input: TInput, options: { stream: true, thread?: Thread }): Promise<AsyncIterable<string> & ReadableStream<string>>;
+    async execute(input: TInput, options?: { stream?: boolean, thread?: Thread }): Promise<TOutput | AsyncIterableStream<string>> {
         const prompt = this.getTaskPrompt(input);
         
         if (options?.stream) {
-            return this.agent.task(prompt, { stream: true });
+            return this.agent.task(prompt, { stream: true, thread: options.thread });
         }
         if (this.schema) {
-            const result = await this.agent.task<TOutput>(prompt, { schema: this.schema });
+            const result = await this.agent.task<TOutput>(prompt, { schema: this.schema, thread: options?.thread });
             return result;
         }
-        return this.agent.task(prompt) as Promise<TOutput>;
+        return this.agent.task(prompt, { thread: options?.thread }) as Promise<TOutput>;
     }
 
     /**

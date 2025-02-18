@@ -1,6 +1,7 @@
 import { Thread } from '../thread';
 import fs from 'fs';
 import path from 'path';
+import { MemoryThreadStorage } from '../memory-storage';
 
 describe('Thread', () => {
   let thread: Thread;
@@ -103,14 +104,68 @@ describe('Thread', () => {
   });
 
   test('should persist and load thread state', async () => {
-    const tempPath = path.join(__dirname, 'temp-thread.json');
+    const storage = {
+      save: jest.fn(),
+    }
+    const thread = new Thread({ storage });
+    
+    // Add some test data
     thread.addMessage('user', 'Persist me');
     thread.addContext('persistKey', { data: 'persisted' });
-    await thread.save(tempPath);
-    const loadedThread = await Thread.load(tempPath);
-    expect(loadedThread.getMessages()).toEqual(thread.getMessages());
-    expect(Array.from(loadedThread.getAllContexts().entries())).toEqual(Array.from(thread.getAllContexts().entries()));
-    // Clean up temp file
-    fs.unlinkSync(tempPath);
+    await thread.save();
+    expect(storage.save).toHaveBeenCalledWith(thread.toJSON());
+  });
+
+  describe('getFormattedMessages', () => {
+    test('should format messages without context', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addMessage('assistant', 'Hi there!');
+      
+      const formatted = thread.getFormattedMessages(false);
+      expect(formatted).toEqual([
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Hi there!' }
+      ]);
+    });
+
+    test('should format messages with context', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addMessage('assistant', 'Hi there!');
+      thread.addContext('testKey', { foo: 'bar' });
+      thread.addContext('numberKey', 42);
+      
+      const formatted = thread.getFormattedMessages(true);
+      expect(formatted).toEqual([
+        { role: 'user', content: 'Context testKey: {"key":"testKey","value":{"foo":"bar"}}' },
+        { role: 'user', content: 'Context numberKey: {"key":"numberKey","value":42}' },
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Hi there!' }
+      ]);
+    });
+
+    test('should format messages with file context', () => {
+      thread.addMessage('user', 'Check this file');
+      const fileContent = Buffer.from('test content');
+      thread.addFileContext({
+        key: 'file1',
+        content: fileContent,
+        filename: 'test.txt',
+        mimeType: 'text/plain'
+      });
+      
+      const formatted = thread.getFormattedMessages(true);
+      expect(formatted).toEqual([
+        { 
+          role: 'user', 
+          content: expect.stringContaining('Context file1: {"type":"file","key":"file1","value":{"content":{"type":"Buffer"')
+        },
+        { role: 'user', content: 'Check this file' }
+      ]);
+    });
+
+    test('should handle empty thread', () => {
+      const formatted = thread.getFormattedMessages(true);
+      expect(formatted).toEqual([]);
+    });
   });
 }); 

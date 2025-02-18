@@ -1,8 +1,7 @@
 import {  LanguageModelV1, generateText, generateObject, streamText, ToolSet, CoreMessage, Message } from 'ai';
 import { z } from 'zod';
 import { AsyncIterableStream } from './types';
-import { writeFileSync } from 'node:fs';
-
+import { Thread } from './thread/thread';
 const DEFAULT_MAX_STEPS = 25;
 
 interface CallSettings {
@@ -31,7 +30,7 @@ export interface AgentConfig {
 }
 
 export interface TaskInput<T = unknown> {
-  messages?: Array<CoreMessage>;
+  thread?: Thread;
   schema?: z.ZodType<T>;
   stream?: boolean;
 }
@@ -82,29 +81,32 @@ export class Agent {
    * @param input - The input to the task.
    * @returns The response from the task.
    */
-  async task(task: string, input?: TaskInput & {stream: false | undefined}): Promise<string>;
-  async task(task: string, input?: TaskInput & { stream: true }): Promise<AsyncIterableStream<string>>;
-  async task<T>(task: string, input?: TaskInput<T> & { schema: z.ZodType<T> }): Promise<T>;
-  async task(task: string, input?: TaskInput): Promise<string>;
-  async task<T>(task: string, input?: TaskInput<T> & { stream?: boolean; schema?: z.ZodType<T> }): Promise<string | AsyncIterableStream<string> | T> {
-    const messages: CoreMessage[] = input?.messages || [];
+  async task(task: string, input?: TaskInput & {stream: false | undefined }): Promise<string>;
+  async task(task: string, input?: TaskInput & { stream: true}): Promise<AsyncIterableStream<string>>;
+  async task<T>(task: string, input?: TaskInput<T> & { schema: z.ZodType<T>}): Promise<T>;
+  async task(task: string, input?: TaskInput ): Promise<string>;
+  async task<T>(task: string, input?: TaskInput<T> & { stream?: boolean; schema?: z.ZodType<T>}): Promise<string | AsyncIterableStream<string> | T> {
+    const thread = input?.thread || new Thread();
     const maxSteps = this.callSettings.maxSteps || DEFAULT_MAX_STEPS;
-    messages.push({
-      role: 'user',
-      content: task
-    });
+    thread.addMessage('user', task);
+   
     if (input?.stream) {
-      const {textStream, } = streamText({
+      const {textStream} = streamText({
         model: this.model,
         system: this.getSystemPrompt(),
-        messages,
+        messages: thread.getFormattedMessages(),
         maxSteps,
         tools: this.tools,
         ...this.callSettings,
         onError: (error) => {
           console.error('Error streaming text', error)
+        },
+        onFinish: (result) => {
+          thread.addMessage('assistant', result.text);
+          
         }
       });
+
       return textStream;
     }
 
@@ -115,33 +117,25 @@ export class Agent {
       const result = await generateText({
         model: this.model,
         system: this.getSystemPrompt(),
-        messages: messages,
+        messages: thread.getFormattedMessages(),
         maxSteps,
         tools: this.tools,
         ...this.callSettings,
       })
-      const responseMessages: CoreMessage[] = result.response.messages
-      responseMessages.push({
-        role:'user',
-        content: 'Given the following text, extract the following information according to the schema provided:\n\n' + result.text
-      })
-
-      // Should contain the initial user message, the final assistant message and the new user message to format the response
-      messages.push(responseMessages[responseMessages.length - 1])
-      messages.push({
-        role: 'user',
-        content: 'Based on the last response, please create a response that matches the schema provided. It must be valid JSON and match the schema exactly.'
-      })
+      thread.addMessage('assistant', result.text);
+      thread.addMessage('user', 'Based on the last response, please create a response that matches the schema provided. It must be valid JSON and match the schema exactly.')
       const { object } = await generateObject({
         model: this.model,
         mode: 'json', // For some reason it doesn't work without this value.
         system: this.getSystemPrompt(),
-        messages: messages,
+        messages: thread.getFormattedMessages(),
         maxRetries: 2,
         maxSteps,
         schema: input.schema,
         ...this.callSettings,
       });
+
+        thread.addMessage('assistant', JSON.stringify(object));
       return object;
     }
 
@@ -149,23 +143,28 @@ export class Agent {
       const result = await generateObject({
         model: this.model,
         system: this.getSystemPrompt(),
-        messages: messages,
+        messages: thread.getFormattedMessages(),
         maxRetries: 2,
         maxSteps,
         schema: input.schema,
         ...this.callSettings,
       });
+      thread.addMessage('assistant', JSON.stringify(result.object));
+      
       return result.object;
     }
 
     const result = await generateText({
       model: this.model,
       system: this.getSystemPrompt(),
-      messages: messages,
+      messages: thread.getFormattedMessages(),
       tools: this.tools,
       maxSteps,
       ...this.callSettings,
     });
+      
+    thread.addMessage('assistant', result.text);
+    
     return result.text;
   }
 }

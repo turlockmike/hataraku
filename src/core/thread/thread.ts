@@ -1,8 +1,7 @@
-import { v4 as uuidv4 } from 'uuid';
-import fs from 'fs/promises';
-import path from 'path';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { MessageRole } from '../../lib/types';
+import { randomUUID as uuid} from 'node:crypto';
+import { CoreMessage } from 'ai';
 
 export interface ThreadMessage {
   role: MessageRole;
@@ -43,18 +42,32 @@ export interface FileContextOptions {
   metadata?: Record<string, any>;
 }
 
+export interface ThreadStorage {
+  save(state: ThreadState): Promise<void>;
+}
+
 export class Thread {
   private state: ThreadState;
+  private storage?: ThreadStorage;
 
-  constructor(id?: string) {
+  constructor(options?: { 
+    id?: string;
+    storage?: ThreadStorage;
+    state?: Partial<ThreadState>;
+  }) {
     this.state = {
-      id: id || uuidv4(),
-      messages: [],
-      contexts: new Map<string, ThreadContext>(),
-      metadata: {},
-      created: new Date(),
-      updated: new Date()
+      id: options?.id || options?.state?.id || uuid(),
+      messages: options?.state?.messages || [],
+      contexts: options?.state?.contexts || new Map<string, ThreadContext>(),
+      metadata: options?.state?.metadata || {},
+      created: options?.state?.created || new Date(),
+      updated: options?.state?.updated || new Date()
     };
+    this.storage = options?.storage;
+  }
+
+  get id(): string {
+    return this.state.id;
   }
 
   // Message Management
@@ -69,18 +82,15 @@ export class Thread {
   }
 
   getMessages(): ThreadMessage[] {
-    return this.state.messages.map(msg => ({
-      ...msg,
-      timestamp: new Date(msg.timestamp)
-    }));
+    return this.state.messages;
   }
 
   /**
-   * Get messages formatted for the Anthropic API
+   * Get messages formatted for use with the AI SDK
    * @param includeContext Whether to include context messages at the start
    */
-  getFormattedMessages(includeContext: boolean = true): Anthropic.Messages.MessageParam[] {
-    const messages: Anthropic.Messages.MessageParam[] = [];
+  getFormattedMessages(includeContext: boolean = true): CoreMessage[] {
+    const messages: CoreMessage[] = [];
 
     // Add context messages first if requested
     if (includeContext) {
@@ -229,74 +239,14 @@ export class Thread {
   toJSON(): ThreadState {
     return {
       ...this.state,
-      messages: this.state.messages.map(msg => ({
-        ...msg,
-        timestamp: new Date(msg.timestamp)
-      })),
-      contexts: this.state.contexts,
-      created: new Date(this.state.created),
-      updated: new Date(this.state.updated)
+      contexts: new Map(this.state.contexts)
     };
   }
 
-  // Persistence
-  async save(path: string): Promise<void> {
-    const dirPath = path.split('/').slice(0, -1).join('/');
-    if (dirPath) {
-      await fs.mkdir(dirPath, { recursive: true });
+  async save(): Promise<void> {
+    if (!this.storage) {
+      throw new Error('No storage mechanism configured');
     }
-
-    const serializedState = JSON.stringify(this.toJSON(), (key, value) => {
-      if (value instanceof Map) {
-        return Array.from(value.entries());
-      }
-      if (value instanceof Buffer) {
-        return {
-          type: 'Buffer',
-          data: value.toString('base64')
-        };
-      }
-      if (value instanceof Date) {
-        return {
-          type: 'Date',
-          value: value.toISOString()
-        };
-      }
-      return value;
-    });
-
-    const tempPath = `${path}.tmp`;
-    await fs.writeFile(tempPath, serializedState, 'utf8');
-    await fs.rename(tempPath, path);
-  }
-
-  static async load(path: string): Promise<Thread> {
-    const data = await fs.readFile(path, 'utf8');
-    const parsed = JSON.parse(data, (key, value) => {
-      if (Array.isArray(value) && value.every(item => Array.isArray(item) && item.length === 2)) {
-        return new Map(value);
-      }
-      if (value && typeof value === 'object') {
-        if (value.type === 'Buffer') {
-          return Buffer.from(value.data, 'base64');
-        }
-        if (value.type === 'Date') {
-          return new Date(value.value);
-        }
-      }
-      return value;
-    });
-
-    const thread = new Thread(parsed.id);
-    thread.state = {
-      ...parsed,
-      messages: parsed.messages.map((msg: ThreadMessage) => ({
-        ...msg,
-        timestamp: new Date(msg.timestamp)
-      })),
-      created: new Date(parsed.created),
-      updated: new Date(parsed.updated)
-    };
-    return thread;
+    await this.storage.save(this.state);
   }
 } 
