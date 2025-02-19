@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { Task, createTask, TaskConfig } from '../task';
+import { Task, createTask, createStringTask, TaskConfig } from '../task';
 import { Agent } from '../agent';
 import { MockLanguageModelV1 } from 'ai/test';
 
 describe('Task', () => {
     let agent: Agent;
-    let validConfig: TaskConfig<unknown, string>;
+    let validConfig: TaskConfig<string>;
 
     beforeEach(() => {
         // Create a real agent with mock model
@@ -14,6 +14,7 @@ describe('Task', () => {
             description: 'A test agent',
             role: 'test',
             model: new MockLanguageModelV1({
+                defaultObjectGenerationMode: 'json',
                 doGenerate: async () => ({
                     text: 'Task result',
                     finishReason: 'stop',
@@ -27,6 +28,7 @@ describe('Task', () => {
             name: 'Test Task',
             description: 'A test task',
             agent,
+            inputSchema: z.string(),
             task: 'Test prompt'
         };
     });
@@ -61,22 +63,40 @@ describe('Task', () => {
 
     describe('task execution', () => {
         it('should execute task with string prompt', async () => {
-            const task = new Task<unknown, string>(validConfig);
-            const result = await task.execute({});
+            const task = createStringTask({
+                name: 'Test Task',
+                description: 'A test task',
+                agent,
+                task: 'Test prompt'
+            });
+
+            const result = await task.execute('test input');
             expect(result).toBe('Task result');
         });
 
         it('should execute task with function prompt', async () => {
             interface TestInput { message: string }
-            const taskFn = (input: TestInput) => `Test prompt: ${input.message}`;
-            const task = new Task<TestInput, string>({ ...validConfig, task: taskFn });
+            const schema = z.object({
+                message: z.string()
+            }).strict() as z.ZodType<TestInput>;
+
+            const task = new Task<TestInput>({
+                name: 'Test Task',
+                description: 'A test task',
+                agent,
+                inputSchema: schema,
+                task: (input) => `Test prompt: ${input.message}`
+            });
+
             const result = await task.execute({ message: 'Hello' });
             expect(result).toBe('Task result');
         });
 
         it('should execute task with schema validation', async () => {
             interface TestOutput { result: string }
-            const schema = z.object({ result: z.string() });
+            const schema = z.object({
+                result: z.string()
+            }).strict() as z.ZodType<TestOutput>;
             
             const mockModel = new MockLanguageModelV1({
                 defaultObjectGenerationMode: 'json',
@@ -95,13 +115,15 @@ describe('Task', () => {
                 model: mockModel
             });
 
-            const task = new Task<unknown, TestOutput>({
-                ...validConfig,
+            const task = createStringTask<TestOutput>({
+                name: 'Test Task',
+                description: 'A test task',
                 agent: schemaAgent,
-                schema
+                outputSchema: schema,
+                task: 'Test prompt'
             });
 
-            const result = await task.execute({});
+            const result = await task.execute('test input');
             expect(result).toEqual({ result: 'Success' });
         });
 
@@ -131,12 +153,14 @@ describe('Task', () => {
                 model: mockModel
             });
 
-            const task = new Task<unknown, string>({
-                ...validConfig,
-                agent: streamAgent
+            const task = createStringTask({
+                name: 'Test Task',
+                description: 'A test task',
+                agent: streamAgent,
+                task: 'Test prompt'
             });
 
-            const result = await task.execute({}, { stream: true });
+            const result = await task.execute('test input', { stream: true });
             const chunks: string[] = [];
             for await (const chunk of result) {
                 chunks.push(chunk);
@@ -160,7 +184,7 @@ describe('Task', () => {
 
 describe('createTask', () => {
     let agent: Agent;
-    let validConfig: TaskConfig<unknown, string>;
+    let validConfig: TaskConfig<string>;
 
     beforeEach(() => {
         agent = new Agent({
@@ -168,6 +192,7 @@ describe('createTask', () => {
             description: 'A test agent',
             role: 'test',
             model: new MockLanguageModelV1({
+                defaultObjectGenerationMode: 'json',
                 doGenerate: async () => ({
                     text: 'Task result',
                     finishReason: 'stop',
@@ -181,14 +206,15 @@ describe('createTask', () => {
             name: 'Test Task',
             description: 'A test task',
             agent,
+            inputSchema: z.string(),
             task: 'Test prompt'
         };
     });
 
     it('should create a Task instance', async () => {
-        const task = createTask<unknown, string>(validConfig);
+        const task = createTask(validConfig);
         expect(task).toBeInstanceOf(Task);
-        const result = await task.execute({});
+        const result = await task.execute('test input');
         expect(result).toBe('Task result');
     });
 
@@ -218,12 +244,14 @@ describe('createTask', () => {
             model: mockModel
         });
 
-        const task = createTask<unknown, string>({
-            ...validConfig,
-            agent: streamAgent
+        const task = createStringTask({
+            name: 'Test Task',
+            description: 'A test task',
+            agent: streamAgent,
+            task: 'Test prompt'
         });
 
-        const result = await task.execute({}, { stream: true });
+        const result = await task.execute('test input', { stream: true });
         const chunks: string[] = [];
         for await (const chunk of result) {
             chunks.push(chunk);
@@ -253,17 +281,24 @@ describe('createTask', () => {
             model: mockModel
         });
 
-        const schema = z.object({ result: z.string() });
-        const taskConfig: TaskConfig<Input, Output> = {
+        const inputSchema = z.object({
+            message: z.string()
+        }).strict() as z.ZodType<Input>;
+
+        const outputSchema = z.object({
+            result: z.string()
+        }).strict() as z.ZodType<Output>;
+
+        const task = new Task<Input, Output>({
             name: 'Test Task',
             description: 'A test task',
             agent: schemaAgent,
-            task: (input: Input) => `Test prompt: ${input.message}`,
-            schema
-        };
+            inputSchema,
+            outputSchema,
+            task: (input) => `Test prompt: ${input.message}`
+        });
 
-        const task = createTask<Input, Output>(taskConfig);
         const result = await task.execute({ message: 'Hello' });
         expect(result).toEqual({ result: 'Success' });
     });
-}); 
+});

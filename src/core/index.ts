@@ -23,7 +23,7 @@ export {
 } from './task';
 
 // Re-export from subdirectories
-export * from './tasks';
+export * from './sample-tasks';
 export * from './tools';
 export * from './agents';
 export * from './prompts';

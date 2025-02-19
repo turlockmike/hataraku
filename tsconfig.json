@@ -1,14 +1,14 @@
 {
 	"compilerOptions": {
 		"target": "ES2022",
-		"module": "ESNext",
+		"module": "NodeNext",
 		"lib": ["ES2022", "DOM"],
-		"declaration": true,
+		"declaration": false,
 		"sourceMap": true,
-		"outDir": "./dist",
+		"outDir": "dist/esm",
 		"rootDir": "./src",
 		"strict": false,
-		"moduleResolution": "node",
+		"moduleResolution": "nodenext",
 		"baseUrl": "./",
 		"esModuleInterop": true,
 		"experimentalDecorators": true,

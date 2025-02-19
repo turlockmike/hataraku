@@ -38,7 +38,7 @@ export const mathTasks = {
     name: 'Add Numbers',
     description: 'Adds two numbers together',
     agent: mathAgent,
-    schema: schemas.mathOutput,
+    outputSchema: schemas.mathOutput,
     task: (input: z.infer<typeof schemas.mathInput>) => 
       `Use the add tool to add these numbers: ${input.a} and ${input.b}.`
   }),
@@ -47,7 +47,7 @@ export const mathTasks = {
     name: 'Multiply Numbers',
     description: 'Multiplies two numbers together',
     agent: mathAgent,
-    schema: schemas.mathOutput,
+    outputSchema: schemas.mathOutput,
     task: (input: z.infer<typeof schemas.mathInput>) => 
       `Use the multiply tool to multiply these numbers: ${input.a} and ${input.b}`
   }),
@@ -56,7 +56,7 @@ export const mathTasks = {
     name: 'Numbers to Words',
     description: 'Converts a number to its word representation',
     agent: mathAgent,
-    schema: z.string(),
+    outputSchema: z.string(),
     task: (input: z.infer<typeof schemas.numbersToWords>) => 
       `convert this number to its word representation: ${input.number}`
   })

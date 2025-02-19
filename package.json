@@ -25,10 +25,12 @@
     "sdk"
   ],
   "main": "./dist/cjs/core/index.js",
+  "module": "./dist/esm/core/index.js",
   "types": "./dist/types/core/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/types/core/index.d.ts",
+      "import": "./dist/esm/core/index.js",
       "require": "./dist/cjs/core/index.js"
     }
   },
@@ -44,8 +46,9 @@
   "scripts": {
     "build:clean": "rm -rf dist",
     "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
     "build:audio": "mkdir -p dist/audio && cp -r src/audio/* dist/audio/",
-    "build": "npm run build:clean && npm run build:cjs && npm run build:cli && npm run build:audio",
+    "build": "npm run build:clean && npm run build:cjs && npm run build:esm && npm run build:cli && npm run build:audio",
     "build:cli": "node esbuild.js --cli --production",
     "dev": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/cli.ts",
     "example": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/query.ts",
@@ -140,7 +143,8 @@
     "tree-sitter-wasms": "^0.1.11",
     "turndown": "^7.2.0",
     "web-tree-sitter": "^0.22.6",
-    "zod": "^3.23.8"
+    "zod": "3.24.2",
+    "zod-to-json-schema": "3.24.1"
   },
   "overrides": {
     "minimist": "^1.2.8",

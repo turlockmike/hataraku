@@ -112,14 +112,14 @@ export type AnalysisResult = z.infer<typeof analysisSchema>;
 
 // Create analyzer tasks
 export const analyzerTasks = {
-  analyze: createTask({
+  analyze: createTask<AnalysisResult>({
     name: 'Analyze Text',
     description: 'Analyzes text content and provides structured insights',
     agent: analyzerAgent,
-    schema: analysisSchema,
-    task: (input: { text: string }) => `
+    outputSchema: analysisSchema,
+    task: (input) => `
 Analyze this text using the provided tools:
-${input.text}
+${input}
 
 1. Use the countWords tool to get the word count
 2. Use the detectSentiment tool to determine the sentiment
