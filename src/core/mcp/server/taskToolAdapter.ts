@@ -1,6 +1,7 @@
-import { McpTool, McpToolResponse, ParsedMcpToolResponse, McpError, ErrorCode, McpToolExecutionOptions } from '../types';
+import { McpTool, ParsedMcpToolResponse, McpError, ErrorCode, McpToolExecutionOptions } from '../types';
 import { Task } from '../../task';
 import { zodToJsonSchema } from '../../../utils/schema';
+import { z } from 'zod';
 
 interface ToolArgs {
   stream?: boolean;
@@ -8,69 +9,75 @@ interface ToolArgs {
 }
 
 export class TaskToolAdapter {
-  convertToMcpTool<TInput = unknown, TOutput = unknown>(task: Task<TInput, TOutput>): McpTool<ToolArgs & TInput, TOutput> {
+  convertToMcpTool<TInput = unknown, TOutput = unknown>(task: Task<TInput, TOutput>): McpTool<ToolArgs & TInput, TOutput | (AsyncIterable<string> & ReadableStream<string>)> {
     const info = task.getInfo();
     
     return {
       name: info.name,
       description: info.description,
       parameters: this.generateParameters(task),
-      execute: async (args: ToolArgs & TInput, options?: McpToolExecutionOptions): Promise<ParsedMcpToolResponse<TOutput>> => {
+      execute: async (args: ToolArgs & TInput, options?: McpToolExecutionOptions): Promise<ParsedMcpToolResponse<TOutput | (AsyncIterable<string> & ReadableStream<string>)>> => {
         try {
-          if (args.stream) {
-            const stream = await task.execute(args, { stream: true });
+          // Use a cast to access the private property 'task'
+          const rawTask = (task as any).task;
+          if (typeof rawTask === 'string') {
+            // For basic tasks with a static prompt, ignore input args and use the task's own prompt
+            if (args.stream) {
+              const stream = await task.execute(rawTask as TInput, { stream: true, thread: (options as any)?.thread } as any);
+              return {
+                data: stream,
+                raw: {
+                  content: [
+                    { type: 'stream', text: 'Streaming response', stream }
+                  ],
+                  isError: false
+                }
+              };
+            }
+            const result = await task.execute(rawTask as TInput, { thread: (options as any)?.thread } as any);
+            const isObject = result !== null && typeof result === 'object';
+            const text = isObject ? JSON.stringify(result) : String(result);
             return {
-              data: stream as TOutput,
+              data: result,
               raw: {
                 content: [
-                  {
-                    type: 'stream',
-                    text: 'Streaming response',
-                    stream
-                  }
+                  { type: 'text', text }
+                ],
+                isError: false
+              }
+            };
+          } else {
+            // For tasks that require input, pass the provided args
+            if (args.stream) {
+              const stream = await task.execute(args, { stream: true, thread: (options as any)?.thread } as any);
+              return {
+                data: stream,
+                raw: {
+                  content: [
+                    { type: 'stream', text: 'Streaming response', stream }
+                  ],
+                  isError: false
+                }
+              };
+            }
+            const result = await task.execute(args, { thread: (options as any)?.thread } as any);
+            const isObject = result !== null && typeof result === 'object';
+            const text = isObject ? JSON.stringify(result) : String(result);
+            return {
+              data: result,
+              raw: {
+                content: [
+                  { type: 'text', text }
                 ],
                 isError: false
               }
             };
           }
-
-          const result = await task.execute(args);
-          const isObject = result !== null && typeof result === 'object';
-          const text = isObject ? JSON.stringify(result) : String(result);
-          
-          return {
-            data: result,
-            raw: {
-              content: [
-                {
-                  type: 'text',
-                  text
-                }
-              ],
-              isError: false
-            }
-          };
         } catch (error) {
-          // If it's already an McpError, rethrow it
           if (error instanceof McpError) {
             throw error;
           }
-
-          // Get error message
           const errorMessage = error instanceof Error ? error.message : 'Task execution failed';
-
-          // Create error response
-          const errorResponse: McpToolResponse = {
-            content: [
-              {
-                type: 'error',
-                text: errorMessage
-              }
-            ],
-            isError: true
-          };
-
-          // Throw new McpError with the error response
           throw new McpError(ErrorCode.ExecutionError, errorMessage);
         }
       }
@@ -86,17 +93,20 @@ export class TaskToolAdapter {
       }
     };
 
-    // Access schema through type assertion since it's private
-    const schema = (task as any).schema;
-    if (!schema) {
+    // Use cast to access the private task property
+    const rawTask = (task as any).task;
+    if (typeof rawTask === 'string') {
       return baseParams;
     }
 
-    // Convert task's Zod schema to parameters and merge with base
-    const taskSchema = zodToJsonSchema(schema);
-    return {
-      ...taskSchema.properties,
-      ...baseParams
-    };
+    const schema = (task as any).inputSchema;
+    if (schema && schema instanceof z.ZodObject) {
+      const taskSchema = zodToJsonSchema(schema);
+      return {
+        ...taskSchema.properties,
+        ...baseParams
+      };
+    }
+    return baseParams;
   }
 }
