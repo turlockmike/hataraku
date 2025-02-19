@@ -26,7 +26,7 @@ interface WorkflowBuilder<TInput = unknown, TResults extends Record<string, unkn
   
   fail(message: string): never;
 
-  execute(): Promise<TResults>;
+  run(): Promise<TResults>;
 }
 
 export interface WorkflowConfig<TInput = unknown> {
@@ -43,8 +43,8 @@ export interface WorkflowConfig<TInput = unknown> {
 export interface Workflow<TInput = unknown> {
   name: string;
   description: string;
-  execute(input: TInput): Promise<unknown>;
-  execute<T>(input: TInput, options: { schema: z.ZodType<T> }): Promise<T>;
+  run(input: TInput): Promise<unknown>;
+  run<T>(input: TInput, options: { schema: z.ZodType<T> }): Promise<T>;
 }
 
 class WorkflowBuilderImpl<TInput = unknown, TResults extends Record<string, unknown> = Record<string, unknown>> implements WorkflowBuilder<TInput, TResults> {
@@ -136,7 +136,7 @@ class WorkflowBuilderImpl<TInput = unknown, TResults extends Record<string, unkn
     throw new Error(message);
   }
 
-  async execute(): Promise<TResults> {
+  async run(): Promise<TResults> {
     const results: Record<string, unknown> = {};
 
     for (const task of this.tasks) {
@@ -155,7 +155,7 @@ class WorkflowBuilderImpl<TInput = unknown, TResults extends Record<string, unkn
         if (conditional.condition(results as TResults)) {
           const conditionalBuilder = new WorkflowBuilderImpl<TInput, TResults>(this.config, this.input);
           const builtConditional = conditional.builder(conditionalBuilder);
-          const conditionalResults = await builtConditional.execute();
+          const conditionalResults = await builtConditional.run();
           Object.assign(results, conditionalResults);
         }
       }
@@ -179,7 +179,7 @@ export function createWorkflow<TInput = unknown>(
   return {
     name: config.name,
     description: config.description,
-    execute: async <T = unknown>(input: TInput, options?: { schema: z.ZodType<T> }): Promise<T | unknown> => {
+    run: async <T = unknown>(input: TInput, options?: { schema: z.ZodType<T> }): Promise<T | unknown> => {
       try {
         // Notify workflow start
         config.onWorkflowStart?.(config.name, input);
@@ -196,7 +196,7 @@ export function createWorkflow<TInput = unknown>(
         
         // Get output
         const output = builderResult instanceof WorkflowBuilderImpl 
-          ? await builderResult.execute()
+          ? await builderResult.run()
           : builderResult;
 
         // Get output

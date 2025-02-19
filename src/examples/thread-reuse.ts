@@ -1,4 +1,3 @@
-import { CoreMessage } from 'ai';
 import { Agent } from '../core/agent';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import chalk from 'chalk';

@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { Agent } from './agent.js';
 import { AsyncIterableStream } from './types.js';
 import { Thread } from './thread/thread.js';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export interface TaskConfig<TInput, TOutput = unknown> {
     name: string;
@@ -56,10 +55,10 @@ export class Task<TInput = string, TOutput = unknown> {
     /**
      * Execute the task with the given input
      */
-    async execute(input: TInput): Promise<TOutput>;
-    async execute(input: TInput, options: { stream: false, thread?: Thread }): Promise<TOutput>;
-    async execute(input: TInput, options: { stream: true, thread?: Thread }): Promise<AsyncIterable<string> & ReadableStream<string>>;
-    async execute(input: TInput, options?: { stream?: boolean, thread?: Thread }): Promise<TOutput | AsyncIterableStream<string>> {
+    async run(input: TInput): Promise<TOutput>;
+    async run(input: TInput, options: { stream: false, thread?: Thread }): Promise<TOutput>;
+    async run(input: TInput, options: { stream: true, thread?: Thread }): Promise<AsyncIterable<string> & ReadableStream<string>>;
+    async run(input: TInput, options?: { stream?: boolean, thread?: Thread }): Promise<TOutput | AsyncIterableStream<string>> {
         // Validate input against schema
         const validInput = await this.inputSchema.parseAsync(input);
         

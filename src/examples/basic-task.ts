@@ -12,7 +12,7 @@ async function main() {
 
     // Generate greeting
     console.log(chalk.cyan('🤖 Generating greeting...'));
-    const greeting = await greeterTasks.greet.execute({ name });
+    const greeting = await greeterTasks.greet.run({ name });
 
     // Display result
     console.log(chalk.cyan('\n📤 Result:'));

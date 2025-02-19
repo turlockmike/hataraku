@@ -70,7 +70,7 @@ describe('Task', () => {
                 task: 'Test prompt'
             });
 
-            const result = await task.execute('test input');
+            const result = await task.run('test input');
             expect(result).toBe('Task result');
         });
 
@@ -88,7 +88,7 @@ describe('Task', () => {
                 task: (input) => `Test prompt: ${input.message}`
             });
 
-            const result = await task.execute({ message: 'Hello' });
+            const result = await task.run({ message: 'Hello' });
             expect(result).toBe('Task result');
         });
 
@@ -123,7 +123,7 @@ describe('Task', () => {
                 task: 'Test prompt'
             });
 
-            const result = await task.execute('test input');
+            const result = await task.run('test input');
             expect(result).toEqual({ result: 'Success' });
         });
 
@@ -160,7 +160,7 @@ describe('Task', () => {
                 task: 'Test prompt'
             });
 
-            const result = await task.execute('test input', { stream: true });
+            const result = await task.run('test input', { stream: true });
             const chunks: string[] = [];
             for await (const chunk of result) {
                 chunks.push(chunk);
@@ -214,7 +214,7 @@ describe('createTask', () => {
     it('should create a Task instance', async () => {
         const task = createTask(validConfig);
         expect(task).toBeInstanceOf(Task);
-        const result = await task.execute('test input');
+        const result = await task.run('test input');
         expect(result).toBe('Task result');
     });
 
@@ -251,7 +251,7 @@ describe('createTask', () => {
             task: 'Test prompt'
         });
 
-        const result = await task.execute('test input', { stream: true });
+        const result = await task.run('test input', { stream: true });
         const chunks: string[] = [];
         for await (const chunk of result) {
             chunks.push(chunk);
@@ -298,7 +298,7 @@ describe('createTask', () => {
             task: (input) => `Test prompt: ${input.message}`
         });
 
-        const result = await task.execute({ message: 'Hello' });
+        const result = await task.run({ message: 'Hello' });
         expect(result).toEqual({ result: 'Success' });
     });
 });

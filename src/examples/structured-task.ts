@@ -20,7 +20,7 @@ async function main() {
     // Analyze text using tools and schema validation
     console.log(chalk.cyan('🤖 Analyzing text...'));
     console.log(chalk.gray('   Using tools for word count, sentiment, and complexity analysis...'));
-    const analysis = await analyzerTasks.analyze.execute({ text });
+    const analysis = await analyzerTasks.analyze.run( text );
 
     // Display structured results
     console.log(chalk.cyan('\n📤 Analysis Results:'));
