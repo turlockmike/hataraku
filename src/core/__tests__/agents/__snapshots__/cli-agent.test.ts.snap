@@ -21,13 +21,13 @@ Operating System: darwin 24.3.0
 Architecture: arm64
 CPU Cores: 14
 Total Memory: 48GB
-Free Memory: 9GB
+Free Memory: 7GB
 Default Shell: /bin/bash
 Home Directory: /Users/michaeldarmousseh
 Current Working Directory: /Users/michaeldarmousseh/workspace/hataraku
-Files in Current Directory: .DS_Store,.agent,.agents,.changeset,.cursor,.env,.eslintrc.json,.git,.gitattributes,.github,.gitignore,.husky,.npmrc,.nvmrc,.prettierignore,.prettierrc.json,CHANGELOG.md,CONTRIBUTING.md,LICENSE,README.md,dist,docs,esbuild.js,jest.config.cjs,node_modules,package-lock.json,package.json,src,tsconfig.cjs.json,tsconfig.esm.json,tsconfig.json
+Files in Current Directory: .DS_Store,.agent,.agents,.changeset,.cursor,.env,.eslintrc.json,.git,.gitattributes,.github,...,.gitignore,.husky,.npmrc,.nvmrc,.prettierignore,.prettierrc.json,CHANGELOG.md,CONTRIBUTING.md,LICENSE,README.md,...,docs,esbuild.js,jest.config.cjs,node_modules,package-lock.json,package.json,src,tsconfig.cjs.json,tsconfig.esm.json,tsconfig.json
 Node Version: v20.6.0
-Current Time: 2/19/2025, 12:21:15 PM
+Current Time: 2/19/2025, 2:17:16 PM
 Locale: en-US
 Timezone: America/Chicago
 User Info: michaeldarmousseh

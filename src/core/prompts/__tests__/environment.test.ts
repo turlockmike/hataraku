@@ -31,6 +31,19 @@ jest.mock('child_process', () => ({
     execSync: jest.fn().mockReturnValue(Buffer.from('HEAD'))
 }));
 
+// Setup consistent date/time for all tests
+beforeEach(() => {
+    // Mock Date to ensure consistent timestamp
+    const mockDate = new Date('2025-02-19T19:53:43.000Z'); // UTC time
+    jest.spyOn(global, 'Date').mockImplementation(() => mockDate);
+    // Set timezone to UTC
+    process.env.TZ = 'UTC';
+});
+
+afterEach(() => {
+    jest.restoreAllMocks();
+});
+
 describe('getFilesInCurrentDirectory', () => {
     beforeEach(() => {
         // Clear mocks before each test
@@ -78,17 +91,6 @@ describe('getEnvironmentInfo', () => {
             'docs', 'esbuild.js', 'jest.config.cjs', 'node_modules', 'package-lock.json', 
             'package.json', 'src', 'tsconfig.cjs.json', 'tsconfig.esm.json', 'tsconfig.json'
         ]);
-
-        // Mock Date to ensure consistent timestamp
-        const mockDate = new Date('2025-02-19T19:53:43.000Z'); // UTC time
-        jest.spyOn(global, 'Date').mockImplementation(() => mockDate);
-
-        // Set timezone to UTC
-        process.env.TZ = 'UTC';
-    });
-
-    afterEach(() => {
-        jest.restoreAllMocks();
     });
 
     it('returns consistent environment information', () => {

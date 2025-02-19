@@ -29,22 +29,22 @@ interface WorkflowBuilder<TInput = unknown, TResults extends Record<string, unkn
   run(): Promise<TResults>;
 }
 
-export interface WorkflowConfig<TInput = unknown> {
+export interface WorkflowConfig<TInput = unknown, TOutput extends Record<string, unknown> = Record<string, unknown>> {
   name: string;
   description: string;
   // Event handlers
   onTaskStart?: (taskName: string) => void;
   onTaskComplete?: (taskName: string, result: unknown) => void;
   onWorkflowStart?: (workflowName: string, input: TInput) => void;
-  onWorkflowComplete?: (workflowName: string, output: unknown) => void;
+  onWorkflowComplete?: (workflowName: string, output: TOutput) => void;
   onError?: (error: Error) => void;
 }
 
-export interface Workflow<TInput = unknown> {
+export interface Workflow<TInput = unknown, TOutput extends Record<string, unknown> = Record<string, unknown>> {
   name: string;
   description: string;
-  run(input: TInput): Promise<unknown>;
-  run<T>(input: TInput, options: { schema: z.ZodType<T> }): Promise<T>;
+  run(input: TInput): Promise<TOutput>;
+  run(input: TInput, options: { outputSchema: z.ZodType<TOutput> }): Promise<TOutput>;
 }
 
 class WorkflowBuilderImpl<TInput = unknown, TResults extends Record<string, unknown> = Record<string, unknown>> implements WorkflowBuilder<TInput, TResults> {
@@ -165,13 +165,13 @@ class WorkflowBuilderImpl<TInput = unknown, TResults extends Record<string, unkn
   }
 }
 
-type WorkflowBuilderFunction<TInput> = 
-  (workflow: WorkflowBuilder<TInput>) => Promise<unknown | WorkflowBuilder<TInput>>;
+type WorkflowBuilderFunction<TInput, TOutput extends Record<string, unknown>> = 
+  (workflow: WorkflowBuilder<TInput, TOutput>) => Promise<TOutput | WorkflowBuilder<TInput, TOutput>>;
 
-export function createWorkflow<TInput = unknown>(
-  config: WorkflowConfig<TInput>,
-  builder?: WorkflowBuilderFunction<TInput>
-): Workflow<TInput> {
+export function createWorkflow<TInput = unknown, TOutput extends Record<string, unknown> = Record<string, unknown>>(
+  config: WorkflowConfig<TInput, TOutput>,
+  builder?: WorkflowBuilderFunction<TInput, TOutput>
+): Workflow<TInput, TOutput> {
   if (!config.name) {
     throw new Error('name is required');
   }
@@ -179,7 +179,7 @@ export function createWorkflow<TInput = unknown>(
   return {
     name: config.name,
     description: config.description,
-    run: async <T = unknown>(input: TInput, options?: { schema: z.ZodType<T> }): Promise<T | unknown> => {
+    run: async (input: TInput, options?: { outputSchema: z.ZodType<TOutput> }): Promise<TOutput> => {
       try {
         // Notify workflow start
         config.onWorkflowStart?.(config.name, input);
@@ -189,7 +189,7 @@ export function createWorkflow<TInput = unknown>(
         }
 
         // Create workflow builder with input
-        const workflowBuilder = new WorkflowBuilderImpl<TInput>(config, input);
+        const workflowBuilder = new WorkflowBuilderImpl<TInput, TOutput>(config, input);
         
         // Execute builder function
         const builderResult = await builder(workflowBuilder);
@@ -200,10 +200,10 @@ export function createWorkflow<TInput = unknown>(
           : builderResult;
 
         // Get output
-        const result = options?.schema ? options.schema.parse(output) : output;
+        const result = options?.outputSchema ? options.outputSchema.parse(output) : output as TOutput;
         
         // Notify workflow completion
-        config.onWorkflowComplete?.(config.name, result);
+        config.onWorkflowComplete?.(config.name, result as TOutput);
         return result;
       } catch (error) {
         // Handle validation errors
