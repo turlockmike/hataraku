@@ -1,262 +1,162 @@
 # Hataraku
 
-An autonomous coding agent for building AI-powered development tools. The name "Hataraku" (働く) means "to work" in Japanese.
+A flexible and powerful TypeScript library for building AI-powered task automation and agent workflows. Supports multiple AI providers including OpenRouter, Anthropic (Claude), Mistral AI, and AWS Bedrock.
+
+## Features
+
+- 🤖 Easy agent creation and configuration
+- 🔄 Task creation with schema validation
+- 📊 Streaming and non-streaming execution modes
+- ⚡ TypeScript-first development
+- 🔌 Multiple AI provider support
+- 🔗 Task chaining for complex workflows
 
 ## Installation
 
 ```bash
-# Install globally via npm
-npm install -g hataraku
-
-# Or run directly with npx
-npx hataraku
+npm install hataraku
 ```
 
-## Environment Setup
+### Prerequisites
 
-Before using Hataraku, make sure to set your API key for your chosen provider:
+- Node.js
+- One or more API keys depending on your chosen providers:
+  - OPENROUTER_API_KEY for OpenRouter
+  - Additional keys for Bedrock, Anthropic, or Mistral AI if using those providers
 
-```bash
-# For OpenRouter (default)
-export OPENROUTER_API_KEY=your_api_key_here
+## Setup
 
-# Or for Anthropic
-export ANTHROPIC_API_KEY=your_api_key_here
+1. Install the package and its peer dependencies:
+   ```bash
+   npm install hataraku
+   ```
 
-# Or for OpenAI
-export OPENAI_API_KEY=your_api_key_here
-```
+2. Configure your environment variables:
+   ```bash
+   export OPENROUTER_API_KEY="your-api-key"
+   # Add other provider keys as needed
+   ```
 
-## Quick Start
+3. Ensure your Node.js environment is properly configured
 
-```bash
-# Run a task
-hataraku "create a react component that..."
+## Usage
 
-# Interactive Mode (prompts for tasks)
-hataraku -i
-
-# With specific provider and model
-hataraku --provider anthropic --model claude-3 "optimize this function..."
-
-# List recent task history
-hataraku --list-history
-
-# Run without sound effects
-hataraku --no-sound "create a test file"
-```
-
-## CLI Options
-
-- `-p, --provider <provider>` - API provider to use (openrouter, anthropic, openai) [default: openrouter]
-- `-m, --model <model>` - Model ID for the provider [default: anthropic/claude-3.5-sonnet]
-- `-k, --api-key <key>` - API key for the provider (can also use environment variables)
-- `-a, --max-attempts <number>` - Maximum number of consecutive mistakes before exiting [default: 3]
-- `-l, --list-history` - List recent tasks from history
-- `-i, --interactive` - Run in interactive mode, prompting for tasks
-- `--no-sound` - Disable sound effects
-- `-v, --version` - Output the version number
-- `-h, --help` - Display help information
-
-## Features
-
-- Create and edit files with diff view and linting support
-- Execute terminal commands with real-time output monitoring
-- Launch and control browsers for testing and debugging
-- Support for multiple AI providers (OpenRouter, Anthropic, OpenAI, etc.)
-- Built-in tools for file operations, code analysis, and more
-- Interactive mode with follow-up task suggestions
-- Task history tracking and review
-- Sound effects for task completion (can be disabled)
-
-## SDK
-
-Hataraku provides a powerful SDK for building AI-powered development tools and workflows. The SDK includes:
-
-### Core Components
-
-- **Tool**: Define reusable machine executable tools with input/output schemas
-- **Agent**: Create autonomous agents with specific roles and capabilities
-- **Task**: Define reusable tasks with input/output schemas
-- **Workflow**: Build complex workflows with conditional branching and parallel execution
-
-### AI Model Integration
-
-Hataraku integrates with multiple AI providers through the `ai` SDK:
+### Creating an Agent
 
 ```typescript
-import { createBedrockProvider } from 'hataraku/providers/bedrock';
-import { LanguageModelV1 } from 'ai';
+import { createAgent } from 'hataraku';
 
-// Initialize Bedrock provider
-const bedrock = await createBedrockProvider();
-const model = bedrock('anthropic.claude-3-sonnet-20240229-v1:0');
-
-// Or use OpenAI
-import { OpenAI } from 'openai';
-const openai = new OpenAI();
-const model = openai.chat;
-
-// Or use Anthropic directly
-import Anthropic from '@anthropic-ai/sdk';
-const anthropic = new Anthropic();
-const model = anthropic.messages;
+const agent = createAgent({
+  name: 'MyAgent',
+  description: 'Custom agent description',
+  provider: 'openrouter'
+});
 ```
 
-### Task Creation Example
+### Creating and Running Tasks
 
 ```typescript
-import { createAgent, createTask } from 'hataraku';
+import { createTask } from 'hataraku';
 import { z } from 'zod';
 
-// Create an agent
-const agent = createAgent({
-  name: 'CodeReviewer',
-  description: 'Reviews code for best practices and issues',
-  role: 'You are an expert code reviewer...',
-  model: model,
-  tools: {
-    // Add custom tools if needed
-    analyzeComplexity: async (code: string) => { /* ... */ }
-  }
-});
-
 // Create a task with schema validation
-const reviewTask = createTask({
-  name: 'CodeReview',
-  description: 'Performs detailed code review',
-  agent: agent,
-  schema: z.object({
-    issues: z.array(z.string()),
-    suggestions: z.array(z.string())
-  }),
-  task: (input) => `Review the following code:\n${input}`
+const task = createTask({
+  name: 'validated-task',
+  schema: z.object({ name: z.string() }),
+  execute: async (input) => `Processing ${input.name}`
 });
 
-// Execute with streaming
-const stream = await reviewTask.execute(codeString, { stream: true });
-for await (const chunk of stream) {
+// Run task (non-streaming)
+const result = await task.run({ input: 'your input' });
+
+// Run task (streaming)
+const streamingResult = await task.run({ input: 'your input' }, { stream: true });
+for await (const chunk of streamingResult) {
   console.log(chunk);
 }
 ```
 
-### Workflow Examples
+## API Documentation
 
-Build complex workflows with conditional logic and parallel execution:
+### `createAgent(config)`
+
+Creates a new agent instance with specified configuration.
 
 ```typescript
-import { createWorkflow } from 'hataraku';
+import { createAgent } from 'hataraku';
 
-const refactoringWorkflow = createWorkflow({
-  name: 'CodeRefactoring',
-  description: 'Analyzes and refactors code',
-  async builder(workflow) {
-    // Analyze code complexity
-    const analysis = await workflow.task('analyze', analyzeTask, codeInput);
-    
-    // Conditional branching based on complexity
-    await workflow.when(
-      (results) => results.analysis.complexity > 20,
-      async (builder) => {
-        // Complex code path
-        const plan = await builder.task('plan', planningTask, analysis);
-        const chunks = await builder.task('chunk', chunkingTask, plan);
-        
-        // Run refactoring tasks in parallel
-        const results = await builder.parallel([
-          { name: 'chunk1', task: refactorTask, input: chunks[0] },
-          { name: 'chunk2', task: refactorTask, input: chunks[1] },
-        ]);
-        
-        return builder.success(results);
-      }
-    );
-    
-    // Simple refactoring path
-    const refactored = await workflow.task('refactor', simpleRefactorTask, analysis);
-    return workflow.success(refactored);
-  }
-});
-
-// Execute workflow with schema validation
-const result = await refactoringWorkflow.execute(input, {
-  schema: RefactoringResultSchema
+const agent = createAgent({
+  name: 'MyAgent',
+  description: 'Custom agent description',
+  provider: 'openrouter'
 });
 ```
 
-### Features
+### `createTask(config)`
 
-- Type-safe task definitions with Zod schema validation
-- Support for streaming responses
-- Built-in error handling and retry logic
-- Extensible tool system for custom capabilities
-- Support for multiple AI providers
-- Workflow orchestration with:
-  - Conditional branching
-  - Parallel execution
-  - Error handling
-  - Progress tracking
-  - Schema validation
-
-## MCP (Model Context Protocol)
-
-Hataraku can be run as an MCP server, exposing its capabilities through a standardized protocol:
+Creates a new task with optional schema validation.
 
 ```typescript
-import { HatarakuMcpServer } from 'hataraku';
+import { createTask } from 'hataraku';
+import { z } from 'zod';
 
-// Create and start MCP server
-const server = new HatarakuMcpServer(model);
-await server.start();
+const task = createTask({
+  name: 'validated-task',
+  schema: z.object({ name: z.string() }),
+  execute: async (input) => `Processing ${input.name}`
+});
 ```
 
-### Built-in MCP Tools
+### `Task.run(input, options)`
 
-1. **Code Analysis**
-   - Analyzes code complexity and issues
-   - Provides improvement suggestions
-   - Identifies technical debt
+Executes a task with given input, supporting both streaming and non-streaming modes.
 
-2. **Bug Analysis**
-   - Analyzes bug reports and stack traces
-   - Provides root cause analysis
-   - Suggests fixes and prevention
+```typescript
+// Non-streaming execution
+const result = await task.run({ input: 'your input' });
 
-3. **PR Review**
-   - Reviews code changes
-   - Provides structured feedback
-   - Identifies potential risks
-
-4. **Refactoring Planning**
-   - Creates structured refactoring plans
-   - Breaks down changes into steps
-   - Assesses risks and effort
-
-### Usage
-
-```bash
-# Run with stdio transport (default)
-npm run hataraku-mcp
-
+// Streaming execution
+const streamingResult = await task.run({ input: 'your input' }, { stream: true });
+for await (const chunk of streamingResult) {
+  console.log(chunk);
+}
 ```
-
-## Documentation
-
-- [CLI Documentation](./docs/cli.md)
-- [Examples](./examples/)
-
-## Task History
-
-Tasks are automatically saved in `~/.hataraku/logs` and include:
-- Task ID and timestamp
-- Input/output tokens
-- Cost information
-- Full conversation history
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details on how to get started.
+We welcome contributions to Hataraku! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for details on:
+
+1. Setting up the development environment
+2. Running tests
+3. Code style guidelines
+4. Pull request process
+
+### Development Setup
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Build the project:
+   ```bash
+   npm run build
+   ```
+4. Run tests:
+   ```bash
+   npm test
+   ```
 
 ## License
 
-[Apache 2.0](./LICENSE)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+- Report issues on GitHub
+- Join our community discussions
+- Check out the [documentation](./docs) for detailed guides
+
+## Version
+
+Current version: 0.5.2

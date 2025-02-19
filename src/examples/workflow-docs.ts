@@ -1,14 +1,15 @@
 import { createWorkflow } from '../core/workflow';
 import { z } from 'zod';
 import { createAgent } from '../core/agent';
-import { createTask } from '../core/task';
+import { Task } from '../core/task';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { Tool } from 'ai';
 import type { TaskExecutor } from '../core/workflow';
 import chalk from 'chalk';
+import { writeFileTool } from '../core/tools/write-file';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-
+import { ALL_TOOLS } from '../core/tools';
 // Initialize OpenRouter
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -86,7 +87,8 @@ const docsAgent = createAgent({
   tools: {
     readPackageJson: readPackageJsonTool,
     scanDirectory: scanDirectoryTool,
-    validateUrl: validateUrlTool
+    validateUrl: validateUrlTool,
+    ...ALL_TOOLS
   }
 });
 
@@ -102,6 +104,11 @@ const repoAnalysisSchema = z.object({
 
 const docsExtractionSchema = z.object({
   apis: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+    examples: z.array(z.string())
+  })),
+  sdk: z.array(z.object({
     name: z.string(),
     description: z.string(),
     examples: z.array(z.string())
@@ -122,12 +129,13 @@ const readmeContentSchema = z.object({
 });
 
 // Define our intelligent tasks
-const analyzeRepoTask = createTask({
+const analyzeRepoTask = new Task<{ path: string }, z.infer<typeof repoAnalysisSchema>>({
   name: 'Analyze Repository',
-  description: 'Analyzes repository structure and package information',
+  description: 'Analyzes Node.js repository structure and package information',
   agent: docsAgent,
+  inputSchema: z.object({ path: z.string() }),
   outputSchema: repoAnalysisSchema,
-  task: (input: { path: string }) => 
+  task: (input) => 
     `Analyze the repository at ${input.path}. Use the readPackageJson tool to read package.json and scanDirectory tool to understand the file structure. Focus on:
      1. Package name and version
      2. Dependencies and their versions
@@ -135,32 +143,42 @@ const analyzeRepoTask = createTask({
      4. Main entry points and important files`
 });
 
-const extractDocsTask = createTask({
+const extractDocsTask = new Task<{ files: string[] }, z.infer<typeof docsExtractionSchema>>({
   name: 'Extract Documentation',
   description: 'Analyzes source files to extract documentation needs',
   agent: docsAgent,
+  inputSchema: z.object({ files: z.array(z.string()) }),
   outputSchema: docsExtractionSchema,
-  task: (input: { files: string[] }) => 
-    `Analyze these source files: ${input.files.join(', ')}. Identify:
-     1. Public APIs and their usage
+  task: (input) => 
+    `Analyze these source file globs: ${input.files.join(', ')}. Identify:
+     1. Public API or SDKs and their usage. (Check package.json for main entry point and iteratively check the files in the package for usage)
      2. Setup requirements
      3. Common use cases
      4. Example code snippets`
 });
 
-const generateReadmeTask = createTask({
+const generateReadmeTask = new Task<
+  { analysis: z.infer<typeof repoAnalysisSchema>; docs: z.infer<typeof docsExtractionSchema> },
+  z.infer<typeof readmeContentSchema>
+>({
   name: 'Generate README',
   description: 'Generates comprehensive README content',
   agent: docsAgent,
+  inputSchema: z.object({
+    analysis: repoAnalysisSchema,
+    docs: docsExtractionSchema
+  }),
   outputSchema: readmeContentSchema,
-  task: (input: { analysis: z.infer<typeof repoAnalysisSchema>, docs: z.infer<typeof docsExtractionSchema> }) => 
-    `Generate a comprehensive README based on this repository analysis and documentation needs: ${JSON.stringify(input, null, 2)}. Include:
+  task: (input) => 
+    `Update the existing README based on this repository analysis and documentation needs: ${JSON.stringify(input, null, 2)}. Include:
      1. Clear title and description
      2. Installation instructions based on dependencies
-     3. Usage guide with examples
-     4. API documentation
-     5. Contributing guidelines
-     6. License information`
+     3. Prerequisites
+     4. Usage guide with examples
+     5. API/SDK documentation
+     6. Links to other documentation such as LICENSE, CONTRIBUTING, etc.
+     Finally, write the file to the current directory. 
+     `
 });
 
 // Create task executor wrappers
@@ -226,7 +244,7 @@ async function main() {
       {
         name: 'Documentation Extraction',
         task: extractDocs,
-        input: { files: ['src/**/*.ts'] }
+        input: { files: ['src/**/*.ts', 'src/**/*.js', 'src/**/*.jsx', 'src/**/*.tsx'] }
       }
     ] as const;
 
