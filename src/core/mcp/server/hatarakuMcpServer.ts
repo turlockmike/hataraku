@@ -1,4 +1,5 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { Task } from '../../task';
@@ -14,6 +15,7 @@ import {
 import { appendFileSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 
 interface ServerResult {
   tools?: Array<{
@@ -27,7 +29,6 @@ interface ServerResult {
   content?: Array<{
     type: string;
     text: string;
-    stream?: ReadableStream;
   }>;
   _meta?: Record<string, unknown>;
   nextCursor?: string;
@@ -63,6 +64,10 @@ export class HatarakuMcpServer {
         },
       }
     );
+
+    this.server.onerror = (error: McpError) => {
+      console.error(`Server error: ${error.message}`, { code: error.code, stack: error.stack });
+    };
     this.tasks = new Map();
     this.adapter = new TaskToolAdapter();
 
@@ -74,12 +79,12 @@ export class HatarakuMcpServer {
     });
   }
 
-  async start() {
+  async start(transport: Transport = new StdioServerTransport()) {
     await this.discoverTasks();
     await this.registerTools();
     
-    const transport = new StdioServerTransport();
     await this.server.connect(transport);
+    return this.server;
   }
 
   private async discoverTasks(): Promise<void> {
@@ -101,25 +106,23 @@ export class HatarakuMcpServer {
   private async registerTools(): Promise<void> {
     // Register tasks as MCP tools
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      const tools = Array.from(this.tasks.values()).map(task => ({
-        name: task.name,
-        description: task.description,
-        inputSchema: {
-          type: 'object' as const,
-          properties: {
-            prompt: {
-              type: 'string',
-              description: 'The input prompt for the task'
+      const tools = Array.from(this.tasks.values()).map(task => {
+        const tool = this.adapter.convertToMcpTool(task);
+        return {
+          name: tool.name,
+          description: tool.description,
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              content: {
+                type: 'string',
+                description: 'The input content for the task'
+              }
             },
-            stream: {
-              type: 'boolean',
-              description: 'Enable streaming output',
-              optional: true
-            }
-          },
-          required: ['prompt']
-        }
-      }));
+            required: ['content']
+          }
+        };
+      });
 
       return {
         tools,
@@ -134,30 +137,17 @@ export class HatarakuMcpServer {
       }
 
       try {
-        // Write to a log file
-        
         const logEntry = `Calling task: ${task.name}\nRequest params: ${JSON.stringify(request.params)}\n`;
         log(logEntry);
 
         const args = request.params.arguments || {};
-        if (!args.prompt || typeof args.prompt !== 'string') {
-          throw new McpError(ErrorCode.InvalidParams, 'Missing or invalid prompt parameter');
+        if (!args.content || typeof args.content !== 'string') {
+          throw new McpError(ErrorCode.InvalidParams, 'Missing or invalid content parameter');
         }
 
-        if (args.stream) {
-          const stream = await task.execute(args.prompt, { stream: true });
-          return {
-            content: [{
-              type: 'stream',
-              text: 'Streaming response',
-              stream
-            }],
-            _meta: {}
-          } satisfies ServerResult;
-        }
+        console.log('Executing task:', task.name, args);
 
-        log(`Executing task: ${task.name} with prompt: ${args.prompt}`);
-        const result = await task.execute(args.prompt);
+        const result = await task.execute(args.content);
         log(`Task ${task.name} executed with result: ${JSON.stringify(result)}`);
         return {
           content: [{
@@ -167,6 +157,7 @@ export class HatarakuMcpServer {
           _meta: {}
         } satisfies ServerResult;
       } catch (error) {
+        console.error('Task execution error:', error);
         if (error instanceof McpError) {
           throw error;
         }

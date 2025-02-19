@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { Agent } from './agent.js';
 import { AsyncIterableStream } from './types.js';
 import { Thread } from './thread/thread.js';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export interface TaskConfig<TInput, TOutput = unknown> {
     name: string;
@@ -16,7 +17,7 @@ export class Task<TInput = string, TOutput = unknown> {
     public readonly name: string;
     public readonly description: string;
     private readonly agent: Agent;
-    private readonly inputSchema: z.ZodType<TInput>;
+    public readonly inputSchema: z.ZodType<TInput>;
     private readonly outputSchema?: z.ZodType<TOutput>;
     private readonly task: string | ((input: TInput) => string);
 
@@ -56,6 +57,7 @@ export class Task<TInput = string, TOutput = unknown> {
      * Execute the task with the given input
      */
     async execute(input: TInput): Promise<TOutput>;
+    async execute(input: TInput, options: { stream: false, thread?: Thread }): Promise<TOutput>;
     async execute(input: TInput, options: { stream: true, thread?: Thread }): Promise<AsyncIterable<string> & ReadableStream<string>>;
     async execute(input: TInput, options?: { stream?: boolean, thread?: Thread }): Promise<TOutput | AsyncIterableStream<string>> {
         // Validate input against schema
@@ -67,6 +69,7 @@ export class Task<TInput = string, TOutput = unknown> {
         if (options?.stream) {
             return this.agent.task(prompt, { stream: true, thread: options.thread });
         }
+        // console.log('Executing task:', this.name, prompt, JSON.stringify(zodToJsonSchema(this.outputSchema)));
         if (this.outputSchema) {
             const result = await this.agent.task<TOutput>(prompt, { schema: this.outputSchema, thread: options?.thread });
             return result;

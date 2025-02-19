@@ -17,8 +17,6 @@ module.exports = {
     },
     testMatch: ['**/__tests__/**/*.test.ts'],
     moduleNameMapper: {
-        '@modelcontextprotocol/sdk$': '<rootDir>/src/__mocks__/@modelcontextprotocol/sdk/index.js',
-        '@modelcontextprotocol/sdk/(.*)': '<rootDir>/src/__mocks__/@modelcontextprotocol/sdk/$1',
         '^delay$': '<rootDir>/src/__mocks__/delay.js',
         '^p-wait-for$': '<rootDir>/src/__mocks__/p-wait-for.js',
         '^fast-glob$': '<rootDir>/src/__mocks__/fast-glob.js',
@@ -28,7 +26,7 @@ module.exports = {
         '^os-name$': '<rootDir>/src/__mocks__/os-name.js'
     },
     transformIgnorePatterns: [
-        'node_modules/(?!(@modelcontextprotocol|delay|p-wait-for|fast-glob|serialize-error|strip-ansi|default-shell|os-name)/)'
+        'node_modules/(?!(delay|p-wait-for|fast-glob|serialize-error|strip-ansi|default-shell|os-name)/)'
     ],
     setupFiles: [],
     forceExit: true,
