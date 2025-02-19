@@ -2,7 +2,8 @@ import {  LanguageModelV1, generateText, generateObject, streamText, ToolSet, Co
 import { z } from 'zod';
 import { AsyncIterableStream } from './types';
 import { Thread } from './thread/thread';
-const DEFAULT_MAX_STEPS = 25;
+const DEFAULT_MAX_STEPS = 5;
+const DEFAULT_MAX_RETRIES = 4;
 
 interface CallSettings {
   maxTokens?: number;
@@ -88,6 +89,7 @@ export class Agent {
   async task<T>(task: string, input?: TaskInput<T> & { stream?: boolean; schema?: z.ZodType<T>}): Promise<string | AsyncIterableStream<string> | T> {
     const thread = input?.thread || new Thread();
     const maxSteps = this.callSettings.maxSteps || DEFAULT_MAX_STEPS;
+    const maxRetries = this.callSettings.maxRetries || DEFAULT_MAX_RETRIES;
     thread.addMessage('user', task);
    
     if (input?.stream) {
@@ -96,6 +98,7 @@ export class Agent {
         system: this.getSystemPrompt(),
         messages: thread.getFormattedMessages(),
         maxSteps,
+        maxRetries,
         tools: this.tools,
         ...this.callSettings,
         onError: (error) => {
@@ -119,6 +122,7 @@ export class Agent {
         system: this.getSystemPrompt(),
         messages: thread.getFormattedMessages(),
         maxSteps,
+        maxRetries,
         tools: this.tools,
         ...this.callSettings,
       })
@@ -129,7 +133,7 @@ export class Agent {
         mode: 'json', // For some reason it doesn't work without this value.
         system: this.getSystemPrompt(),
         messages: thread.getFormattedMessages(),
-        maxRetries: 2,
+        maxRetries,
         maxSteps,
         schema: input.schema,
         ...this.callSettings,
@@ -140,12 +144,17 @@ export class Agent {
     }
 
     if (input?.schema) {
+      console.log('gerating object', this.getSystemPrompt(), thread.getFormattedMessages())
       const result = await generateObject({
         model: this.model,
         system: this.getSystemPrompt(),
         messages: thread.getFormattedMessages(),
-        maxRetries: 2,
+        maxRetries,
         maxSteps,
+        experimental_repairText: async ({text, error}) => {
+          console.log('repairing text', text, error)
+          return text;
+        },
         schema: input.schema,
         ...this.callSettings,
       });
@@ -160,6 +169,7 @@ export class Agent {
       messages: thread.getFormattedMessages(),
       tools: this.tools,
       maxSteps,
+      maxRetries,
       ...this.callSettings,
     });
       

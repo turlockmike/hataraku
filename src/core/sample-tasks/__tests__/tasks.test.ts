@@ -57,7 +57,7 @@ describe('Predefined Tasks', () => {
     describe('Code Analysis Task', () => {
         it('should analyze code and provide structured feedback', async () => {
             const task = createCodeAnalysisTask(agent);
-            const result = await task.execute('function test() { console.log("test"); }');
+            const result = await task.run('function test() { console.log("test"); }');
 
             expect(result).toEqual({
                 summary: 'Test summary',
@@ -71,7 +71,7 @@ describe('Predefined Tasks', () => {
     describe('Bug Analysis Task', () => {
         it('should analyze bug reports and provide solutions', async () => {
             const task = createBugAnalysisTask(agent);
-            const result = await task.execute(
+            const result = await task.run(
                 'function test() { console.log("test"); }'
             );
 
@@ -87,7 +87,7 @@ describe('Predefined Tasks', () => {
     describe('PR Review Task', () => {
         it('should review pull requests and provide feedback', async () => {
             const task = createPRReviewTask(agent);
-            const result = await task.execute(
+            const result = await task.run(
                 'function test() { console.log("test"); }'
             );
 
@@ -109,7 +109,7 @@ describe('Predefined Tasks', () => {
     describe('Refactoring Plan Task', () => {
         it('should create a structured refactoring plan', async () => {
             const task = createRefactoringPlanTask(agent);
-            const result = await task.execute('function test() { console.log("test"); }');
+            const result = await task.run('function test() { console.log("test"); }');
 
             expect(result).toEqual({
                 goals: ['Goal 1'],

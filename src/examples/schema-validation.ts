@@ -16,7 +16,6 @@ async function main() {
     role: 'You are a helpful assistant that provides structured data.',
     description: 'You are a helpful assistant that provides structured data.'
   });
-  
 
   const simpleSchema = z.object({
     firstName: z.string(),

@@ -44,10 +44,10 @@ describe('Task Schema Validation', () => {
       });
 
       // Valid string input
-      await expect(task.execute('hello')).resolves.toBe('Processed: hello');
+      await expect(task.run('hello')).resolves.toBe('Processed: hello');
 
       // Invalid input (non-string)
-      await expect(task.execute(123 as any)).rejects.toThrow();
+      await expect(task.run(123 as any)).rejects.toThrow();
     });
 
     it('should validate input against custom schema', async () => {
@@ -70,20 +70,20 @@ describe('Task Schema Validation', () => {
       });
 
       // Valid input
-      const result = await task.execute({
+      const result = await task.run({
         name: 'John',
         age: 30
       });
       expect(result).toBe('Processed: User John is 30 years old');
 
       // Invalid input: empty name
-      await expect(task.execute({
+      await expect(task.run({
         name: '',
         age: 30
       })).rejects.toThrow();
 
       // Invalid input: negative age
-      await expect(task.execute({
+      await expect(task.run({
         name: 'John',
         age: -1
       })).rejects.toThrow();
@@ -110,7 +110,7 @@ describe('Task Schema Validation', () => {
         task: (input) => `User ${input.name} with role ${input.role} wants to ${input.action}`
       });
 
-      const result = await task.execute({
+      const result = await task.run({
         name: 'John',
         role: 'admin',
         action: 'create a new project'
@@ -177,7 +177,7 @@ describe('Task Schema Validation', () => {
         task: (input) => `Process request from ${input.name} (${input.role})`
       });
 
-      const result = await taskWithMockOutput.execute({
+      const result = await taskWithMockOutput.run({
         name: 'John',
         role: 'admin'
       });
@@ -231,7 +231,7 @@ describe('Task Schema Validation', () => {
         task: (input) => `Count words in: ${input}`
       });
 
-      await expect(taskWithInvalidOutput.execute('test input')).rejects.toThrow();
+      await expect(taskWithInvalidOutput.run('test input')).rejects.toThrow();
     });
   });
 });

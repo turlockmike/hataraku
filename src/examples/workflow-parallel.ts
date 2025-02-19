@@ -72,7 +72,7 @@ const addNumbersTask = createTask({
   name: 'Add Numbers',
   description: 'Adds two numbers together',
   agent: mathAgent,
-  schema: mathOutputSchema,
+  outputSchema: mathOutputSchema,
   task: (input: z.infer<typeof mathInputSchema>) => 
     `Use the add tool to add these numbers: ${input.a} and ${input.b}`
 });
@@ -81,7 +81,7 @@ const multiplyNumbersTask = createTask({
   name: 'Multiply Numbers',
   description: 'Multiplies two numbers together',
   agent: mathAgent,
-  schema: mathOutputSchema,
+  outputSchema: mathOutputSchema,
   task: (input: z.infer<typeof mathInputSchema>) => 
     `Use the multiply tool to multiply these numbers: ${input.a} and ${input.b}`
 });
@@ -94,7 +94,7 @@ const numbersToWordsTask = createTask({
   name: 'Numbers to Words',
   description: 'Converts a number to its word representation',
   agent: mathAgent,
-  schema: z.string(),
+  outputSchema: z.string(),
   task: (input: z.infer<typeof numbersToWordsSchema>) => 
     `convert this number to its word representation: ${input.number}`
 });
@@ -103,7 +103,7 @@ const numbersToWordsTask = createTask({
 const addNumbers: TaskExecutor<z.infer<typeof mathInputSchema>, number> = 
   async (input) => {
     console.log(chalk.yellow(`📝 Starting addition task: ${input.a} + ${input.b}`));
-    const result = Number(await addNumbersTask.execute(input));
+    const result = Number(await addNumbersTask.run(input));
     console.log(chalk.green(`✅ Addition complete: ${result}`));
     return result;
   };
@@ -111,7 +111,7 @@ const addNumbers: TaskExecutor<z.infer<typeof mathInputSchema>, number> =
 const multiplyNumbers: TaskExecutor<z.infer<typeof mathInputSchema>, number> = 
   async (input) => {
     console.log(chalk.yellow(`📝 Starting multiplication task: ${input.a} × ${input.b}`));
-    const result = Number(await multiplyNumbersTask.execute(input));
+    const result = Number(await multiplyNumbersTask.run(input));
     console.log(chalk.green(`✅ Multiplication complete: ${result}`));
     return result;
   };
@@ -119,7 +119,7 @@ const multiplyNumbers: TaskExecutor<z.infer<typeof mathInputSchema>, number> =
 const numbersToWords: TaskExecutor<z.infer<typeof numbersToWordsSchema>, string> = 
   async (input) => {
     console.log(chalk.yellow(`📝 Starting number to words conversion: ${input.number}`));
-    const result = await numbersToWordsTask.execute(input);
+    const result = await numbersToWordsTask.run(input);
     console.log(chalk.green(`✅ Conversion complete: "${result}"`));
     return result;
   };
@@ -210,7 +210,7 @@ async function main() {
   console.log(chalk.gray(`   First pair: ${input.pairs[0][0]} + ${input.pairs[0][1]}`));
   console.log(chalk.gray(`   Second pair: ${input.pairs[1][0]} + ${input.pairs[1][1]}\n`));
 
-  const result = await mathWorkflow.execute(input, {
+  const result = await mathWorkflow.run(input, {
     schema: mathResultSchema
   });
 

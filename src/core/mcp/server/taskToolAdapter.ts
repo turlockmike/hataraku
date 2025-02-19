@@ -2,7 +2,6 @@ import { McpTool, ParsedMcpToolResponse, McpError, ErrorCode, McpToolExecutionOp
 import { Task } from '../../task';
 import { zodToJsonSchema as zodToJsonSchemaLib } from 'zod-to-json-schema';
 import { z } from 'zod';
-import { Tool } from 'ai';
 
 interface ToolArgs {
   [key: string]: any;
@@ -57,7 +56,7 @@ export class TaskToolAdapter {
             throw new Error('Task failed');
           }
 
-          const result = await task.execute(input, execOptions);
+          const result = await task.run(input, execOptions);
           const isObject = result !== null && typeof result === 'object';
           const text = isObject ? JSON.stringify(result) : String(result);
           return {

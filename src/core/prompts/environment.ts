@@ -1,4 +1,19 @@
-import * as os from 'os';
+import * as os from 'node:os';
+import defaultShell from "default-shell"
+import {readdirSync} from "node:fs"
+
+// Should only return max files at most, evenly divided into three sections with ellipsis in between
+export function getFilesInCurrentDirectory(max = 30) {
+    const files = readdirSync(process.cwd());
+    const n = Math.floor(max / 3);
+    if (files.length <= max) {return files;}
+    const firstFiles = files.slice(0, n);
+    const midIndex = Math.floor(files.length / 2);
+    const half = Math.floor(n / 2);
+    const middleFiles = files.slice(midIndex - half, midIndex - half + n);
+    const lastFiles = files.slice(-n);
+    return [...firstFiles, '...', ...middleFiles, '...', ...lastFiles];
+}
 
 export function getEnvironmentInfo() {
     return `
@@ -8,9 +23,10 @@ Architecture: ${os.arch()}
 CPU Cores: ${os.cpus().length}
 Total Memory: ${Math.round(os.totalmem() / (1024 * 1024 * 1024))}GB
 Free Memory: ${Math.round(os.freemem() / (1024 * 1024 * 1024))}GB
-Default Shell: ${process.env.SHELL || 'unknown'}
+Default Shell: ${defaultShell}
 Home Directory: ${os.homedir()}
 Current Working Directory: ${process.cwd()}
+Files in Current Directory: ${getFilesInCurrentDirectory()}
 Node Version: ${process.version}
 Current Time: ${new Date().toLocaleString()}
 Locale: ${Intl.DateTimeFormat().resolvedOptions().locale}
