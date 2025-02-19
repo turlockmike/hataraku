@@ -1,6 +1,6 @@
 # Hataraku
 
-An autonomous coding agent and SDK for building AI-powered development tools.
+An autonomous coding agent and SDK for building AI-powered development tools. The name "Hataraku" (働く) means "to work" in Japanese.
 
 [![npm version](https://badge.fury.io/js/hataraku.svg)](https://badge.fury.io/js/hataraku)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
