@@ -89,6 +89,7 @@ class WorkflowBuilderImpl<TInput = unknown, TResults extends Record<string, unkn
 
       return result;
     } catch (error) {
+      console.error('Task failed', name, error)
       const taskError = error instanceof Error ? error : new Error(String(error));
       throw new Error(`Task '${name}' failed: ${taskError.message}`);
     }
@@ -215,9 +216,8 @@ export function createWorkflow<TInput = unknown, TOutput extends Record<string, 
 
         // Handle other errors
         if (error instanceof Error) {
-          const workflowError = new Error(`Workflow '${config.name}' failed: ${error.message}`);
-          config.onError?.(workflowError);
-          throw workflowError;
+          config.onError?.(error);
+          throw error;
         }
 
         throw error;

@@ -1,162 +1,112 @@
 # Hataraku
 
-A flexible and powerful TypeScript library for building AI-powered task automation and agent workflows. Supports multiple AI providers including OpenRouter, Anthropic (Claude), Mistral AI, and AWS Bedrock.
+An autonomous coding agent and SDK for building AI-powered development tools.
 
-## Features
+[![npm version](https://badge.fury.io/js/hataraku.svg)](https://badge.fury.io/js/hataraku)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-- 🤖 Easy agent creation and configuration
-- 🔄 Task creation with schema validation
-- 📊 Streaming and non-streaming execution modes
-- ⚡ TypeScript-first development
-- 🔌 Multiple AI provider support
-- 🔗 Task chaining for complex workflows
+## Description
+
+Hataraku is a powerful toolkit that enables the creation of AI-powered development tools and autonomous coding agents. It provides a flexible SDK and CLI for building intelligent development workflows, code analysis, and automation tasks.
+
+## Key Features
+
+- 🤖 Autonomous coding agent capabilities
+- 🛠️ Extensible SDK for building AI-powered tools
+- 📦 Support for multiple AI providers (OpenRouter, Claude, Amazon Bedrock)
+- 🔄 Workflow automation and parallel task execution
+- 📊 Schema validation and structured tasks
+- 🧰 Built-in tool integration system
+- 🔗 Model Context Protocol (MCP) support
 
 ## Installation
 
 ```bash
+# Using npm
 npm install hataraku
+
+# Using yarn
+yarn add hataraku
+
+# Using pnpm
+pnpm add hataraku
 ```
 
-### Prerequisites
+## Quick Start
 
-- Node.js
-- One or more API keys depending on your chosen providers:
-  - OPENROUTER_API_KEY for OpenRouter
-  - Additional keys for Bedrock, Anthropic, or Mistral AI if using those providers
-
-## Setup
-
-1. Install the package and its peer dependencies:
-   ```bash
-   npm install hataraku
-   ```
-
-2. Configure your environment variables:
-   ```bash
-   export OPENROUTER_API_KEY="your-api-key"
-   # Add other provider keys as needed
-   ```
-
-3. Ensure your Node.js environment is properly configured
-
-## Usage
-
-### Creating an Agent
+### Basic Usage
 
 ```typescript
-import { createAgent } from 'hataraku';
+import { Task } from 'hataraku';
 
-const agent = createAgent({
-  name: 'MyAgent',
-  description: 'Custom agent description',
-  provider: 'openrouter'
-});
-```
-
-### Creating and Running Tasks
-
-```typescript
-import { createTask } from 'hataraku';
-import { z } from 'zod';
-
-// Create a task with schema validation
-const task = createTask({
-  name: 'validated-task',
-  schema: z.object({ name: z.string() }),
-  execute: async (input) => `Processing ${input.name}`
+// Create a simple task
+const task = new Task({
+  description: "Write a hello world function",
+  model: "openrouter/anthropic/claude-3-opus"
 });
 
-// Run task (non-streaming)
-const result = await task.run({ input: 'your input' });
-
-// Run task (streaming)
-const streamingResult = await task.run({ input: 'your input' }, { stream: true });
-for await (const chunk of streamingResult) {
-  console.log(chunk);
-}
+// Execute the task
+const result = await task.execute();
 ```
 
-## API Documentation
+### Using the CLI
 
-### `createAgent(config)`
+```bash
+# Install globally
+npm install -g hataraku
 
-Creates a new agent instance with specified configuration.
-
-```typescript
-import { createAgent } from 'hataraku';
-
-const agent = createAgent({
-  name: 'MyAgent',
-  description: 'Custom agent description',
-  provider: 'openrouter'
-});
+# Run the CLI
+hataraku
 ```
 
-### `createTask(config)`
+## API Overview
 
-Creates a new task with optional schema validation.
+Hataraku provides several core components:
 
-```typescript
-import { createTask } from 'hataraku';
-import { z } from 'zod';
+- `Task`: Create and execute AI-powered tasks
+- `Agent`: Build autonomous coding agents
+- `Workflow`: Orchestrate complex multi-step operations
+- `Tools`: Integrate custom capabilities and external services
 
-const task = createTask({
-  name: 'validated-task',
-  schema: z.object({ name: z.string() }),
-  execute: async (input) => `Processing ${input.name}`
-});
-```
+For detailed API documentation, see the [Types Documentation](docs/types.md).
 
-### `Task.run(input, options)`
+## Documentation
 
-Executes a task with given input, supporting both streaming and non-streaming modes.
+- [Agent Documentation](docs/agent.md) - Learn about autonomous agents
+- [CLI Commands](docs/cli-commands.md) - Available CLI commands and options
+- [MCP Integration](docs/mcp.md) - Model Context Protocol integration
+- [Types Reference](docs/types.md) - Complete type definitions
+- [Workflow Guide](docs/workflow-proposal.md) - Building complex workflows
 
-```typescript
-// Non-streaming execution
-const result = await task.run({ input: 'your input' });
+## Examples
 
-// Streaming execution
-const streamingResult = await task.run({ input: 'your input' }, { stream: true });
-for await (const chunk of streamingResult) {
-  console.log(chunk);
-}
+The package includes various examples demonstrating different features:
+
+- Basic task execution
+- Streaming responses
+- Schema validation
+- Multi-step workflows
+- Tool integration
+- Thread management
+
+Run examples using:
+
+```bash
+npm run example:basic
+npm run example:stream
+npm run example:workflow
+# See package.json for more examples
 ```
 
 ## Contributing
 
-We welcome contributions to Hataraku! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for details on:
-
-1. Setting up the development environment
-2. Running tests
-3. Code style guidelines
-4. Pull request process
-
-### Development Setup
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Build the project:
-   ```bash
-   npm run build
-   ```
-4. Run tests:
-   ```bash
-   npm test
-   ```
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Support
 
-- Report issues on GitHub
-- Join our community discussions
-- Check out the [documentation](./docs) for detailed guides
-
-## Version
-
-Current version: 0.5.2
+- GitHub Issues: [Report bugs or request features](https://github.com/turlockmike/hataraku/issues)
+- Documentation: See the [docs](./docs) directory for detailed guides
