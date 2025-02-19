@@ -119,9 +119,10 @@ export class TaskToolAdapter {
         const { $schema: propSchema, additionalProperties, required, ...rest } = value as JsonSchema7Object;
         
         if (rest.type === 'object' && rest.properties) {
-          // Handle nested objects by preserving their structure
+          // Handle nested objects by preserving their structure and descriptions
           convertedProperties[key] = {
             type: 'object',
+            ...(rest.description && { description: rest.description }),
             properties: Object.fromEntries(
               Object.entries(rest.properties).map(([nestedKey, nestedValue]) => {
                 const { $schema: nestedSchema, additionalProperties: nestedAdditional, required: nestedRequired, ...nestedRest } = nestedValue as JsonSchema7Object;

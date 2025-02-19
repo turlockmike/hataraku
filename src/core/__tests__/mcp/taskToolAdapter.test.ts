@@ -166,6 +166,54 @@ describe('TaskToolAdapter', () => {
       });
     });
 
+    it('should preserve parameter descriptions from input schema', () => {
+      const inputSchema = z.object({
+        name: z.string().describe('The user\'s full name'),
+        age: z.number().describe('The user\'s age in years'),
+        settings: z.object({
+          theme: z.enum(['light', 'dark']).describe('UI theme preference'),
+          notifications: z.boolean().describe('Whether notifications are enabled')
+        }).describe('User preferences')
+      });
+
+      const task = new Task<z.infer<typeof inputSchema>>({
+        name: 'described-params-task',
+        description: 'Task with described parameters',
+        agent: mockAgent,
+        task: 'test',
+        inputSchema
+      });
+
+      const adapter = new TaskToolAdapter();
+      const params = adapter.generateParameters(task);
+
+      expect(params).toEqual({
+        name: { 
+          type: 'string',
+          description: 'The user\'s full name'
+        },
+        age: { 
+          type: 'number',
+          description: 'The user\'s age in years'
+        },
+        settings: {
+          type: 'object',
+          description: 'User preferences',
+          properties: {
+            theme: {
+              type: 'string',
+              enum: ['light', 'dark'],
+              description: 'UI theme preference'
+            },
+            notifications: {
+              type: 'boolean',
+              description: 'Whether notifications are enabled'
+            }
+          }
+        }
+      });
+    });
+
     it('should handle nested object schema as nested parameters', () => {
       const inputSchema = z.object({
         user: z.object({
