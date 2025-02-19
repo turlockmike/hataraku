@@ -31,6 +31,7 @@ export class TaskToolAdapter {
           const taskDef = (task as any).task;
           const execOptions = { stream: false as const, thread: (options as any)?.thread };
 
+          
           let input: TInput;
           if (schema) {
             // If we have a schema, use args (either content or full args)
@@ -69,7 +70,6 @@ export class TaskToolAdapter {
             }
           };
         } catch (error) {
-          console.error('error executing task', error);
           if (error instanceof McpError) {
             throw error;
           }

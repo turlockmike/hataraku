@@ -293,7 +293,7 @@ describe('TaskToolAdapter', () => {
       name: 'exec-task',
       description: 'Executable task',
       agent: mockAgent,
-      task: 'test execution'
+      task: (input) => `Process ${input} times`
     });
 
     const adapter = new TaskToolAdapter();

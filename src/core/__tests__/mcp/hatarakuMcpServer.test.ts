@@ -19,11 +19,10 @@ describe('HatarakuMcpServer', () => {
   let clientTransport: InMemoryTransport;
 
   const sampleAnalysisResult = {
-    wordCount: 10,
-    sentiment: 'positive',
-    topThemes: ['code', 'structure'],
-    complexity: { level: 'intermediate', score: 7 },
-    summary: 'The code is well-structured and follows good practices.'
+    summary: 'The code is well-structured and follows good practices.',
+    complexity: 7,
+    suggestions: ['Add type annotations', 'Refactor to use a helper function'],
+    risks: ['The code is not scalable', 'The code is not maintainable']
   };
 
   beforeEach(async () => {
@@ -87,13 +86,17 @@ describe('HatarakuMcpServer', () => {
     const response = await client.callTool({
       name: 'Analyze Code',
       arguments: {
-        content: 'function test() { return true; }'
+        content: 'hello world'
       }
     });
 
     expect(response.content).toBeDefined();
     expect(response.content[0].type).toBe('text');
-    expect(response.content[0].text).toContain('analysis of the code');
+    const result = JSON.parse(response.content[0].text);
+    expect(result.data.summary).toBeDefined();
+    expect(result.data.complexity).toBeDefined();
+    expect(result.data.suggestions).toBeDefined();
+    expect(result.data.risks).toBeDefined();
     expect(response._meta).toBeDefined();
   });
 

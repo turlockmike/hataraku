@@ -145,9 +145,9 @@ export class HatarakuMcpServer {
           throw new McpError(ErrorCode.InvalidParams, 'Missing or invalid content parameter');
         }
 
-        console.log('Executing task:', task.name, args);
+        const tool = this.adapter.convertToMcpTool(task);        
+        const result = await tool.execute({ content: args.content });
 
-        const result = await task.execute(args.content);
         log(`Task ${task.name} executed with result: ${JSON.stringify(result)}`);
         return {
           content: [{
