@@ -92,7 +92,6 @@ describe('CLI Agent', () => {
         const agent = createCLIAgent(mockModel);
         
         expect(agent).toMatchSnapshot({
-            model: expect.any(MockLanguageModelV1),
             tools: expect.any(Object)
         });
     });

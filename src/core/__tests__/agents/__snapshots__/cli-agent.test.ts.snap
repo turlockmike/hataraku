@@ -7,7 +7,10 @@ exports[`CLI Agent should create CLI agent with correct configuration 1`] = `
     "temperature": 0.7,
   },
   "description": "A helpful AI assistant that can perform various tasks and answer questions",
-  "model": Any<MockLanguageModelV1>,
+  "modelPromise": Promise {
+    Symbol(async_id_symbol): 1683,
+    Symbol(trigger_async_id_symbol): 1671,
+  },
   "name": "Hataraku CLI Agent",
   "role": "You are a helpful AI assistant that can perform various tasks and answer questions.
               You should be friendly but professional, and provide clear and concise responses.

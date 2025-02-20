@@ -91,7 +91,7 @@ class WorkflowBuilderImpl<TInput = unknown, TResults extends Record<string, unkn
     } catch (error) {
       console.error('Task failed', name, error)
       const taskError = error instanceof Error ? error : new Error(String(error));
-      throw new Error(`Task '${name}' failed: ${taskError.message}`);
+      throw new Error(`Workflow '${this.config.name}' failed: Task '${name}' failed: ${taskError.message}`);
     }
   }
 
@@ -200,27 +200,30 @@ export function createWorkflow<TInput = unknown, TOutput extends Record<string, 
           ? await builderResult.run()
           : builderResult;
 
-        // Get output
-        const result = options?.outputSchema ? options.outputSchema.parse(output) : output as TOutput;
-        
+        // Validate output if schema provided
+        if (options?.outputSchema) {
+          return options.outputSchema.parse(output);
+        }
+
         // Notify workflow completion
-        config.onWorkflowComplete?.(config.name, result as TOutput);
-        return result;
+        config.onWorkflowComplete?.(config.name, output);
+        
+        return output;
       } catch (error) {
-        // Handle validation errors
+        // Create workflow error
+        const workflowError = error instanceof Error 
+          ? new Error(`Workflow '${config.name}' failed: ${error.message}`)
+          : new Error(`Workflow '${config.name}' failed: ${String(error)}`);
+        
+        // Notify error
+        config.onError?.(workflowError);
+        
+        // Special handling for validation errors
         if (error instanceof z.ZodError) {
-          const validationError = new Error('Validation error: ' + error.message);
-          config.onError?.(validationError);
-          throw validationError;
+          throw new Error('Validation error');
         }
-
-        // Handle other errors
-        if (error instanceof Error) {
-          config.onError?.(error);
-          throw error;
-        }
-
-        throw error;
+        
+        throw workflowError;
       }
     }
   };

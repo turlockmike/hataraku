@@ -190,28 +190,30 @@ describe('Agent with Thread Integration', () => {
       const toolAgent = createAgent({
         ...agent,
         model: new MockLanguageModelV1({
+          defaultObjectGenerationMode: 'json',
           doGenerate: async (options) => {
-            if (options.mode.type === 'object-json') {
+            // For object generation mode
+            if (options.mode?.type === 'object-json') {
               return {
-                text: '{"content":"Tool result"}',
+                text: JSON.stringify({ content: 'Executed mock tool with input: test input' }),
                 finishReason: 'stop',
                 usage: { promptTokens: 10, completionTokens: 20 },
                 rawCall: { rawPrompt: null, rawSettings: {} }
-              }
-            } else {
-              return {
-                text: 'Using tool',
-                toolCalls: [{
-                  toolCallId: 'call-1',
-                  toolCallType: 'function',
-                  toolName: 'mock_tool',
-                  args: JSON.stringify({ input: 'test input' })
-                }],
-                finishReason: 'stop',
-                usage: { promptTokens: 10, completionTokens: 20 },
-                rawCall: { rawPrompt: null, rawSettings: {} }
-              }
+              };
             }
+            // For tool calls
+            return {
+              text: 'Using tool...',
+              toolCalls: [{
+                toolCallId: 'call-1',
+                toolCallType: 'function',
+                toolName: 'mock_tool',
+                args: JSON.stringify({ input: 'test input' })
+              }],
+              finishReason: 'stop',
+              usage: { promptTokens: 10, completionTokens: 20 },
+              rawCall: { rawPrompt: null, rawSettings: {} }
+            };
           }
         })
       });
@@ -223,7 +225,9 @@ describe('Agent with Thread Integration', () => {
         thread
       });
 
-      expect(result).toEqual({ content: 'Tool result' });
+      expect(result).toEqual({ 
+        content: 'Executed mock tool with input: test input' 
+      });
 
       // Verify that both the tool call and final response were added to the thread
       const messages = thread.getMessages();
@@ -234,7 +238,7 @@ describe('Agent with Thread Integration', () => {
       });
       expect(messages[messages.length - 1]).toEqual({
         role: 'assistant',
-        content: '{"content":"Tool result"}',
+        content: JSON.stringify({ content: 'Executed mock tool with input: test input' }),
         timestamp: expect.any(Date)
       });
     });
