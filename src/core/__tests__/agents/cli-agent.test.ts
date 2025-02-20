@@ -91,7 +91,13 @@ describe('CLI Agent', () => {
 
         const agent = createCLIAgent(mockModel);
         
-        expect(agent).toMatchSnapshot({
+        // Create a stable version of the agent for snapshot
+        const stableAgent = {
+            ...agent,
+            modelPromise: expect.any(Promise)
+        };
+        
+        expect(stableAgent).toMatchSnapshot({
             tools: expect.any(Object)
         });
     });

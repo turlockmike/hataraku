@@ -17,6 +17,7 @@ export function getFilesInCurrentDirectory(max = 30) {
 
 export function getEnvironmentInfo() {
     return `
+    <environment_details>
 Environment Information:
 Operating System: ${os.platform()} ${os.release()}
 Architecture: ${os.arch()}
@@ -35,5 +36,6 @@ User Info: ${os.userInfo().username}
 Package Manager: ${process.env.npm_config_user_agent?.split('/')[0] || 'npm'}
 Terminal: ${process.env.TERM_PROGRAM || process.env.TERM || 'unknown'}
 Git Branch: ${require('child_process').execSync('git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "not a git repo"').toString().trim()}
+</environment_details>
 `;
 } 

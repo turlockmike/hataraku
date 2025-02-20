@@ -51,7 +51,13 @@ export interface HistoryEntry {
 }
 
 export class TaskHistory {
-    private historyDir: string = path.join(os.homedir(), '.config', 'hataraku', 'logs');
+    private historyDir: string;
+
+    constructor() {
+        // Use XDG_DATA_HOME if set, otherwise default to ~/.local/share
+        const xdgDataHome = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
+        this.historyDir = path.join(xdgDataHome, 'hataraku', 'logs');
+    }
 
     private async ensureHistoryDir(): Promise<void> {
         await fs.mkdir(this.historyDir, { recursive: true });

@@ -2,6 +2,7 @@
 
 exports[`getEnvironmentInfo returns consistent environment information 1`] = `
 "
+    <environment_details>
 Environment Information:
 Operating System: linux 6.8.0-1021-azure
 Architecture: x64
@@ -20,5 +21,6 @@ User Info: runner
 Package Manager: npm
 Terminal: undefined
 Git Branch: HEAD
+</environment_details>
 "
 `;
