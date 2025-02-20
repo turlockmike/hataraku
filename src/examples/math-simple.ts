@@ -1,10 +1,13 @@
 import chalk from 'chalk';
-import { mathTasks } from './agents/math';
+import { createMathTasks } from './agents/math';
 
 async function main() {
   console.log(chalk.cyan('\n🚀 Starting math operations\n'));
 
   try {
+    // Initialize math tasks
+    const mathTasks = await createMathTasks();
+    
     // Input values
     const firstPair = [3, 4];
     const secondPair = [5, 6];
@@ -45,4 +48,4 @@ async function main() {
   }
 }
 
-main()
+main();

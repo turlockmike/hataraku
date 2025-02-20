@@ -260,6 +260,23 @@ describe('createTask', () => {
         expect(chunks).toEqual(['streaming', 'result']);
     });
 
+    it('should ensure the task function itself has an input schema matching the task config', async () => {
+        const task = createTask({
+            name: 'Test Task',
+            description: 'A test task',
+            agent,
+            inputSchema: z.object({
+                message: z.string()
+            }),
+            task: (input) => `Test prompt: ${input.message}`
+        });
+
+        const result = await task.run({ message: 'Hello' });
+        expect(result).toBe('Task result');
+        
+        
+    })
+
     it('should handle typed inputs and outputs with schema validation', async () => {
         interface Input { message: string }
         interface Output { result: string }

@@ -1,8 +1,6 @@
 import { createWorkflow } from '../core/workflow';
 import { z } from 'zod';
-import { createAgent } from '../core/agent';
 import { Task } from '../core/task';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { Tool } from 'ai';
 import type { TaskExecutor } from '../core/workflow';
 import chalk from 'chalk';
@@ -17,12 +15,7 @@ import {
   fetchTool
 } from '../core/tools';
 import { getEnvironmentInfo } from '../core/prompts';
-
-
-// Initialize OpenRouter
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
 
 // Define our custom tools
 const readPackageJsonTool: Tool = {
@@ -69,31 +62,31 @@ const validateUrlTool: Tool = {
 };
 
 const environmentInfo = getEnvironmentInfo();
-// const rules = getAgentRules();
 
-// Create an agent for documentation tasks
-const docsAgent = createAgent({
-  name: 'Documentation Agent',
-  description: 'An agent that generates and validates documentation',
-  role: 'You are a documentation expert that helps generate and validate technical documentation. You have tools at your disposal. You will be given a task and must complete it using the tools. ' + environmentInfo,
-  model: openrouter.chat('anthropic/claude-3.5-sonnet'),
-  tools: {
-    // File operations
-    read_file: readFileTool,
-    write_file: writeFileTool,
-    list_files: listFilesTool,
-    search_files: searchFilesTool,
-    
-    // Code analysis
-    list_code_definitions: listCodeDefinitionsTool,
-    
-    // Package analysis
-    readPackageJson: readPackageJsonTool,
-    
-    // Network operations
-    fetch: fetchTool
-  }
-});
+// Initialize the documentation agent
+const initializeDocsAgent = async () => {
+  return createBaseAgent({
+    name: 'Documentation Agent',
+    description: 'An agent that generates and validates documentation',
+    role: 'You are a documentation expert that helps generate and validate technical documentation. You have tools at your disposal. You will be given a task and must complete it using the tools. ' + environmentInfo,
+    tools: {
+      // File operations
+      read_file: readFileTool,
+      write_file: writeFileTool,
+      list_files: listFilesTool,
+      search_files: searchFilesTool,
+      
+      // Code analysis
+      list_code_definitions: listCodeDefinitionsTool,
+      
+      // Package analysis
+      readPackageJson: readPackageJsonTool,
+      
+      // Network operations
+      fetch: fetchTool
+    }
+  });
+};
 
 // Define our schemas
 const repoAnalysisSchema = z.object({
@@ -120,7 +113,7 @@ const fileAnalysisSchema = z.object({
 });
 
 const fileAnalysisSchemaArray = z.object({
-    files: z.array(fileAnalysisSchema)
+  files: z.array(fileAnalysisSchema)
 });
 
 const detailedDocsSchema = z.object({
@@ -147,6 +140,14 @@ const detailedDocsSchema = z.object({
     default: z.string().optional()
   })).optional()
 });
+
+const documentationOutputSchema = z.object({
+  componentName: z.string(),
+  docPath: z.string(),
+  documentation: detailedDocsSchema
+});
+
+type DocumentationOutput = z.infer<typeof documentationOutputSchema>;
 
 const readmeContentSchema = z.object({
   title: z.string(),
@@ -175,145 +176,14 @@ const docsWorkflowSchema = z.object({
 
 type DocsWorkflowResult = z.infer<typeof docsWorkflowSchema>;
 
-// Define our intelligent tasks
-const analyzeRepoTask = new Task<{ path: string }, z.infer<typeof repoAnalysisSchema>>({
-  name: 'Analyze Repository',
-  description: 'Analyzes Node.js repository structure and package information',
-  agent: docsAgent,
-  inputSchema: z.object({ path: z.string() }),
-  outputSchema: repoAnalysisSchema,
-  task: (input) => 
-    `Analyze the repository at ${input.path}. Use the readPackageJson tool to read package.json and list_files tool to understand the file structure. Focus on:
-     1. Package name and version from package.json
-     2. Dependencies and their versions from package.json
-     3. File structure and organization
-     4. Main entry points and important files:
-        - Look for TypeScript (.ts) files in the src directory
-        - Exclude test files, dist directory, and node_modules
-        - Focus on files that export functionality (e.g., src/core/*.ts)
-        - Include index.ts files that re-export functionality
-     
-     When listing main entry points, use relative paths and only include .ts files.
-     Do NOT include any files from the dist/ directory.`
-});
-
-const determineExportedItemsTask = new Task<{ filePath: string }, z.infer<typeof fileAnalysisSchemaArray>>({
-  name: 'Determine Exported Items',
-  description: 'Determines the nested exported items in a file',
-  agent: docsAgent,
-  inputSchema: z.object({ filePath: z.string() }),
-  outputSchema: fileAnalysisSchemaArray,
-  task: (input) => 
-    `Determine the nested exported items in the file at ${input.filePath}. Return a list of all exported items. If the file is a dist or test file, ignore it and return immediately (still following the correct schema). If an exported item is defined in a different file, read that file and determine the exported items in that file. Iterate as deeply as you need, but ignore items from external node_modules (since those are documented elsewhere) `
-});
-
-const documentationOutputSchema = z.object({
-  componentName: z.string(),
-  docPath: z.string(),
-  documentation: detailedDocsSchema
-});
-
-type DocumentationOutput = z.infer<typeof documentationOutputSchema>;
-
-const generateDocumentationTask = new Task<z.infer<typeof fileAnalysisSchema>, DocumentationOutput>({
-  name: 'Generate Documentation',
-  description: 'Generates user-friendly documentation for a component',
-  agent: docsAgent,
-  inputSchema: fileAnalysisSchema,
-  outputSchema: documentationOutputSchema,
-  task: (input) => 
-    `Generate user-friendly documentation for the component at ${input.filePath}. First read the file to understand the component.
-     Use this previous Analysis: ${JSON.stringify(input)}
-     
-     Create comprehensive documentation that includes:
-     1. Component overview and description
-     2. Detailed API documentation for each export
-     3. Usage examples and patterns
-     4. Configuration options if applicable
-     
-     The documentation should be:
-     - Clear and easy to understand
-     - Include practical examples
-     - Show type signatures in TypeScript
-     - Include common use cases
-     - Highlight any important notes or caveats
-     
-     Save the documentation to docs/${path.basename(input.filePath, '.ts')}.md
-     Return both the path to the documentation and the structured content.`
-});
-
-const generateReadmeTask = new Task<
-  { 
-    repoAnalysis: z.infer<typeof repoAnalysisSchema>;
-    detailedDocs: z.infer<typeof detailedDocsSchema>[];
-  },
-  z.infer<typeof readmeContentSchema>
->({
-  name: 'Generate README',
-  description: 'Generates comprehensive README content',
-  agent: docsAgent,
-  inputSchema: z.object({
-    repoAnalysis: repoAnalysisSchema,
-    detailedDocs: z.array(detailedDocsSchema)
-  }),
-  outputSchema: readmeContentSchema,
-  task: (input) => 
-    `Generate a high-level README for the repository using the repository analysis and detailed documentation.
-     Include:
-     1. Clear title and description
-     2. Installation instructions
-     3. Key features and capabilities
-     4. High-level API overview
-     5. Quick start examples
-     6. Links to detailed documentation
-     7. Write the README.md to the repository
-     8. Write any references in the README.md to the detailed documentation in the docs/ directory`
-});
-
-// Create task executor wrappers
-const analyzeRepo: TaskExecutor<{ path: string }, z.infer<typeof repoAnalysisSchema>> = 
-  async (input) => {
-    console.log(chalk.yellow(`📝 Starting repository analysis: ${input.path}`));
-    const result = await analyzeRepoTask.run(input);
-    console.log(chalk.green(`✅ Repository analysis complete`));
-    return result;
-  };
-
-const determineExports: TaskExecutor<{ filePath: string }, z.infer<typeof fileAnalysisSchemaArray>> = 
-  async (input) => {
-    console.log(chalk.yellow(`📝 Determining exports for: ${input.filePath}`));
-    const result = await determineExportedItemsTask.run(input);
-    console.log(chalk.green(`✅ Export analysis complete: ${input.filePath}`));
-    return result;
-  };
-
-// Add new task executor
-const generateDocumentation: TaskExecutor<z.infer<typeof fileAnalysisSchema>, DocumentationOutput> = 
-  async (input) => {
-    console.log(chalk.yellow(`📝 Generating documentation for: ${input.filePath}`));
-    const result = await generateDocumentationTask.run(input);
-    console.log(chalk.green(`✅ Documentation complete: ${result.docPath}`));
-    return result;
-  };
-
-const generateReadme: TaskExecutor<
-  { 
-    repoAnalysis: z.infer<typeof repoAnalysisSchema>;
-    detailedDocs: z.infer<typeof detailedDocsSchema>[];
-  },
-  z.infer<typeof readmeContentSchema>
-> = async (input) => {
-  console.log(chalk.yellow(`📝 Generating README content`));
-  const result = await generateReadmeTask.run(input);
-  console.log(chalk.green(`✅ README generation complete`));
-  return result;
-};
-
 async function main() {
   // Create necessary directories
   await fs.mkdir('docs', { recursive: true });
 
   console.log(chalk.cyan('\n🚀 Starting documentation workflow\n'));
+
+  // Initialize tasks
+  const tasks = await initializeTasks();
 
   // Create our workflow
   const docsWorkflow = createWorkflow<{ repoPath: string }>({
@@ -332,9 +202,9 @@ async function main() {
     // Step 1: Analyze repository structure
     const repoAnalysis = await w.task(
       'Repository Analysis',
-      analyzeRepo,
+      tasks.analyzeRepo,
       { path: w.input.repoPath }
-    );
+    ) as z.infer<typeof repoAnalysisSchema>;
 
     // Log the entry points being analyzed
     console.log(chalk.cyan('\n📁 Source files to analyze:'));
@@ -351,14 +221,14 @@ async function main() {
       sourceFiles.map(filePath => 
         w.task(
           `Determine Exports: ${filePath}`,
-          determineExports,
+          tasks.determineExports,
           { filePath }
         )
       )
     );
 
     // Flatten the array of arrays into a single array of file analyses
-    const fileAnalyses = exportAnalyses.map(analysis => analysis.files).flat();
+    const fileAnalyses = exportAnalyses.map(analysis => (analysis as any).files).flat();
 
     // Filter out files with no exports
     let filesWithExports = fileAnalyses.filter(analysis => 
@@ -377,22 +247,22 @@ async function main() {
       publicFiles.map(analysis => 
         w.task(
           `Generate Documentation: ${analysis.filePath}`,
-          generateDocumentation,
+          tasks.generateDocumentation,
           analysis
         )
       )
-    );
+    ) as DocumentationOutput[];
 
     // Step 4: Generate README
     console.log(chalk.cyan('\n📖 Generating README...'));
     const readmeContent = await w.task(
       'Generate README.md',
-      generateReadme,
+      tasks.generateReadme,
       { 
         repoAnalysis,
         detailedDocs: documentationResults.map(result => result.documentation)
       }
-    );
+    ) as z.infer<typeof readmeContentSchema>;
 
     // Return the final result
     return {
@@ -421,6 +291,103 @@ async function main() {
   console.log(chalk.gray(`   Detailed Docs: ${JSON.stringify(result.detailedDocs, null, 2)}`));
   console.log(chalk.gray(`   README Content: ${JSON.stringify(result.readmeContent, null, 2)}\n`));
 }
+
+// Initialize tasks
+const initializeTasks = async () => {
+  const docsAgent = await initializeDocsAgent();
+  
+  const analyzeRepoTask = new Task<{ path: string }, z.infer<typeof repoAnalysisSchema>>({
+    name: 'Analyze Repository',
+    description: 'Analyzes Node.js repository structure and package information',
+    agent: docsAgent,
+    inputSchema: z.object({ path: z.string() }),
+    outputSchema: repoAnalysisSchema,
+    task: (input) => 
+      `Analyze the repository at ${input.path}. Use the readPackageJson tool to read package.json and list_files tool to understand the file structure. Focus on:
+       1. Package name and version from package.json
+       2. Dependencies and their versions from package.json
+       3. File structure and organization
+       4. Main entry points and important files:
+          - Look for TypeScript (.ts) files in the src directory
+          - Exclude test files, dist directory, and node_modules
+          - Focus on files that export functionality (e.g., src/core/*.ts)
+          - Include index.ts files that re-export functionality
+       
+       When listing main entry points, use relative paths and only include .ts files.
+       Do NOT include any files from the dist/ directory.`
+  });
+
+  const determineExportsTask = new Task<{ filePath: string }, z.infer<typeof fileAnalysisSchemaArray>>({
+    name: 'Determine Exported Items',
+    description: 'Determines the nested exported items in a file',
+    agent: docsAgent,
+    inputSchema: z.object({ filePath: z.string() }),
+    outputSchema: fileAnalysisSchemaArray,
+    task: (input) => 
+      `Determine the nested exported items in the file at ${input.filePath}. Return a list of all exported items. If the file is a dist or test file, ignore it and return immediately (still following the correct schema). If an exported item is defined in a different file, read that file and determine the exported items in that file. Iterate as deeply as you need, but ignore items from external node_modules (since those are documented elsewhere) `
+  });
+
+  const generateDocumentationTask = new Task<z.infer<typeof fileAnalysisSchema>, DocumentationOutput>({
+    name: 'Generate Documentation',
+    description: 'Generates user-friendly documentation for a component',
+    agent: docsAgent,
+    inputSchema: fileAnalysisSchema,
+    outputSchema: documentationOutputSchema,
+    task: (input) => 
+      `Generate user-friendly documentation for the component at ${input.filePath}. First read the file to understand the component.
+       Use this previous Analysis: ${JSON.stringify(input)}
+       
+       Create comprehensive documentation that includes:
+       1. Component overview and description
+       2. Detailed API documentation for each export
+       3. Usage examples and patterns
+       4. Configuration options if applicable
+       
+       The documentation should be:
+       - Clear and easy to understand
+       - Include practical examples
+       - Show type signatures in TypeScript
+       - Include common use cases
+       - Highlight any important notes or caveats
+       
+       Save the documentation to docs/${path.basename(input.filePath, '.ts')}.md
+       Return both the path to the documentation and the structured content.`
+  });
+
+  const generateReadmeTask = new Task<{ repoAnalysis: z.infer<typeof repoAnalysisSchema>, detailedDocs: z.infer<typeof detailedDocsSchema>[] }, z.infer<typeof readmeContentSchema>>({
+    name: 'Generate README',
+    description: 'Generates the main README.md file',
+    agent: docsAgent,
+    inputSchema: z.object({
+      repoAnalysis: repoAnalysisSchema,
+      detailedDocs: z.array(detailedDocsSchema)
+    }),
+    outputSchema: readmeContentSchema,
+    task: (input) => 
+      `Generate a comprehensive README.md file for the repository. Use the repository analysis and detailed documentation to create a complete overview.
+       
+       Repository Analysis: ${JSON.stringify(input.repoAnalysis)}
+       Detailed Documentation: ${JSON.stringify(input.detailedDocs)}
+       
+       The README should include:
+       1. Project title and description
+       2. Installation instructions
+       3. Basic usage examples
+       4. Key features
+       5. API overview (with links to detailed docs)
+       6. Contributing guidelines
+       7. License information
+       
+       Make it clear, concise, and well-structured.`
+  });
+
+  return {
+    analyzeRepo: (input: { path: string }) => analyzeRepoTask.run(input),
+    determineExports: (input: { filePath: string }) => determineExportsTask.run(input),
+    generateDocumentation: (input: z.infer<typeof fileAnalysisSchema>) => generateDocumentationTask.run(input),
+    generateReadme: (input: { repoAnalysis: z.infer<typeof repoAnalysisSchema>, detailedDocs: z.infer<typeof detailedDocsSchema>[] }) => generateReadmeTask.run(input)
+  };
+};
 
 // Run the example if this file is executed directly
 main(); 

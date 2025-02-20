@@ -25,7 +25,7 @@ export interface AgentConfig {
   name: string;
   description: string;
   role: string; // System instructions for the agent
-  model: LanguageModelV1;
+  model: LanguageModelV1 | Promise<LanguageModelV1>;
   tools?: ToolSet;
   callSettings?: CallSettings;
 }
@@ -40,30 +40,24 @@ export interface StreamingTaskResult {
   stream: AsyncGenerator<string>;
 }
 
-
-
 export class Agent {
   public readonly name: string;
   public readonly description: string;
-  public readonly model: LanguageModelV1;
+  private readonly modelPromise: Promise<LanguageModelV1>;
   public readonly tools: ToolSet;
   public readonly callSettings: CallSettings;
   public readonly role: string;
 
   constructor(config: AgentConfig) {
-    this.validateConfig(config);
-    this.callSettings = config.callSettings || {};
-    this.name = config.name;
-    this.description = config.description;
-    this.model = config.model;
-    this.tools = config.tools || {};
-    this.role = config.role;
-  }
-
-  private validateConfig(config: AgentConfig) {
     if (!config.name || config.name.trim() === '') {
       throw new Error('Agent name cannot be empty');
     }
+    this.name = config.name;
+    this.description = config.description;
+    this.modelPromise = Promise.resolve(config.model);
+    this.tools = config.tools || {};
+    this.callSettings = config.callSettings || {};
+    this.role = config.role;
   }
 
   private getSystemPrompt() {
@@ -87,6 +81,7 @@ export class Agent {
   async task<T>(task: string, input?: TaskInput<T> & { schema: z.ZodType<T>}): Promise<T>;
   async task(task: string, input?: TaskInput ): Promise<string>;
   async task<T>(task: string, input?: TaskInput<T> & { stream?: boolean; schema?: z.ZodType<T>}): Promise<string | AsyncIterableStream<string> | T> {
+    const model = await this.modelPromise;
     const thread = input?.thread || new Thread();
     const maxSteps = this.callSettings.maxSteps || DEFAULT_MAX_STEPS;
     const maxRetries = this.callSettings.maxRetries || DEFAULT_MAX_RETRIES;
@@ -94,7 +89,7 @@ export class Agent {
    
     if (input?.stream) {
       const {textStream} = streamText({
-        model: this.model,
+        model,
         system: this.getSystemPrompt(),
         messages: thread.getFormattedMessages(),
         maxSteps,
@@ -106,19 +101,16 @@ export class Agent {
         },
         onFinish: (result) => {
           thread.addMessage('assistant', result.text);
-          
         }
       });
 
       return textStream;
     }
 
-    // Currently ai-sdk doesn't support generating objects with tools, so we do a two-step process:
-    // 1. Generate text
-    // 2. Generate object from text
     if (Object.keys(this.tools).length > 0 && input?.schema) {
+      console.log('tools and schema')
       const result = await generateText({
-        model: this.model,
+        model,
         system: this.getSystemPrompt(),
         messages: thread.getFormattedMessages(),
         maxSteps,
@@ -129,8 +121,7 @@ export class Agent {
       thread.addMessage('assistant', result.text);
       thread.addMessage('user', 'Based on the last response, please create a response that matches the schema provided. It must be valid JSON and match the schema exactly.')
       const { object } = await generateObject({
-        model: this.model,
-        mode: 'json', // For some reason it doesn't work without this value.
+        model,
         system: this.getSystemPrompt(),
         messages: thread.getFormattedMessages(),
         maxRetries,
@@ -139,22 +130,18 @@ export class Agent {
         ...this.callSettings,
       });
 
-        thread.addMessage('assistant', JSON.stringify(object));
+      thread.addMessage('assistant', JSON.stringify(object));
       return object;
     }
 
     if (input?.schema) {
       console.log('gerating object', this.getSystemPrompt(), thread.getFormattedMessages())
       const result = await generateObject({
-        model: this.model,
+        model,
         system: this.getSystemPrompt(),
         messages: thread.getFormattedMessages(),
         maxRetries,
         maxSteps,
-        experimental_repairText: async ({text, error}) => {
-          console.log('repairing text', text, error)
-          return text;
-        },
         schema: input.schema,
         ...this.callSettings,
       });
@@ -164,7 +151,7 @@ export class Agent {
     }
 
     const result = await generateText({
-      model: this.model,
+      model,
       system: this.getSystemPrompt(),
       messages: thread.getFormattedMessages(),
       tools: this.tools,

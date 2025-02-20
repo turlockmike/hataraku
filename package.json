@@ -61,6 +61,7 @@
     "example:math": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/math-simple.ts",
     "example:basic": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/basic-task.ts",
     "example:structured": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/structured-task.ts",
+    "example:structured:openrouter": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/structured-task-openrouter.ts",
     "example:mcp-jira": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/mcp-jira.ts",
     "example:agent-mcp": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/agent-mcp.ts",
     "example:hataraku-mcp": "OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2) tsx src/examples/hataraku-mcp.ts",
@@ -104,7 +105,7 @@
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "2.0.2",
     "@anthropic-ai/sdk": "0.36.3",
-    "@aws-sdk/credential-provider-ini": "3.750.0",
+    "@aws-sdk/credential-providers": "3.750.0",
     "@inquirer/prompts": "^3.3.0",
     "@modelcontextprotocol/sdk": "^1.0.1",
     "@openrouter/ai-sdk-provider": "0.2.2",

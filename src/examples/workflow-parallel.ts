@@ -1,16 +1,10 @@
 import { createWorkflow } from '../core/workflow';
 import { z } from 'zod';
-import { createAgent } from '../core/agent';
 import { createTask } from '../core/task';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { Tool } from 'ai';
 import type { TaskExecutor } from '../core/workflow';
 import chalk from 'chalk';
-
-// Initialize OpenRouter
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
 
 // Define our tools
 const addTool: Tool = {
@@ -47,82 +41,91 @@ const multiplyTool: Tool = {
   }
 };
 
-// Create an agent for our math operations
-const mathAgent = createAgent({
-  name: 'Math Agent',
-  description: 'An agent that performs mathematical operations',
-  role: 'You are a mathematical computation agent that performs precise calculations. Always use the provided tools for calculations.',
-  model: openrouter.chat('anthropic/claude-3.5-sonnet'),
-  tools: {
-    add: addTool,
-    multiply: multiplyTool
-  }
-});
+// Initialize agent and tasks
+const initializeTasks = async () => {
+  // Create an agent for our math operations using base configuration
+  const mathAgent = await createBaseAgent({
+    name: 'Math Agent',
+    description: DESCRIPTIONS.MATH,
+    role: ROLES.MATH,
+    tools: {
+      add: addTool,
+      multiply: multiplyTool
+    }
+  });
 
-// Define our input/output schemas
-const mathInputSchema = z.object({
-  a: z.number(),
-  b: z.number()
-});
+  // Define our input/output schemas
+  const mathInputSchema = z.object({
+    a: z.number(),
+    b: z.number()
+  });
 
-const mathOutputSchema = z.number();
+  const mathOutputSchema = z.number();
 
-// Define our task executors as proper Task instances
-const addNumbersTask = createTask({
-  name: 'Add Numbers',
-  description: 'Adds two numbers together',
-  agent: mathAgent,
-  outputSchema: mathOutputSchema,
-  task: (input: z.infer<typeof mathInputSchema>) => 
-    `Use the add tool to add these numbers: ${input.a} and ${input.b}`
-});
+  const numbersToWordsSchema = z.object({
+    number: z.number()
+  });
 
-const multiplyNumbersTask = createTask({
-  name: 'Multiply Numbers',
-  description: 'Multiplies two numbers together',
-  agent: mathAgent,
-  outputSchema: mathOutputSchema,
-  task: (input: z.infer<typeof mathInputSchema>) => 
-    `Use the multiply tool to multiply these numbers: ${input.a} and ${input.b}`
-});
+  // Define our task executors as proper Task instances
+  const addNumbersTask = createTask({
+    name: 'Add Numbers',
+    description: 'Adds two numbers together',
+    agent: mathAgent,
+    outputSchema: mathOutputSchema,
+    inputSchema: mathInputSchema,
+    task: (input) => 
+      `Use the add tool to add these numbers: ${input.a} and ${input.b}`
+  });
 
-const numbersToWordsSchema = z.object({
-  number: z.number()
-});
+  const multiplyNumbersTask = createTask({
+    name: 'Multiply Numbers',
+    description: 'Multiplies two numbers together',
+    agent: mathAgent,
+    outputSchema: mathOutputSchema,
+    task: (input: z.infer<typeof mathInputSchema>) => 
+      `Use the multiply tool to multiply these numbers: ${input.a} and ${input.b}`
+  });
 
-const numbersToWordsTask = createTask({
-  name: 'Numbers to Words',
-  description: 'Converts a number to its word representation',
-  agent: mathAgent,
-  outputSchema: z.string(),
-  task: (input: z.infer<typeof numbersToWordsSchema>) => 
-    `convert this number to its word representation: ${input.number}`
-});
+  const numbersToWordsTask = createTask({
+    name: 'Numbers to Words',
+    description: 'Converts a number to its word representation',
+    agent: mathAgent,
+    outputSchema: z.string(),
+    task: (input: z.infer<typeof numbersToWordsSchema>) => 
+      `convert this number to its word representation: ${input.number}`
+  });
 
-// Create task executor wrappers that match the TaskExecutor interface
-const addNumbers: TaskExecutor<z.infer<typeof mathInputSchema>, number> = 
-  async (input) => {
-    console.log(chalk.yellow(`📝 Starting addition task: ${input.a} + ${input.b}`));
-    const result = Number(await addNumbersTask.run(input));
-    console.log(chalk.green(`✅ Addition complete: ${result}`));
-    return result;
+  // Create task executor wrappers that match the TaskExecutor interface
+  const addNumbers: TaskExecutor<z.infer<typeof mathInputSchema>, number> = 
+    async (input) => {
+      console.log(chalk.yellow(`📝 Starting addition task: ${input.a} + ${input.b}`));
+      const result = Number(await addNumbersTask.run(input));
+      console.log(chalk.green(`✅ Addition complete: ${result}`));
+      return result;
+    };
+
+  const multiplyNumbers: TaskExecutor<z.infer<typeof mathInputSchema>, number> = 
+    async (input) => {
+      console.log(chalk.yellow(`📝 Starting multiplication task: ${input.a} × ${input.b}`));
+      const result = Number(await multiplyNumbersTask.run(input));
+      console.log(chalk.green(`✅ Multiplication complete: ${result}`));
+      return result;
+    };
+
+  const numbersToWords: TaskExecutor<z.infer<typeof numbersToWordsSchema>, string> = 
+    async (input) => {
+      console.log(chalk.yellow(`📝 Starting number to words conversion: ${input.number}`));
+      const result = await numbersToWordsTask.run(input);
+      console.log(chalk.green(`✅ Conversion complete: "${result}"`));
+      return result;
+    };
+
+  return {
+    addNumbers,
+    multiplyNumbers,
+    numbersToWords
   };
-
-const multiplyNumbers: TaskExecutor<z.infer<typeof mathInputSchema>, number> = 
-  async (input) => {
-    console.log(chalk.yellow(`📝 Starting multiplication task: ${input.a} × ${input.b}`));
-    const result = Number(await multiplyNumbersTask.run(input));
-    console.log(chalk.green(`✅ Multiplication complete: ${result}`));
-    return result;
-  };
-
-const numbersToWords: TaskExecutor<z.infer<typeof numbersToWordsSchema>, string> = 
-  async (input) => {
-    console.log(chalk.yellow(`📝 Starting number to words conversion: ${input.number}`));
-    const result = await numbersToWordsTask.run(input);
-    console.log(chalk.green(`✅ Conversion complete: "${result}"`));
-    return result;
-  };
+};
 
 // Define our workflow output schema
 const mathResultSchema = z.object({
@@ -136,6 +139,9 @@ type MathResult = z.infer<typeof mathResultSchema>;
 
 async function main() {
   console.log(chalk.cyan('\n🚀 Starting parallel math workflow\n'));
+
+  // Initialize tasks
+  const tasks = await initializeTasks();
 
   // Create our workflow
   const mathWorkflow = createWorkflow<{ pairs: [number, number][] }>({
@@ -155,7 +161,7 @@ async function main() {
     const [firstSum, secondSum] = await w.parallel([
       {
         name: 'First Addition',
-        task: addNumbers,
+        task: tasks.addNumbers,
         input: { 
           a: w.input.pairs[0][0], 
           b: w.input.pairs[0][1] 
@@ -163,7 +169,7 @@ async function main() {
       },
       {
         name: 'Second Addition',
-        task: addNumbers,
+        task: tasks.addNumbers,
         input: { 
           a: w.input.pairs[1][0], 
           b: w.input.pairs[1][1] 
@@ -176,7 +182,7 @@ async function main() {
     // Multiply the results
     const finalProduct = await w.task(
       'Multiply Results',
-      multiplyNumbers,
+      tasks.multiplyNumbers,
       { a: firstSum, b: secondSum }
     );
 
@@ -185,7 +191,7 @@ async function main() {
     // Convert to words
     const inWords = await w.task(
       'In Words',
-      numbersToWords,
+      tasks.numbersToWords,
       { number: finalProduct }
     );
 
@@ -211,7 +217,7 @@ async function main() {
   console.log(chalk.gray(`   Second pair: ${input.pairs[1][0]} + ${input.pairs[1][1]}\n`));
 
   const result = await mathWorkflow.run(input, {
-    schema: mathResultSchema
+    outputSchema: mathResultSchema
   });
 
   console.log(chalk.cyan('\n📊 Final Results:'));

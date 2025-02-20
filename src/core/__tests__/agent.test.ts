@@ -317,7 +317,7 @@ describe('Agent', () => {
         role: 'You are a test agent',
         description: 'A test agent',
         model: new MockLanguageModelV1({
-          defaultObjectGenerationMode: 'json',
+          // defaultObjectGenerationMode: 'json',
           doGenerate: async (options) => {
             // If mode is object-json, return a valid JSON object
             if (options.mode?.type === 'object-json') {
@@ -328,7 +328,22 @@ describe('Agent', () => {
                 rawCall: { rawPrompt: null, rawSettings: {} }
               };
             }
-            // Otherwise return a tool call
+            else if (options.mode?.type === 'object-tool') {
+              return {
+                text: 'Tool response',
+                toolCalls: [{
+                  toolCallId: 'call-1',
+                  toolCallType: 'function',
+                  toolName: 'mock_tool',
+                  args: JSON.stringify({ input: 'test input' })
+                }],
+                finishReason: 'stop',
+                usage: { promptTokens: 10, completionTokens: 20 },
+                rawCall: { rawPrompt: null, rawSettings: {} }
+              };
+            }
+            
+            // Otherwise mode is regular
             return {
               text: 'Tool response',
               toolCalls: [{
