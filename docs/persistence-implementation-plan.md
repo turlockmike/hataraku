@@ -1,5 +1,66 @@
 # Persistence Implementation Plan
 
+## Implementation Checklist
+
+### 1. Setup Configuration Directory Structure
+- [ ] Implement XDG base directory support
+- [ ] Create directory structure helpers
+- [ ] Add configuration path resolution
+
+### 2. Profile Management System
+- [ ] Implement profile configuration schema
+- [ ] Create profile CRUD operations
+- [ ] Add profile activation/switching
+- [ ] Implement profile inheritance
+
+### 3. External Tool Configuration
+- [ ] Implement MCP server configuration loading
+- [ ] Add environment variable interpolation
+- [ ] Create tool enable/disable functionality
+- [ ] Add validation for tool configurations
+
+### 4. Agent Configuration System
+- [ ] Implement agent configuration schema
+- [ ] Create agent CRUD operations
+- [ ] Add built-in tool resolution ('hataraku')
+- [ ] Implement agent validation
+
+### 5. Task Configuration System
+- [ ] Implement task configuration schema
+- [ ] Create task CRUD operations
+- [ ] Add task template processing
+- [ ] Implement input schema validation
+
+### 6. CLI Integration
+- [ ] Update CLI to use profile system
+- [ ] Add profile management commands
+- [ ] Implement configuration override handling
+- [ ] Add configuration validation commands
+
+### 7. Configuration Loading
+- [ ] Implement ConfigLoader
+- [ ] Add effective configuration resolution
+- [ ] Implement configuration inheritance
+- [ ] Add validation system
+
+### 8. First Run Experience
+- [ ] Create FirstRunManager
+- [ ] Implement default profile creation
+- [ ] Add setup wizard
+- [ ] Create initial configuration templates
+
+### 9. Testing & Validation
+- [ ] Add configuration schema tests
+- [ ] Create validation test suite
+- [ ] Add integration tests
+- [ ] Implement compatibility checks
+
+### 10. Documentation
+- [ ] Create user guide for configuration
+- [ ] Add profile management documentation
+- [ ] Document built-in tools
+- [ ] Add configuration examples
+
 ## Overview
 
 This document outlines the implementation plan for persistence in Hataraku, focusing on configuration management for tools (MCP servers), tasks, and agents. The system follows the XDG Base Directory Specification and integrates with existing patterns.
@@ -475,3 +536,64 @@ interface ValidationResult {
   warnings: ValidationWarning[];
 }
 ```
+
+## Implementation Tasks
+
+1. **Setup Configuration Directory Structure**
+   - Implement XDG base directory support
+   - Create directory structure helpers
+   - Add configuration path resolution
+
+2. **Profile Management System**
+   - Implement profile configuration schema
+   - Create profile CRUD operations
+   - Add profile activation/switching
+   - Implement profile inheritance
+
+3. **External Tool Configuration**
+   - Implement MCP server configuration loading
+   - Add environment variable interpolation
+   - Create tool enable/disable functionality
+   - Add validation for tool configurations
+
+4. **Agent Configuration System**
+   - Implement agent configuration schema
+   - Create agent CRUD operations
+   - Add built-in tool resolution ('hataraku')
+   - Implement agent validation
+
+5. **Task Configuration System**
+   - Implement task configuration schema
+   - Create task CRUD operations
+   - Add task template processing
+   - Implement input schema validation
+
+6. **CLI Integration**
+   - Update CLI to use profile system
+   - Add profile management commands
+   - Implement configuration override handling
+   - Add configuration validation commands
+
+7. **Configuration Loading**
+   - Implement ConfigLoader
+   - Add effective configuration resolution
+   - Implement configuration inheritance
+   - Add validation system
+
+8. **First Run Experience**
+   - Create FirstRunManager
+   - Implement default profile creation
+   - Add setup wizard
+   - Create initial configuration templates
+
+9. **Testing & Validation**
+   - Add configuration schema tests
+   - Create validation test suite
+   - Add integration tests
+   - Implement compatibility checks
+
+10. **Documentation**
+    - Create user guide for configuration
+    - Add profile management documentation
+    - Document built-in tools
+    - Add configuration examples

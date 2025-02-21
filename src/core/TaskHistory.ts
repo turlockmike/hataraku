@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
+import { getConfigPaths } from '../config/configPaths';
 
 export interface HistoryEntry {
     taskId: string;
@@ -54,9 +55,8 @@ export class TaskHistory {
     private historyDir: string;
 
     constructor() {
-        // Use XDG_DATA_HOME if set, otherwise default to ~/.local/share
-        const xdgDataHome = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
-        this.historyDir = path.join(xdgDataHome, 'hataraku', 'logs');
+        const paths = getConfigPaths();
+        this.historyDir = paths.logsDir;
     }
 
     private async ensureHistoryDir(): Promise<void> {
