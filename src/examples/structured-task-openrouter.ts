@@ -1,12 +1,21 @@
 import chalk from 'chalk';
 import { createAnalyzerTasks } from './agents/analyzer';
+import { createOpenRouterChat } from './providers/openrouter';
 
 async function main() {
-  console.log(chalk.cyan('\n📊 Text Analysis Example (Tools + Schema)\n'));
+  // Get OpenRouter API key from environment
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    console.error('Please set OPENROUTER_API_KEY environment variable');
+    process.exit(1);
+  }
+
+  console.log(chalk.cyan('\n📊 Text Analysis Example (Tools + Schema) using OpenRouter\n'));
 
   try {
-    // Initialize analyzer tasks
-    const analyzerTasks = await createAnalyzerTasks();
+    // Initialize analyzer tasks with OpenRouter model
+    const model = createOpenRouterChat(apiKey);
+    const analyzerTasks = await createAnalyzerTasks(model);
     
     // Input
     const text = `
@@ -44,4 +53,4 @@ async function main() {
   }
 }
 
-main();
+main(); 

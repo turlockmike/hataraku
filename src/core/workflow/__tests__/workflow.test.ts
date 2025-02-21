@@ -59,7 +59,7 @@ describe('Workflow', () => {
     name: 'Analyze Code',
     description: 'Analyzes code changes',
     agent: mockAgent,
-    schema: analysisSchema,
+    outputSchema: analysisSchema,
     task: (input: z.infer<typeof workflowInputSchema>) => 
       `Analyze this code: ${input.diff}`
   });
@@ -68,7 +68,7 @@ describe('Workflow', () => {
     name: 'Security Check',
     description: 'Checks for security issues',
     agent: mockAgent,
-    schema: securitySchema,
+    outputSchema: securitySchema,
     task: (input: { diff: string; complexity: number }) => 
       `Check security for: ${input.diff} with complexity ${input.complexity}`
   });
@@ -117,18 +117,6 @@ describe('Workflow', () => {
       expect(workflow.description).toBe('A test workflow');
     });
 
-    test('should throw error if input fails schema validation', async () => {
-      const workflow = createWorkflow({
-        name: 'Validated Workflow',
-        description: 'A workflow with input validation'
-      }, async (w) => ({
-        analysis: mockAnalysisResponse
-      }));
-
-      await expect(workflow.execute({} as any, { schema: workflowInputSchema }))
-        .rejects
-        .toThrow('Validation error');
-    });
 
     test('should throw error if output fails schema validation', async () => {
       const workflow = createWorkflow({
@@ -136,7 +124,7 @@ describe('Workflow', () => {
         description: 'A workflow with output validation'
       }, async (w) => ({} as any));
 
-      await expect(workflow.execute({ diff: 'test' }, { schema: workflowOutputSchema }))
+      await expect(workflow.run({ diff: 'test' }, { outputSchema: workflowOutputSchema }))
         .rejects
         .toThrow('Validation error');
     });
@@ -190,7 +178,7 @@ describe('Workflow', () => {
         };
       });
 
-      await workflow.execute({ diff: 'test code' });
+      await workflow.run({ diff: 'test code' });
 
       expect(eventLog).toHaveLength(6);
       expect(eventLog[0]).toMatchObject({
@@ -240,7 +228,7 @@ describe('Workflow', () => {
         throw new Error('Task failed');
       });
 
-      await expect(workflow.execute({ diff: 'test' }))
+      await expect(workflow.run({ diff: 'test' }))
         .rejects
         .toThrow('Workflow \'Error Workflow\' failed: Task failed');
 
@@ -280,7 +268,7 @@ describe('Workflow', () => {
       });
 
       const testInput = { diff: 'test code changes' };
-      const result = await workflow.execute(testInput);
+      const result = await workflow.run(testInput);
 
       // Verify task execution order
       expect(analyzeCode).toHaveBeenCalledWith(testInput);
@@ -329,7 +317,7 @@ describe('Workflow', () => {
       });
 
       const testInput = { diff: 'test code changes' };
-      const result = await workflow.execute(testInput);
+      const result = await workflow.run(testInput);
 
       // Verify both tasks were called
       expect(analyzeCode).toHaveBeenCalledWith(testInput);
@@ -361,7 +349,7 @@ describe('Workflow', () => {
         return {};
       });
 
-      await expect(workflow.execute({
+      await expect(workflow.run({
         data: 'test input'
       })).rejects.toThrow(`Workflow 'Failing Workflow' failed: Task 'Failing Task' failed: ${error.message}`);
 
@@ -394,7 +382,7 @@ describe('Workflow', () => {
 
       // Test with low complexity
       analyzeCode.mockResolvedValueOnce({ ...mockAnalysisResponse, complexity: 5 });
-      let result = await workflow.execute({ diff: 'simple change' });
+      let result = await workflow.run({ diff: 'simple change' });
       expect(result).toEqual({
         analysis: { ...mockAnalysisResponse, complexity: 5 }
       });
@@ -402,7 +390,7 @@ describe('Workflow', () => {
 
       // Test with high complexity
       analyzeCode.mockResolvedValueOnce({ ...mockAnalysisResponse, complexity: 8 });
-      result = await workflow.execute({ diff: 'complex change' });
+      result = await workflow.run({ diff: 'complex change' });
       expect(result).toEqual({
         analysis: { ...mockAnalysisResponse, complexity: 8 },
         security: mockSecurityResponse
@@ -452,7 +440,7 @@ describe('Workflow', () => {
         return { result };
       });
 
-      const result = await workflow.execute(testInput);
+      const result = await workflow.run(testInput);
       
       // Verify the task was called with correct input values
       expect(calculateResult).toHaveBeenCalledWith({ 
@@ -571,8 +559,8 @@ describe('Workflow', () => {
       });
 
       // Execute workflow
-      const result = await workflow.execute({ diff: 'test code' }, {
-        schema: z.object({
+      const result = await workflow.run({ diff: 'test code' }, {
+        outputSchema: z.object({
           analysis: prAnalysisSchema.extend({}).passthrough(),
           security: securitySchema.extend({
             recommendations: z.array(z.string())

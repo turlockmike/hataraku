@@ -24,7 +24,7 @@ program
     .option('--no-sound', 'Disable sound effects')
     .option('--no-stream', 'Disable streaming responses')
     .option('--region <region>', 'AWS region for Bedrock (defaults to AWS_REGION env var)')
-    .argument('[task]', 'Task or question for the AI assistant')
+    .arguments('[task...]')
     .version(version)
     .addHelpText('after', `
 Examples:
@@ -56,7 +56,7 @@ async function processStreams(textStream: AsyncIterable<string>, options: any) {
     let fullText = '';  // Collect full text for TTS
 
     // Convert AsyncIterable to stream
-    (async () => {
+    const streamPromise = (async () => {
         try {
             for await (const chunk of textStream) {
                 sourceStream.write(chunk);
@@ -67,6 +67,7 @@ async function processStreams(textStream: AsyncIterable<string>, options: any) {
             sourceStream.end();
         } catch (err) {
             sourceStream.destroy(err as Error);
+            throw err; // Re-throw to be caught by the outer try-catch
         }
     })();
 
@@ -79,16 +80,22 @@ async function processStreams(textStream: AsyncIterable<string>, options: any) {
         process.stdout.write(chalk.green(chunk.toString()));
     });
 
-    // Wait for console output to finish
-    await new Promise<void>((resolve) => {
-        consoleStream.on('end', resolve);
-    });
+    // Wait for both the stream processing and console output to finish
+    await Promise.all([
+        streamPromise,
+        new Promise<void>((resolve, reject) => {
+            consoleStream.on('end', resolve);
+            consoleStream.on('error', reject);
+        })
+    ]);
+
+    // Add a newline at the end for better formatting
+    process.stdout.write('\n');
 }
 
 async function main(task?: string) {
     try {
         const options = program.opts();
-
         let model;
         if (options.provider === 'bedrock') {
             // Use AWS Bedrock
@@ -139,6 +146,10 @@ async function main(task?: string) {
                         const result = await agent.task(taskToRun);
                         console.log(result);
                     }
+                    
+                    // Add a small delay to ensure task history is saved
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
                     // Finally play the celebratory audio
                     if (options.sound) {
                         await playAudioTool.execute({ path: 'audio/celebration.wav' }, {toolCallId: 'celebration', messages: []});
@@ -167,11 +178,14 @@ async function main(task?: string) {
                 if (options.stream !== false) {
                     const result = await agent.task(task, { stream: true });
                     await processStreams(result, options);
-                    
                 } else {
                     const result = await agent.task(task);
                     console.log(result);
                 }
+                
+                // Add a small delay to ensure task history is saved
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
                 if (options.sound) {
                     await playAudioTool.execute({ path: 'audio/celebration.wav' }, {toolCallId: 'celebration', messages: []});
                 }

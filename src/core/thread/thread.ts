@@ -249,4 +249,95 @@ export class Thread {
     }
     await this.storage.save(this.state);
   }
+
+  /**
+   * Returns a truncated version of this thread, containing only the most recent messages such that
+   * the estimated token count does not exceed maxTokens. The first message is always preserved.
+   * Each individual message can also be truncated if it exceeds maxTokensPerMessage.
+   * @param maxTokens The maximum number of tokens for the entire thread
+   * @param maxTokensPerMessage Optional maximum number of tokens per individual message (defaults to 50000)
+   */
+  public truncate(maxTokens: number, maxTokensPerMessage: number = 50000): Thread {
+    if (this.state.messages.length === 0) {
+      return new Thread({ state: { ...this.state, messages: [] } });
+    }
+
+    const MAX_CHARS_PER_MESSAGE = maxTokensPerMessage * 4;
+    const MAX_CHARS = maxTokens * 4;
+
+    // Always keep the first message, but truncate it if needed
+    const firstMessage = this.state.messages[0];
+    let firstMessageContent = firstMessage.content;
+    if (firstMessageContent.length > MAX_CHARS) {
+      firstMessageContent = firstMessageContent.slice(0, MAX_CHARS);
+    } else if (firstMessageContent.length > MAX_CHARS_PER_MESSAGE) {
+      firstMessageContent = firstMessageContent.slice(0, MAX_CHARS_PER_MESSAGE);
+    }
+    let tokenCount = Math.ceil(firstMessageContent.length / 4);
+
+    const truncatedMessages: ThreadMessage[] = [
+      { ...firstMessage, content: firstMessageContent }
+    ];
+
+    // If we have more messages and space for at least one more
+    if (this.state.messages.length > 1 && tokenCount < maxTokens) {
+      // Calculate remaining space
+      const remainingTokens = maxTokens - tokenCount;
+      const remainingChars = remainingTokens * 4;
+
+      // Try to fit the last message
+      const lastMessage = this.state.messages[this.state.messages.length - 1];
+      let lastMessageContent = lastMessage.content;
+      
+      // Truncate last message to fit in remaining space if needed
+      if (lastMessageContent.length > remainingChars) {
+        lastMessageContent = lastMessageContent.slice(0, remainingChars);
+      }
+      if (lastMessageContent.length > MAX_CHARS_PER_MESSAGE) {
+        lastMessageContent = lastMessageContent.slice(0, MAX_CHARS_PER_MESSAGE);
+      }
+
+      // Add the last message
+      truncatedMessages.push({ ...lastMessage, content: lastMessageContent });
+      tokenCount += Math.ceil(lastMessageContent.length / 4);
+
+      // If we still have space, try to add more messages from the end
+      const stillRemainingTokens = maxTokens - tokenCount;
+      if (stillRemainingTokens > 0) {
+        for (let i = this.state.messages.length - 2; i > 0; i--) {
+          const message = this.state.messages[i];
+          let content = message.content;
+          if (content.length > MAX_CHARS_PER_MESSAGE) {
+            content = content.slice(0, MAX_CHARS_PER_MESSAGE);
+          }
+          const messageTokens = Math.ceil(content.length / 4);
+          if (tokenCount + messageTokens > maxTokens) {
+            break;
+          }
+          tokenCount += messageTokens;
+          truncatedMessages.push({ ...message, content });
+        }
+      }
+
+      // Reverse the remaining messages to restore chronological order
+      // (excluding the first message which is already in position)
+      const remainingMessages = truncatedMessages.slice(1).reverse();
+      return new Thread({
+        state: {
+          ...this.state,
+          messages: [truncatedMessages[0], ...remainingMessages],
+          updated: new Date()
+        }
+      });
+    }
+
+    // If we can't fit any more messages, just return the truncated first message
+    return new Thread({
+      state: {
+        ...this.state,
+        messages: truncatedMessages,
+        updated: new Date()
+      }
+    });
+  }
 } 

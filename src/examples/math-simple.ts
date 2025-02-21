@@ -1,10 +1,13 @@
 import chalk from 'chalk';
-import { mathTasks } from './agents/math';
+import { createMathTasks } from './agents/math';
 
 async function main() {
   console.log(chalk.cyan('\n🚀 Starting math operations\n'));
 
   try {
+    // Initialize math tasks
+    const mathTasks = await createMathTasks();
+    
     // Input values
     const firstPair = [3, 4];
     const secondPair = [5, 6];
@@ -16,19 +19,19 @@ async function main() {
     // Perform additions in parallel
     console.log(chalk.cyan('\n📊 Executing additions...'));
     const [firstSum, secondSum] = await Promise.all([
-      mathTasks.add.execute({ a: firstPair[0], b: firstPair[1] }),
-      mathTasks.add.execute({ a: secondPair[0], b: secondPair[1] })
+      mathTasks.add.run({ a: firstPair[0], b: firstPair[1] }),
+      mathTasks.add.run({ a: secondPair[0], b: secondPair[1] })
     ]);
     console.log(chalk.gray(`   First addition: ${firstPair[0]} + ${firstPair[1]} = ${firstSum}`));
     console.log(chalk.gray(`   Second addition: ${secondPair[0]} + ${secondPair[1]} = ${secondSum}`));
     console.log(chalk.cyan('\n📊 Multiplying results...'));
-    const finalProduct = Number(await mathTasks.multiply.execute({ 
+    const finalProduct = Number(await mathTasks.multiply.run({ 
       a: firstSum, 
       b: secondSum 
     }));
 
     console.log(chalk.cyan('\n📊 Converting to words...'));
-    const inWords = await mathTasks.toWords.execute({ 
+    const inWords = await mathTasks.toWords.run({ 
       number: finalProduct 
     });
 
@@ -45,4 +48,4 @@ async function main() {
   }
 }
 
-main()
+main();

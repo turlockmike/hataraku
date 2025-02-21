@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { createAgent } from '../../core/agent';
 import { createTask } from '../../core/task';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { Tool } from 'ai';
+import { createBaseAgent, ROLES, DESCRIPTIONS } from './base';
+import { LanguageModelV1 } from 'ai';
 
 // Define analysis tools
 const analyzerTools = {
@@ -81,19 +81,16 @@ const analyzerTools = {
   } as Tool
 };
 
-// Initialize OpenRouter
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY || '',
-});
-
 // Create analyzer agent with tools
-export const analyzerAgent = createAgent({
-  name: 'Text Analyzer',
-  description: 'An agent that analyzes text content and provides detailed insights',
-  role: 'You are a text analysis expert who provides detailed insights about text content. Always use the provided tools for analysis.',
-  model: openrouter.chat('anthropic/claude-3-opus-20240229'),
-  tools: analyzerTools
-});
+export const initializeAnalyzer = async (model?: LanguageModelV1 | Promise<LanguageModelV1>) => {
+  return createBaseAgent({
+    name: 'Text Analyzer',
+    description: DESCRIPTIONS.ANALYST,
+    role: ROLES.ANALYST,
+    tools: analyzerTools,
+    model
+  });
+};
 
 // Define analysis result schema
 export const analysisSchema = z.object({
@@ -111,13 +108,16 @@ export const analysisSchema = z.object({
 export type AnalysisResult = z.infer<typeof analysisSchema>;
 
 // Create analyzer tasks
-export const analyzerTasks = {
-  analyze: createTask<AnalysisResult>({
-    name: 'Analyze Text',
-    description: 'Analyzes text content and provides structured insights',
-    agent: analyzerAgent,
-    outputSchema: analysisSchema,
-    task: (input) => `
+export const createAnalyzerTasks = async (model?: LanguageModelV1 | Promise<LanguageModelV1>) => {
+  const analyzerAgent = await initializeAnalyzer(model);
+  
+  return {
+    analyze: createTask<AnalysisResult>({
+      name: 'Analyze Text',
+      description: 'Analyzes text content and provides structured insights',
+      agent: analyzerAgent,
+      outputSchema: analysisSchema,
+      task: (input) => `
 Analyze this text using the provided tools:
 ${input}
 
@@ -133,5 +133,6 @@ Return the following information:
 - summary: (your brief summary of the text)
 - topThemes: (list of main themes you identified)
 `
-  })
+    })
+  };
 }; 

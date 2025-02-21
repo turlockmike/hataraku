@@ -1,25 +1,15 @@
-import { CoreMessage } from 'ai';
 import { Agent } from '../core/agent';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import chalk from 'chalk';
 import { MemoryThreadStorage } from '../core/thread';
-
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
 
 async function main() {
-  // Create agent config with OpenRouter/Sonnet model
-  const config = {
+  // Create agent using our base configuration
+  const agent = createBaseAgent({
     name: 'Thread Reuse Example',
-    model: openrouter.chat('google/gemini-2.0-flash-lite-preview-02-05:free'),
-    tools: {}, // No tools needed for this example
     role: 'You are a helpful assistant that can answer questions. Be friendly but concise.',
     description: 'You are a helpful assistant that can answer questions.'
-  };
-
-  // Create and initialize agent
-  const agent = new Agent(config);
+  });
 
   const threadStorage = new MemoryThreadStorage();
   const thread = threadStorage.create();

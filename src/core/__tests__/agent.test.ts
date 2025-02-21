@@ -149,13 +149,13 @@ describe('Agent', () => {
             // If mode is object-json, return a valid JSON object
             if (options.mode?.type === 'object-json') {
               return {
-                text: JSON.stringify({ content: 'Hello, world!' }),
+                text: JSON.stringify({ content: 'Executed mock tool with input: test input' }),
                 finishReason: 'stop',
                 usage: { promptTokens: 10, completionTokens: 20 },
                 rawCall: { rawPrompt: null, rawSettings: {} }
               };
             }
-            // Otherwise return a tool call
+            // For tool calls
             return {
               text: 'Using tool...',
               toolCalls: [{
@@ -182,7 +182,7 @@ describe('Agent', () => {
       });
 
       expect(result).toEqual({
-        content: 'Hello, world!'
+        content: 'Executed mock tool with input: test input'
       });
     });
 
@@ -319,7 +319,7 @@ describe('Agent', () => {
         model: new MockLanguageModelV1({
           defaultObjectGenerationMode: 'json',
           doGenerate: async (options) => {
-            // If mode is object-json, return a valid JSON object
+            // For object generation mode
             if (options.mode?.type === 'object-json') {
               return {
                 text: JSON.stringify({ content: 'Executed mock tool with input: test input' }),
@@ -328,9 +328,9 @@ describe('Agent', () => {
                 rawCall: { rawPrompt: null, rawSettings: {} }
               };
             }
-            // Otherwise return a tool call
+            // For tool calls
             return {
-              text: 'Tool response',
+              text: 'Using tool...',
               toolCalls: [{
                 toolCallId: 'call-1',
                 toolCallType: 'function',

@@ -1,22 +1,15 @@
 import assert from 'node:assert';
 import { Agent } from '../core/agent';
 import { z } from 'zod';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
 
 async function main() {
   // Initialize the agent with basic configuration
-  const agent = new Agent({
+  const agent = createBaseAgent({
     name: 'schema-validation-example',
-    model: openrouter.chat('anthropic/claude-3.5-sonnet'),
-    tools: {}, // No tools needed for this example
     role: 'You are a helpful assistant that provides structured data.',
     description: 'You are a helpful assistant that provides structured data.'
   });
-  
 
   const simpleSchema = z.object({
     firstName: z.string(),
@@ -37,7 +30,6 @@ async function main() {
 
   // Generate a pretty print of the result
   console.log(JSON.stringify(result, null, 2));
-
 }
 
 // Run the examples

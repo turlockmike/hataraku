@@ -1,29 +1,20 @@
-import { Agent, AgentConfig } from '../agent';
-import { ALL_TOOLS } from '../tools';
+import { LanguageModelV1 } from 'ai';
+import { createAgent } from '../agent';
 import { getEnvironmentInfo, getAgentRules } from '../prompts';
+import { TaskHistory } from '../TaskHistory';
+import { ALL_TOOLS } from '../tools';
 
-export function createCLIAgent(model: any, apiKey?: string): Agent {
-    const environmentInfo = getEnvironmentInfo();
-    const rules = getAgentRules();
-    
-    const config: AgentConfig = {
-        name: 'Hataraku CLI Agent',
-        description: 'A helpful AI assistant that can perform various tasks and answer questions',
-        role: `You are a helpful AI assistant that can perform various tasks and answer questions.
-              You should be friendly but professional, and provide clear and concise responses.
-              When working with code, you should follow best practices and provide explanations.
-              You have access to various tools for working with files, executing commands, and more.
-              Use these tools when appropriate to help accomplish tasks.
-
-              ${environmentInfo}
-              ${rules}`,
-        model,
-        tools: ALL_TOOLS,
-        callSettings: {
-            temperature: 0.7,
-            maxTokens: 2000,
-        }
-    };
-
-    return new Agent(config);
+export function createCLIAgent(model: LanguageModelV1 | Promise<LanguageModelV1>) {
+  return createAgent({
+    name: 'CLI Agent',
+    description: 'A helpful CLI agent that can answer questions and perform tasks',
+    role: `
+${getAgentRules()}
+${getEnvironmentInfo()}`,
+    model,
+    taskHistory: new TaskHistory(),
+    tools: ALL_TOOLS,
+    callSettings: {
+    }
+  });
 } 

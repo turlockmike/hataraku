@@ -1,22 +1,18 @@
-import { Agent, AgentConfig } from '../core/agent';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+import { Agent } from '../core/agent';
+import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
+import { createBedrockChat } from './providers/bedrock';
 
 async function main() {
-  // Create agent config with OpenRouter/Sonnet model
-  const config = {
-    name: 'Streaming Task Agent',
-    model: openrouter.chat('google/gemini-2.0-flash-lite-preview-02-05:free'),
-    tools: {}, // No tools needed for this simple task
-    role: 'You are a helpful assistant that can write poems.',
-    description: 'You are a helpful assistant that can write poems.'
-  };
+  // Create a model instance
+  const model = createBedrockChat();
 
-  // Create and initialize agent
-  const agent = new Agent(config);
+  // Create agent using our base configuration with explicit model
+  const agent = await createBaseAgent({
+    name: 'Streaming Task Agent',
+    role: ROLES.POET,
+    description: DESCRIPTIONS.POET,
+    model // Explicitly provide the model
+  });
 
   try {
     // Execute task with streaming

@@ -1,262 +1,112 @@
 # Hataraku
 
-An autonomous coding agent for building AI-powered development tools. The name "Hataraku" (働く) means "to work" in Japanese.
+An autonomous coding agent and SDK for building AI-powered development tools. The name "Hataraku" (働く) means "to work" in Japanese.
+
+[![npm version](https://badge.fury.io/js/hataraku.svg)](https://badge.fury.io/js/hataraku)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## Description
+
+Hataraku is a powerful toolkit that enables the creation of AI-powered development tools and autonomous coding agents. It provides a flexible SDK and CLI for building intelligent development workflows, code analysis, and automation tasks.
+
+## Key Features
+
+- 🤖 Autonomous coding agent capabilities
+- 🛠️ Extensible SDK for building AI-powered tools
+- 📦 Support for multiple AI providers (OpenRouter, Claude, Amazon Bedrock)
+- 🔄 Workflow automation and parallel task execution
+- 📊 Schema validation and structured tasks
+- 🧰 Built-in tool integration system
+- 🔗 Model Context Protocol (MCP) support
 
 ## Installation
 
 ```bash
-# Install globally via npm
-npm install -g hataraku
+# Using npm
+npm install hataraku
 
-# Or run directly with npx
-npx hataraku
-```
+# Using yarn
+yarn add hataraku
 
-## Environment Setup
-
-Before using Hataraku, make sure to set your API key for your chosen provider:
-
-```bash
-# For OpenRouter (default)
-export OPENROUTER_API_KEY=your_api_key_here
-
-# Or for Anthropic
-export ANTHROPIC_API_KEY=your_api_key_here
-
-# Or for OpenAI
-export OPENAI_API_KEY=your_api_key_here
+# Using pnpm
+pnpm add hataraku
 ```
 
 ## Quick Start
 
-```bash
-# Run a task
-hataraku "create a react component that..."
-
-# Interactive Mode (prompts for tasks)
-hataraku -i
-
-# With specific provider and model
-hataraku --provider anthropic --model claude-3 "optimize this function..."
-
-# List recent task history
-hataraku --list-history
-
-# Run without sound effects
-hataraku --no-sound "create a test file"
-```
-
-## CLI Options
-
-- `-p, --provider <provider>` - API provider to use (openrouter, anthropic, openai) [default: openrouter]
-- `-m, --model <model>` - Model ID for the provider [default: anthropic/claude-3.5-sonnet]
-- `-k, --api-key <key>` - API key for the provider (can also use environment variables)
-- `-a, --max-attempts <number>` - Maximum number of consecutive mistakes before exiting [default: 3]
-- `-l, --list-history` - List recent tasks from history
-- `-i, --interactive` - Run in interactive mode, prompting for tasks
-- `--no-sound` - Disable sound effects
-- `-v, --version` - Output the version number
-- `-h, --help` - Display help information
-
-## Features
-
-- Create and edit files with diff view and linting support
-- Execute terminal commands with real-time output monitoring
-- Launch and control browsers for testing and debugging
-- Support for multiple AI providers (OpenRouter, Anthropic, OpenAI, etc.)
-- Built-in tools for file operations, code analysis, and more
-- Interactive mode with follow-up task suggestions
-- Task history tracking and review
-- Sound effects for task completion (can be disabled)
-
-## SDK
-
-Hataraku provides a powerful SDK for building AI-powered development tools and workflows. The SDK includes:
-
-### Core Components
-
-- **Tool**: Define reusable machine executable tools with input/output schemas
-- **Agent**: Create autonomous agents with specific roles and capabilities
-- **Task**: Define reusable tasks with input/output schemas
-- **Workflow**: Build complex workflows with conditional branching and parallel execution
-
-### AI Model Integration
-
-Hataraku integrates with multiple AI providers through the `ai` SDK:
+### Basic Usage
 
 ```typescript
-import { createBedrockProvider } from 'hataraku/providers/bedrock';
-import { LanguageModelV1 } from 'ai';
+import { Task } from 'hataraku';
 
-// Initialize Bedrock provider
-const bedrock = await createBedrockProvider();
-const model = bedrock('anthropic.claude-3-sonnet-20240229-v1:0');
-
-// Or use OpenAI
-import { OpenAI } from 'openai';
-const openai = new OpenAI();
-const model = openai.chat;
-
-// Or use Anthropic directly
-import Anthropic from '@anthropic-ai/sdk';
-const anthropic = new Anthropic();
-const model = anthropic.messages;
-```
-
-### Task Creation Example
-
-```typescript
-import { createAgent, createTask } from 'hataraku';
-import { z } from 'zod';
-
-// Create an agent
-const agent = createAgent({
-  name: 'CodeReviewer',
-  description: 'Reviews code for best practices and issues',
-  role: 'You are an expert code reviewer...',
-  model: model,
-  tools: {
-    // Add custom tools if needed
-    analyzeComplexity: async (code: string) => { /* ... */ }
-  }
+// Create a simple task
+const task = new Task({
+  description: "Write a hello world function",
+  model: "openrouter/anthropic/claude-3-opus"
 });
 
-// Create a task with schema validation
-const reviewTask = createTask({
-  name: 'CodeReview',
-  description: 'Performs detailed code review',
-  agent: agent,
-  schema: z.object({
-    issues: z.array(z.string()),
-    suggestions: z.array(z.string())
-  }),
-  task: (input) => `Review the following code:\n${input}`
-});
-
-// Execute with streaming
-const stream = await reviewTask.execute(codeString, { stream: true });
-for await (const chunk of stream) {
-  console.log(chunk);
-}
+// Execute the task
+const result = await task.execute();
 ```
 
-### Workflow Examples
-
-Build complex workflows with conditional logic and parallel execution:
-
-```typescript
-import { createWorkflow } from 'hataraku';
-
-const refactoringWorkflow = createWorkflow({
-  name: 'CodeRefactoring',
-  description: 'Analyzes and refactors code',
-  async builder(workflow) {
-    // Analyze code complexity
-    const analysis = await workflow.task('analyze', analyzeTask, codeInput);
-    
-    // Conditional branching based on complexity
-    await workflow.when(
-      (results) => results.analysis.complexity > 20,
-      async (builder) => {
-        // Complex code path
-        const plan = await builder.task('plan', planningTask, analysis);
-        const chunks = await builder.task('chunk', chunkingTask, plan);
-        
-        // Run refactoring tasks in parallel
-        const results = await builder.parallel([
-          { name: 'chunk1', task: refactorTask, input: chunks[0] },
-          { name: 'chunk2', task: refactorTask, input: chunks[1] },
-        ]);
-        
-        return builder.success(results);
-      }
-    );
-    
-    // Simple refactoring path
-    const refactored = await workflow.task('refactor', simpleRefactorTask, analysis);
-    return workflow.success(refactored);
-  }
-});
-
-// Execute workflow with schema validation
-const result = await refactoringWorkflow.execute(input, {
-  schema: RefactoringResultSchema
-});
-```
-
-### Features
-
-- Type-safe task definitions with Zod schema validation
-- Support for streaming responses
-- Built-in error handling and retry logic
-- Extensible tool system for custom capabilities
-- Support for multiple AI providers
-- Workflow orchestration with:
-  - Conditional branching
-  - Parallel execution
-  - Error handling
-  - Progress tracking
-  - Schema validation
-
-## MCP (Model Context Protocol)
-
-Hataraku can be run as an MCP server, exposing its capabilities through a standardized protocol:
-
-```typescript
-import { HatarakuMcpServer } from 'hataraku';
-
-// Create and start MCP server
-const server = new HatarakuMcpServer(model);
-await server.start();
-```
-
-### Built-in MCP Tools
-
-1. **Code Analysis**
-   - Analyzes code complexity and issues
-   - Provides improvement suggestions
-   - Identifies technical debt
-
-2. **Bug Analysis**
-   - Analyzes bug reports and stack traces
-   - Provides root cause analysis
-   - Suggests fixes and prevention
-
-3. **PR Review**
-   - Reviews code changes
-   - Provides structured feedback
-   - Identifies potential risks
-
-4. **Refactoring Planning**
-   - Creates structured refactoring plans
-   - Breaks down changes into steps
-   - Assesses risks and effort
-
-### Usage
+### Using the CLI
 
 ```bash
-# Run with stdio transport (default)
-npm run hataraku-mcp
+# Install globally
+npm install -g hataraku
 
+# Run the CLI
+hataraku
 ```
+
+## API Overview
+
+Hataraku provides several core components:
+
+- `Task`: Create and execute AI-powered tasks
+- `Agent`: Build autonomous coding agents
+- `Workflow`: Orchestrate complex multi-step operations
+- `Tools`: Integrate custom capabilities and external services
+
+For detailed API documentation, see the [Types Documentation](docs/types.md).
 
 ## Documentation
 
-- [CLI Documentation](./docs/cli.md)
-- [Examples](./examples/)
+- [Agent Documentation](docs/agent.md) - Learn about autonomous agents
+- [CLI Commands](docs/cli-commands.md) - Available CLI commands and options
+- [MCP Integration](docs/mcp.md) - Model Context Protocol integration
+- [Types Reference](docs/types.md) - Complete type definitions
+- [Workflow Guide](docs/workflow-proposal.md) - Building complex workflows
 
-## Task History
+## Examples
 
-Tasks are automatically saved in `~/.hataraku/logs` and include:
-- Task ID and timestamp
-- Input/output tokens
-- Cost information
-- Full conversation history
+The package includes various examples demonstrating different features:
+
+- Basic task execution
+- Streaming responses
+- Schema validation
+- Multi-step workflows
+- Tool integration
+- Thread management
+
+Run examples using:
+
+```bash
+npm run example:basic
+npm run example:stream
+npm run example:workflow
+# See package.json for more examples
+```
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details on how to get started.
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ## License
 
-[Apache 2.0](./LICENSE)
+MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+- GitHub Issues: [Report bugs or request features](https://github.com/turlockmike/hataraku/issues)
+- Documentation: See the [docs](./docs) directory for detailed guides

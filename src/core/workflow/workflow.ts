@@ -26,25 +26,25 @@ interface WorkflowBuilder<TInput = unknown, TResults extends Record<string, unkn
   
   fail(message: string): never;
 
-  execute(): Promise<TResults>;
+  run(): Promise<TResults>;
 }
 
-export interface WorkflowConfig<TInput = unknown> {
+export interface WorkflowConfig<TInput = unknown, TOutput extends Record<string, unknown> = Record<string, unknown>> {
   name: string;
   description: string;
   // Event handlers
   onTaskStart?: (taskName: string) => void;
   onTaskComplete?: (taskName: string, result: unknown) => void;
   onWorkflowStart?: (workflowName: string, input: TInput) => void;
-  onWorkflowComplete?: (workflowName: string, output: unknown) => void;
+  onWorkflowComplete?: (workflowName: string, output: TOutput) => void;
   onError?: (error: Error) => void;
 }
 
-export interface Workflow<TInput = unknown> {
+export interface Workflow<TInput = unknown, TOutput extends Record<string, unknown> = Record<string, unknown>> {
   name: string;
   description: string;
-  execute(input: TInput): Promise<unknown>;
-  execute<T>(input: TInput, options: { schema: z.ZodType<T> }): Promise<T>;
+  run(input: TInput): Promise<TOutput>;
+  run(input: TInput, options: { outputSchema: z.ZodType<TOutput> }): Promise<TOutput>;
 }
 
 class WorkflowBuilderImpl<TInput = unknown, TResults extends Record<string, unknown> = Record<string, unknown>> implements WorkflowBuilder<TInput, TResults> {
@@ -89,8 +89,9 @@ class WorkflowBuilderImpl<TInput = unknown, TResults extends Record<string, unkn
 
       return result;
     } catch (error) {
+      console.error('Task failed', name, error)
       const taskError = error instanceof Error ? error : new Error(String(error));
-      throw new Error(`Task '${name}' failed: ${taskError.message}`);
+      throw new Error(`Workflow '${this.config.name}' failed: Task '${name}' failed: ${taskError.message}`);
     }
   }
 
@@ -136,7 +137,7 @@ class WorkflowBuilderImpl<TInput = unknown, TResults extends Record<string, unkn
     throw new Error(message);
   }
 
-  async execute(): Promise<TResults> {
+  async run(): Promise<TResults> {
     const results: Record<string, unknown> = {};
 
     for (const task of this.tasks) {
@@ -155,7 +156,7 @@ class WorkflowBuilderImpl<TInput = unknown, TResults extends Record<string, unkn
         if (conditional.condition(results as TResults)) {
           const conditionalBuilder = new WorkflowBuilderImpl<TInput, TResults>(this.config, this.input);
           const builtConditional = conditional.builder(conditionalBuilder);
-          const conditionalResults = await builtConditional.execute();
+          const conditionalResults = await builtConditional.run();
           Object.assign(results, conditionalResults);
         }
       }
@@ -165,13 +166,13 @@ class WorkflowBuilderImpl<TInput = unknown, TResults extends Record<string, unkn
   }
 }
 
-type WorkflowBuilderFunction<TInput> = 
-  (workflow: WorkflowBuilder<TInput>) => Promise<unknown | WorkflowBuilder<TInput>>;
+type WorkflowBuilderFunction<TInput, TOutput extends Record<string, unknown>> = 
+  (workflow: WorkflowBuilder<TInput, TOutput>) => Promise<TOutput | WorkflowBuilder<TInput, TOutput>>;
 
-export function createWorkflow<TInput = unknown>(
-  config: WorkflowConfig<TInput>,
-  builder?: WorkflowBuilderFunction<TInput>
-): Workflow<TInput> {
+export function createWorkflow<TInput = unknown, TOutput extends Record<string, unknown> = Record<string, unknown>>(
+  config: WorkflowConfig<TInput, TOutput>,
+  builder?: WorkflowBuilderFunction<TInput, TOutput>
+): Workflow<TInput, TOutput> {
   if (!config.name) {
     throw new Error('name is required');
   }
@@ -179,7 +180,7 @@ export function createWorkflow<TInput = unknown>(
   return {
     name: config.name,
     description: config.description,
-    execute: async <T = unknown>(input: TInput, options?: { schema: z.ZodType<T> }): Promise<T | unknown> => {
+    run: async (input: TInput, options?: { outputSchema: z.ZodType<TOutput> }): Promise<TOutput> => {
       try {
         // Notify workflow start
         config.onWorkflowStart?.(config.name, input);
@@ -189,38 +190,40 @@ export function createWorkflow<TInput = unknown>(
         }
 
         // Create workflow builder with input
-        const workflowBuilder = new WorkflowBuilderImpl<TInput>(config, input);
+        const workflowBuilder = new WorkflowBuilderImpl<TInput, TOutput>(config, input);
         
         // Execute builder function
         const builderResult = await builder(workflowBuilder);
         
         // Get output
         const output = builderResult instanceof WorkflowBuilderImpl 
-          ? await builderResult.execute()
+          ? await builderResult.run()
           : builderResult;
 
-        // Get output
-        const result = options?.schema ? options.schema.parse(output) : output;
-        
+        // Validate output if schema provided
+        if (options?.outputSchema) {
+          return options.outputSchema.parse(output);
+        }
+
         // Notify workflow completion
-        config.onWorkflowComplete?.(config.name, result);
-        return result;
+        config.onWorkflowComplete?.(config.name, output);
+        
+        return output;
       } catch (error) {
-        // Handle validation errors
+        // Create workflow error
+        const workflowError = error instanceof Error 
+          ? new Error(`Workflow '${config.name}' failed: ${error.message}`)
+          : new Error(`Workflow '${config.name}' failed: ${String(error)}`);
+        
+        // Notify error
+        config.onError?.(workflowError);
+        
+        // Special handling for validation errors
         if (error instanceof z.ZodError) {
-          const validationError = new Error('Validation error: ' + error.message);
-          config.onError?.(validationError);
-          throw validationError;
+          throw new Error('Validation error');
         }
-
-        // Handle other errors
-        if (error instanceof Error) {
-          const workflowError = new Error(`Workflow '${config.name}' failed: ${error.message}`);
-          config.onError?.(workflowError);
-          throw workflowError;
-        }
-
-        throw error;
+        
+        throw workflowError;
       }
     }
   };

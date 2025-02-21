@@ -1,12 +1,7 @@
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { Tool } from 'ai';
-import { Agent } from '../core/agent';
 import { z } from 'zod';
 import chalk from "chalk";
-
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
 
 // A simple Fibonacci calculator tool
 export const fibonacciTool: Tool = {
@@ -51,19 +46,15 @@ async function main() {
   // Get n from command line arguments, default to 10 if not provided
   const n = parseInt(process.argv[2]) || 30;
 
-  // Create agent config with OpenRouter/Sonnet model and our fibonacci tool
-  const config = {
+  // Create agent with our fibonacci tool
+  const agent = await createBaseAgent({
     name: 'Calculator Agent',
-    model: openrouter.chat('anthropic/claude-3.5-sonnet'),
+    role: 'You are a helpful assistant that can calculate the nth Fibonacci number. Use the tools to do any calculations.',
+    description: 'A helpful assistant that can calculate the nth Fibonacci number.',
     tools: {
       fibonacci: fibonacciTool
-    },
-    role: 'You are a helpful assistant that can calculate the nth Fibonacci number. Use the tools to do any calculations.',
-    description: 'A helpful assistant that can calculate the nth Fibonacci number.'
-  };
-
-  // Create and initialize agent
-  const agent = new Agent(config);
+    }
+  });
 
   try {
     console.log(`\nCalculating the ${n}th Fibonacci number...\n`);
@@ -78,4 +69,4 @@ async function main() {
   }
 }
 
-main()
+main();

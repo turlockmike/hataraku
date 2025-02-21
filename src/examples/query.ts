@@ -1,9 +1,5 @@
 import { Agent } from '../core/agent';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
 
 async function main() {
   // Get query from command line arguments
@@ -15,14 +11,11 @@ async function main() {
   }
 
   // Create and initialize agent
-  const agent = new Agent(
-    {
-      name: 'Simple Task Agent',
-      description: 'A simple agent that can answer questions',
-      role: 'You are a helpful assistant that can answer questions',
-      model: openrouter.chat('anthropic/claude-3.5-sonnet')
-    }
-  );
+  const agent = await createBaseAgent({
+    name: 'Simple Task Agent',
+    description: DESCRIPTIONS.ASSISTANT,
+    role: ROLES.ASSISTANT
+  });
 
   try {
     // Execute task and get complete response

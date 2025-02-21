@@ -2,7 +2,10 @@ import {  LanguageModelV1, generateText, generateObject, streamText, ToolSet, Co
 import { z } from 'zod';
 import { AsyncIterableStream } from './types';
 import { Thread } from './thread/thread';
-const DEFAULT_MAX_STEPS = 25;
+import { TaskHistory, HistoryEntry } from './TaskHistory';
+import { v4 as uuid } from 'uuid';
+const DEFAULT_MAX_STEPS = 5;
+const DEFAULT_MAX_RETRIES = 4;
 
 interface CallSettings {
   maxTokens?: number;
@@ -24,9 +27,10 @@ export interface AgentConfig {
   name: string;
   description: string;
   role: string; // System instructions for the agent
-  model: LanguageModelV1;
+  model: LanguageModelV1 | Promise<LanguageModelV1>;
   tools?: ToolSet;
   callSettings?: CallSettings;
+  taskHistory?: TaskHistory;
 }
 
 export interface TaskInput<T = unknown> {
@@ -39,30 +43,26 @@ export interface StreamingTaskResult {
   stream: AsyncGenerator<string>;
 }
 
-
-
 export class Agent {
   public readonly name: string;
   public readonly description: string;
-  public readonly model: LanguageModelV1;
+  private readonly modelPromise: Promise<LanguageModelV1>;
   public readonly tools: ToolSet;
   public readonly callSettings: CallSettings;
   public readonly role: string;
+  private readonly taskHistory?: TaskHistory;
 
   constructor(config: AgentConfig) {
-    this.validateConfig(config);
-    this.callSettings = config.callSettings || {};
-    this.name = config.name;
-    this.description = config.description;
-    this.model = config.model;
-    this.tools = config.tools || {};
-    this.role = config.role;
-  }
-
-  private validateConfig(config: AgentConfig) {
     if (!config.name || config.name.trim() === '') {
       throw new Error('Agent name cannot be empty');
     }
+    this.name = config.name;
+    this.description = config.description;
+    this.modelPromise = Promise.resolve(config.model);
+    this.tools = config.tools || {};
+    this.callSettings = config.callSettings || {};
+    this.role = config.role;
+    this.taskHistory = config.taskHistory;
   }
 
   private getSystemPrompt() {
@@ -86,86 +86,241 @@ export class Agent {
   async task<T>(task: string, input?: TaskInput<T> & { schema: z.ZodType<T>}): Promise<T>;
   async task(task: string, input?: TaskInput ): Promise<string>;
   async task<T>(task: string, input?: TaskInput<T> & { stream?: boolean; schema?: z.ZodType<T>}): Promise<string | AsyncIterableStream<string> | T> {
+    const model = await this.modelPromise;
     const thread = input?.thread || new Thread();
     const maxSteps = this.callSettings.maxSteps || DEFAULT_MAX_STEPS;
+    const maxRetries = this.callSettings.maxRetries || DEFAULT_MAX_RETRIES;
     thread.addMessage('user', task);
+
+    // Create history entry
+    const taskId = uuid();
+    const historyEntry: HistoryEntry = {
+      taskId,
+      timestamp: Date.now(),
+      task,
+      tokensIn: 0,
+      tokensOut: 0,
+      cacheWrites: 0,
+      cacheReads: 0,
+      totalCost: 0,
+      model: model.constructor.name,
+      messages: thread.getMessages()
+        .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+        .map(msg => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content
+        })),
+      debug: {
+        requests: [{
+          timestamp: Date.now(),
+          systemPrompt: this.getSystemPrompt(),
+          messages: thread.getFormattedMessages()
+            .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+            .map(msg => ({
+              role: msg.role as 'user' | 'assistant',
+              content: Array.isArray(msg.content) 
+                ? msg.content.map(part => 'text' in part ? part.text : '').join('')
+                : msg.content
+            }))
+        }],
+        responses: [],
+        toolUsage: []
+      }
+    };
    
     if (input?.stream) {
       const {textStream} = streamText({
-        model: this.model,
+        model,
         system: this.getSystemPrompt(),
         messages: thread.getFormattedMessages(),
         maxSteps,
+        maxRetries,
         tools: this.tools,
         ...this.callSettings,
         onError: (error) => {
-          console.error('Error streaming text', error)
+          console.error('Error streaming text', error);
+          if (this.taskHistory && historyEntry.debug) {
+            historyEntry.debug.responses.push({
+              timestamp: Date.now(),
+              content: error instanceof Error ? error.message : String(error),
+              usage: {
+                tokensIn: 0,
+                tokensOut: 0,
+                cost: 0
+              }
+            });
+            // Add to tool usage for error tracking
+            historyEntry.debug.toolUsage.push({
+              timestamp: Date.now(),
+              tool: 'stream',
+              params: {},
+              result: error instanceof Error ? error.message : String(error),
+              error: true
+            });
+            this.taskHistory.saveTask(historyEntry).catch(console.error);
+          }
         },
         onFinish: (result) => {
           thread.addMessage('assistant', result.text);
-          
+          if (this.taskHistory && historyEntry.debug) {
+            historyEntry.debug.responses.push({
+              timestamp: Date.now(),
+              content: result.text,
+              usage: {
+                tokensIn: result.usage?.promptTokens || 0,
+                tokensOut: result.usage?.completionTokens || 0,
+                cost: 0 // Cost calculation would need provider-specific logic
+              }
+            });
+            historyEntry.tokensIn += result.usage?.promptTokens || 0;
+            historyEntry.tokensOut += result.usage?.completionTokens || 0;
+            this.taskHistory.saveTask(historyEntry).catch(console.error);
+          }
         }
       });
 
       return textStream;
     }
 
-    // Currently ai-sdk doesn't support generating objects with tools, so we do a two-step process:
-    // 1. Generate text
-    // 2. Generate object from text
-    if (Object.keys(this.tools).length > 0 && input?.schema) {
-      const result = await generateText({
-        model: this.model,
-        system: this.getSystemPrompt(),
-        messages: thread.getFormattedMessages(),
-        maxSteps,
-        tools: this.tools,
-        ...this.callSettings,
-      })
-      thread.addMessage('assistant', result.text);
-      thread.addMessage('user', 'Based on the last response, please create a response that matches the schema provided. It must be valid JSON and match the schema exactly.')
-      const { object } = await generateObject({
-        model: this.model,
-        mode: 'json', // For some reason it doesn't work without this value.
-        system: this.getSystemPrompt(),
-        messages: thread.getFormattedMessages(),
-        maxRetries: 2,
-        maxSteps,
-        schema: input.schema,
-        ...this.callSettings,
-      });
+    try {
+      let result;
+      if (Object.keys(this.tools).length > 0 && input?.schema) {
+        result = await generateText({
+          model,
+          system: this.getSystemPrompt(),
+          messages: thread.getFormattedMessages(),
+          maxSteps,
+          maxRetries,
+          tools: this.tools,
+          ...this.callSettings,
+        });
+        thread.addMessage('assistant', result.text);
+        thread.addMessage('user', 'Based on the last response, please create a response that matches the schema provided. It must be valid JSON and match the schema exactly.');
+        
+        if (this.taskHistory && historyEntry.debug) {
+          historyEntry.debug.responses.push({
+            timestamp: Date.now(),
+            content: result.text,
+            usage: {
+              tokensIn: result.usage?.promptTokens || 0,
+              tokensOut: result.usage?.completionTokens || 0,
+              cost: 0
+            }
+          });
+          historyEntry.tokensIn += result.usage?.promptTokens || 0;
+          historyEntry.tokensOut += result.usage?.completionTokens || 0;
+        }
+
+        const { object } = await generateObject({
+          model,
+          system: this.getSystemPrompt(),
+          messages: thread.getFormattedMessages(),
+          maxRetries,
+          maxSteps,
+          schema: input.schema,
+          ...this.callSettings,
+        });
 
         thread.addMessage('assistant', JSON.stringify(object));
-      return object;
-    }
+        
+        if (this.taskHistory && historyEntry.debug) {
+          historyEntry.debug.responses.push({
+            timestamp: Date.now(),
+            content: JSON.stringify(object),
+            usage: {
+              tokensIn: 0,
+              tokensOut: 0,
+              cost: 0
+            }
+          });
+          this.taskHistory.saveTask(historyEntry).catch(console.error);
+        }
 
-    if (input?.schema) {
-      const result = await generateObject({
-        model: this.model,
+        return object;
+      }
+
+      if (input?.schema) {
+        const result = await generateObject({
+          model,
+          system: this.getSystemPrompt(),
+          messages: thread.getFormattedMessages(),
+          maxRetries,
+          maxSteps,
+          schema: input.schema,
+          ...this.callSettings,
+        });
+        
+        thread.addMessage('assistant', JSON.stringify(result.object));
+        
+        if (this.taskHistory && historyEntry.debug) {
+          historyEntry.debug.responses.push({
+            timestamp: Date.now(),
+            content: JSON.stringify(result.object),
+            usage: {
+              tokensIn: result.usage?.promptTokens || 0,
+              tokensOut: result.usage?.completionTokens || 0,
+              cost: 0
+            }
+          });
+          historyEntry.tokensIn += result.usage?.promptTokens || 0;
+          historyEntry.tokensOut += result.usage?.completionTokens || 0;
+          this.taskHistory.saveTask(historyEntry).catch(console.error);
+        }
+
+        return result.object;
+      }
+
+      result = await generateText({
+        model,
         system: this.getSystemPrompt(),
         messages: thread.getFormattedMessages(),
-        maxRetries: 2,
+        tools: this.tools,
         maxSteps,
-        schema: input.schema,
+        maxRetries,
         ...this.callSettings,
       });
-      thread.addMessage('assistant', JSON.stringify(result.object));
+        
+      thread.addMessage('assistant', result.text);
       
-      return result.object;
-    }
+      if (this.taskHistory && historyEntry.debug) {
+        historyEntry.debug.responses.push({
+          timestamp: Date.now(),
+          content: result.text,
+          usage: {
+            tokensIn: result.usage?.promptTokens || 0,
+            tokensOut: result.usage?.completionTokens || 0,
+            cost: 0
+          }
+        });
+        historyEntry.tokensIn += result.usage?.promptTokens || 0;
+        historyEntry.tokensOut += result.usage?.completionTokens || 0;
+        this.taskHistory.saveTask(historyEntry).catch(console.error);
+      }
 
-    const result = await generateText({
-      model: this.model,
-      system: this.getSystemPrompt(),
-      messages: thread.getFormattedMessages(),
-      tools: this.tools,
-      maxSteps,
-      ...this.callSettings,
-    });
-      
-    thread.addMessage('assistant', result.text);
-    
-    return result.text;
+      return result.text;
+    } catch (error) {
+      if (this.taskHistory && historyEntry.debug) {
+        historyEntry.debug.responses.push({
+          timestamp: Date.now(),
+          content: error instanceof Error ? error.message : String(error),
+          usage: {
+            tokensIn: 0,
+            tokensOut: 0,
+            cost: 0
+          }
+        });
+        // Add to tool usage for error tracking
+        historyEntry.debug.toolUsage.push({
+          timestamp: Date.now(),
+          tool: 'task',
+          params: {},
+          result: error instanceof Error ? error.message : String(error),
+          error: true
+        });
+        this.taskHistory.saveTask(historyEntry).catch(console.error);
+      }
+      throw error;
+    }
   }
 }
 
