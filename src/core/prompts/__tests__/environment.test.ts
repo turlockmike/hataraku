@@ -31,54 +31,11 @@ jest.mock('child_process', () => ({
     execSync: jest.fn().mockReturnValue(Buffer.from('HEAD'))
 }));
 
-describe('Environment Tests', () => {
-
-// Updated beforeEach block
-beforeEach(() => {
-    // Mock Date to ensure consistent timestamp
-    const mockDate = new Date('2025-02-19T20:18:28.000Z'); // UTC time matching CI
-    jest.spyOn(global, 'Date').mockImplementation(() => mockDate);
-    
-    // Set timezone to UTC
-    process.env.TZ = 'UTC';
-    
-    // Override Date.prototype.toLocaleString for consistent 'Current Time'
-    jest.spyOn(Date.prototype, 'toLocaleString').mockReturnValue('2/19/2025, 2:18:28 PM');
-
-    // Override process.version to a fixed value for consistent snapshots
-    Object.defineProperty(process, 'version', {
-      value: 'v20.6.0',
-      configurable: true
-    });
-
-    // Mock Intl.DateTimeFormat to ensure consistent locale and timezone
-    const mockDateTimeFormat = {
-        resolvedOptions: () => ({
-            locale: 'en-US',
-            timeZone: 'UTC',
-            calendar: 'gregory',
-            numberingSystem: 'latn'
-        }),
-        format: jest.fn(),
-        formatToParts: jest.fn(),
-        formatRange: jest.fn(),
-        formatRangeToParts: jest.fn()
-    };
-    global.Intl.DateTimeFormat = Object.assign(jest.fn(() => mockDateTimeFormat), {
-        supportedLocalesOf: jest.fn()
-    });
-});
-
-afterEach(() => {
-    jest.restoreAllMocks();
-});
-
 describe('getFilesInCurrentDirectory', () => {
     beforeEach(() => {
         // Clear mocks before each test
         (readdirSync as jest.Mock).mockClear();
         (process.cwd as jest.Mock).mockClear();
-        jest.clearAllMocks();
     });
 
     it('returns max/3 files from start, middle, and end with ellipsis', () => {
@@ -104,6 +61,40 @@ describe('getFilesInCurrentDirectory', () => {
 describe('getEnvironmentInfo', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+
+        // Mock Date to ensure consistent timestamp
+        const mockDate = new Date('2025-02-19T20:18:28.000Z'); // UTC time matching CI
+        jest.spyOn(global, 'Date').mockImplementation(() => mockDate);
+        
+        // Set timezone to UTC
+        process.env.TZ = 'UTC';
+        
+        // Override Date.prototype.toLocaleString for consistent 'Current Time'
+        jest.spyOn(Date.prototype, 'toLocaleString').mockReturnValue('2/19/2025, 2:18:28 PM');
+
+        // Override process.version to a fixed value for consistent snapshots
+        Object.defineProperty(process, 'version', {
+          value: 'v20.6.0',
+          configurable: true
+        });
+
+        // Mock Intl.DateTimeFormat to ensure consistent locale and timezone
+        const mockDateTimeFormat = {
+            resolvedOptions: () => ({
+                locale: 'en-US',
+                timeZone: 'UTC',
+                calendar: 'gregory',
+                numberingSystem: 'latn'
+            }),
+            format: jest.fn(),
+            formatToParts: jest.fn(),
+            formatRange: jest.fn(),
+            formatRangeToParts: jest.fn()
+        };
+        global.Intl.DateTimeFormat = Object.assign(jest.fn(() => mockDateTimeFormat), {
+            supportedLocalesOf: jest.fn()
+        });
+
         // Setup mock return values to match GitHub Actions environment
         (os.homedir as jest.Mock).mockReturnValue(mockHomedir);
         (os.platform as jest.Mock).mockReturnValue('linux');
@@ -122,9 +113,12 @@ describe('getEnvironmentInfo', () => {
         ]);
     });
 
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
     it('returns consistent environment information', () => {
         const info = getEnvironmentInfo();
         expect(info).toMatchSnapshot();
     });
-}); 
 });

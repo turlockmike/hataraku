@@ -42,7 +42,7 @@ describe('CLI Agent', () => {
     const mockCwd = '/home/runner/work/hataraku/hataraku';
     const mockHomedir = '/home/runner';
 
-    beforeEach(() => {
+    it('should create CLI agent with correct configuration', () => {
         // Mock process values
         process.cwd = jest.fn().mockReturnValue(mockCwd);
         process.env.TERM_PROGRAM = undefined;
@@ -87,13 +87,7 @@ describe('CLI Agent', () => {
             'docs', 'esbuild.js', 'jest.config.cjs', 'node_modules', 'package-lock.json', 
             'package.json', 'src', 'tsconfig.cjs.json', 'tsconfig.esm.json', 'tsconfig.json'
         ]);
-    });
 
-    afterEach(() => {
-        jest.restoreAllMocks();
-    });
-
-    it('should create CLI agent with correct configuration', () => {
         const mockModel = new MockLanguageModelV1({
             defaultObjectGenerationMode: 'json',
             doGenerate: async () => ({
@@ -118,5 +112,8 @@ describe('CLI Agent', () => {
                 historyDir: expect.stringMatching(/^.*\/\.local\/share\/hataraku\/logs$/)
             }
         });
+
+        // Clean up mocks
+        jest.restoreAllMocks();
     });
 }); 
