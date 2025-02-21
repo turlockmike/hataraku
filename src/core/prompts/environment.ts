@@ -29,7 +29,7 @@ Home Directory: ${os.homedir()}
 Current Working Directory: ${process.cwd()}
 Files in Current Directory: ${getFilesInCurrentDirectory()}
 Node Version: ${process.version}
-Current Time: ${new Date().toLocaleString()}
+Current Time: ${new Date().toLocaleString(Intl.DateTimeFormat().resolvedOptions().locale, { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
 Locale: ${Intl.DateTimeFormat().resolvedOptions().locale}
 Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}
 User Info: ${os.userInfo().username}
