@@ -7,13 +7,17 @@ jest.mock('os', () => ({
   homedir: jest.fn()
 }));
 
+type MockFS = {
+  mkdirSync: jest.Mock;
+};
+
 jest.mock('fs', () => ({
   mkdirSync: jest.fn()
 }));
 
 describe('Configuration Paths', () => {
   const mockHomedir = os.homedir as jest.MockedFunction<typeof os.homedir>;
-  const mockMkdir = jest.requireMock('fs').mkdirSync as jest.Mock;
+  const mockMkdir = (jest.requireMock('fs') as MockFS).mkdirSync;
   const originalEnv = process.env;
 
   beforeEach(() => {
