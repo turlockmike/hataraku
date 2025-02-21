@@ -67,18 +67,6 @@ JSON:
         "image_generation",
         "audio_transcription"
       ]
-    },
-    {
-      "name": "anthropic",
-      "command": "python",
-      "args": ["-m", "anthropic_server"],
-      "env": {
-        "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}"
-      },
-      "enabledTools": [
-        "code_review",
-        "documentation"
-      ]
     }
   ]
 }
@@ -93,36 +81,14 @@ JSON:
       "env": {
         "GITHUB_TOKEN": "${GITHUB_TOKEN}"
       }
-    },
-    {
-      "name": "jira",
-      "command": "node",
-      "args": ["./dist/jira-server.js"],
-      "env": {
-        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
-      }
-    }
-  ]
-}
-
-//tools/jira-tools.json
-{
-  "mcpServers": [
-    {
-      "name": "jira",
-      "command": "node",
-      "args": ["./dist/jira-server.js"],
-      "env": {
-        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
-      }
     }
   ]
 }
 ```
 
 #### Implementation Details
-- Store tool configurations in `tools/[name].json` as arrays
-- Allow both whitelist (enabledTools) and blacklist (disabledTools)
+- Store external tool configurations in `tools/[name].json` as arrays
+- Built-in Hataraku tools are referenced directly in agent configurations using `"hataraku"`
 - Support environment variable interpolation
 
 ### 2. Agents
@@ -140,7 +106,7 @@ interface AgentConfig {
     name: string;
     parameters?: Record<string, unknown>;
   };
-  tools?: string[];  // References to MCP tool names
+  tools?: string[];  // References to tool configurations or "hataraku" for built-in tools
 }
 ```
 
@@ -160,7 +126,7 @@ JSON:
     }
   },
   "tools": [
-    "jira-tools",
+    "hataraku",  // Includes all built-in Hataraku tools
     "github-tools"
   ]
 }
@@ -178,11 +144,25 @@ JSON:
     }
   },
   "tools": [
-    "jira-tools",
-    "google-docs-tools"
+    "hataraku",  // Includes all built-in Hataraku tools
+    "jira-tools"
   ]
 }
 ```
+
+Built-in Hataraku tools available through `"hataraku"`:
+- `search-files`: Search for files in the workspace
+- `write-file`: Write content to files
+- `read-file`: Read file contents
+- `list-files`: List directory contents
+- `play-audio`: Play audio files
+- `search-and-replace`: Search and replace in files
+- `show-image`: Display images
+- `apply-diff`: Apply patches to files
+- `execute-command`: Run shell commands
+- `fetch`: Make HTTP requests
+- `insert-content`: Insert content into files
+- `list-code-definitions`: List code symbols and definitions
 
 ### 3. Tasks
 
@@ -312,5 +292,186 @@ interface ConfigurationManager {
   updateTask(name: string, config: Partial<TaskConfig>): Promise<void>;
   deleteTask(name: string): Promise<void>;
   runTask(name: string, input?: unknown, options?: { agent?: string }): Promise<unknown>;
+}
+```
+
+## CLI Integration
+
+### Default Configuration
+
+#### Configuration Schema
+
+TypeScript:
+```typescript
+interface Profile {
+  name: string;
+  description?: string;
+  agent?: string;        // Default agent name
+  provider?: string;     // Default provider (openai, anthropic, etc.)
+  model?: string;        // Default model for the provider
+  tools?: string[];      // Default tool configurations to load
+  options?: {
+    stream?: boolean;    // Enable/disable streaming by default
+    sound?: boolean;     // Enable/disable sound effects
+    interactive?: boolean; // Enable/disable interactive mode
+  };
+}
+
+interface ProfilesConfig {
+  activeProfile: string;  // Name of the active profile
+  profiles: Profile[];
+}
+```
+
+JSON:
+```json
+// profiles.json
+{
+  "activeProfile": "default",
+  "profiles": [
+    {
+      "name": "default",
+      "description": "Default configuration using Claude",
+      "provider": "anthropic",
+      "model": "claude-3-opus",
+      "tools": ["ai-tools", "dev-tools"],
+      "options": {
+        "stream": true,
+        "sound": true,
+        "interactive": false
+      }
+    },
+    {
+      "name": "coding",
+      "description": "Profile optimized for coding tasks",
+      "agent": "code-reviewer",
+      "provider": "anthropic",
+      "model": "claude-3-opus",
+      "tools": ["github-tools"],
+      "options": {
+        "stream": true,
+        "sound": false,
+        "interactive": false
+      }
+    },
+    {
+      "name": "planning",
+      "description": "Profile for project planning",
+      "agent": "task-planner",
+      "provider": "openai",
+      "model": "gpt-4-turbo",
+      "tools": ["jira-tools"],
+      "options": {
+        "stream": true,
+        "sound": false,
+        "interactive": true
+      }
+    }
+  ]
+}
+```
+
+#### Implementation Details
+- Store in `$XDG_CONFIG_HOME/hataraku/profiles.json`
+- Create with default profile during first run
+- Allow override via CLI arguments
+- Support environment variable interpolation
+- Profiles can inherit from other profiles (using base profile name)
+
+### CLI Command Updates
+
+```bash
+# Existing commands with new options
+hataraku [task] --profile <profileName>  # Use specific profile
+hataraku [task] --config <configPath>    # Use alternative config location
+
+# Profile management commands
+hataraku profile list                    # List all profiles
+hataraku profile show [name]             # Show profile details
+hataraku profile create <name>           # Create new profile
+hataraku profile update <name>           # Update profile
+hataraku profile delete <name>           # Delete profile
+hataraku profile activate <name>         # Set active profile
+hataraku profile export <name>           # Export profile
+hataraku profile import <path>           # Import profile
+```
+
+### Configuration Loading Process
+
+1. **Initialization**
+   ```typescript
+   interface ConfigLoader {
+     // Load all configurations
+     loadConfig(): Promise<{
+       profiles: ProfilesConfig;
+       tools: Record<string, ToolsConfig>;
+       agents: Record<string, AgentConfig>;
+       tasks: Record<string, TaskConfig>;
+     }>;
+
+     // Get effective configuration (after CLI overrides)
+     getEffectiveConfig(cliOptions: CliOptions): Promise<{
+       profile: Profile;
+       agent: AgentConfig;
+       tools: ToolsConfig[];
+     }>;
+
+     // Profile management
+     getProfile(name: string): Promise<Profile>;
+     createProfile(profile: Profile): Promise<void>;
+     updateProfile(name: string, profile: Partial<Profile>): Promise<void>;
+     deleteProfile(name: string): Promise<void>;
+     activateProfile(name: string): Promise<void>;
+   }
+   ```
+
+### Configuration Resolution Order
+
+1. Command-line arguments (highest priority)
+2. Environment variables
+3. Project-specific profile (if in a project directory)
+4. Active user profile from `profiles.json`
+5. Default profile (lowest priority)
+
+### First-Run Experience
+
+```typescript
+interface FirstRunManager {
+  // Check if this is first run
+  isFirstRun(): Promise<boolean>;
+  
+  // Initialize default configurations
+  initializeDefaults(): Promise<void>;
+  
+  // Guide user through initial setup
+  runSetupWizard(): Promise<void>;
+}
+```
+
+Example first-run process:
+1. Detect first run
+2. Create configuration directory structure
+3. Create `profiles.json` with default profile
+4. Optionally run interactive setup wizard
+5. Initialize empty tool, agent, and task directories
+
+### Configuration Validation
+
+```typescript
+interface ConfigValidator {
+  // Validate all configurations
+  validateAll(): Promise<ValidationResult>;
+  
+  // Validate specific configuration
+  validateConfig(type: 'defaults' | 'tools' | 'agents' | 'tasks', config: unknown): Promise<ValidationResult>;
+  
+  // Check configuration compatibility
+  checkCompatibility(): Promise<CompatibilityResult>;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  errors: ValidationError[];
+  warnings: ValidationWarning[];
 }
 ```
