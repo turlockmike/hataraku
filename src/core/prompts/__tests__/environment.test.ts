@@ -63,14 +63,14 @@ describe('getEnvironmentInfo', () => {
         jest.clearAllMocks();
 
         // Mock Date to ensure consistent timestamp
-        const mockDate = new Date('2025-02-19T20:18:28.000Z'); // UTC time matching CI
+        const mockDate = new Date(1); // UTC time matching CI
         jest.spyOn(global, 'Date').mockImplementation(() => mockDate);
         
         // Set timezone to UTC
         process.env.TZ = 'UTC';
         
         // Override Date.prototype.toLocaleString for consistent 'Current Time'
-        jest.spyOn(Date.prototype, 'toLocaleString').mockReturnValue('2/19/2025, 2:18:28 PM');
+        // jest.spyOn(Date.prototype, 'toLocaleString').mockReturnValue('2/19/2025, 2:18:28 PM');
 
         // Override process.version to a fixed value for consistent snapshots
         Object.defineProperty(process, 'version', {
