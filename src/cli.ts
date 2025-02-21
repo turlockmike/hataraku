@@ -24,7 +24,7 @@ program
     .option('--no-sound', 'Disable sound effects')
     .option('--no-stream', 'Disable streaming responses')
     .option('--region <region>', 'AWS region for Bedrock (defaults to AWS_REGION env var)')
-    .argument('[task]', 'Task or question for the AI assistant')
+    .arguments('[task...]')
     .version(version)
     .addHelpText('after', `
 Examples:
@@ -96,7 +96,6 @@ async function processStreams(textStream: AsyncIterable<string>, options: any) {
 async function main(task?: string) {
     try {
         const options = program.opts();
-
         let model;
         if (options.provider === 'bedrock') {
             // Use AWS Bedrock
