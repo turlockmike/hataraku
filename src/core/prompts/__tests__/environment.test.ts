@@ -31,6 +31,8 @@ jest.mock('child_process', () => ({
     execSync: jest.fn().mockReturnValue(Buffer.from('HEAD'))
 }));
 
+describe('Environment Tests', () => {
+
 // Updated beforeEach block
 beforeEach(() => {
     // Mock Date to ensure consistent timestamp
@@ -125,3 +127,4 @@ describe('getEnvironmentInfo', () => {
         expect(info).toMatchSnapshot();
     });
 }); 
+});
