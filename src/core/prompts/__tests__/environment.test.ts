@@ -39,6 +39,9 @@ beforeEach(() => {
     
     // Set timezone to UTC
     process.env.TZ = 'UTC';
+    
+    // Override Date.prototype.toLocaleString for consistent 'Current Time'
+    jest.spyOn(Date.prototype, 'toLocaleString').mockReturnValue('2/19/2025, 2:18:28 PM');
 
     // Override process.version to a fixed value for consistent snapshots
     Object.defineProperty(process, 'version', {
