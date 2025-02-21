@@ -31,21 +31,37 @@ jest.mock('child_process', () => ({
     execSync: jest.fn().mockReturnValue(Buffer.from('HEAD'))
 }));
 
-// Setup consistent date/time for all tests
+// Updated beforeEach block
 beforeEach(() => {
     // Mock Date to ensure consistent timestamp
     const mockDate = new Date('2025-02-19T20:18:28.000Z'); // UTC time matching CI
     jest.spyOn(global, 'Date').mockImplementation(() => mockDate);
+    
     // Set timezone to UTC
     process.env.TZ = 'UTC';
+
+    // Override process.version to a fixed value for consistent snapshots
+    Object.defineProperty(process, 'version', {
+      value: 'v20.6.0',
+      configurable: true
+    });
+
     // Mock Intl.DateTimeFormat to ensure consistent locale and timezone
     const mockDateTimeFormat = {
         resolvedOptions: () => ({
             locale: 'en-US',
-            timeZone: 'UTC'
-        })
+            timeZone: 'UTC',
+            calendar: 'gregory',
+            numberingSystem: 'latn'
+        }),
+        format: jest.fn(),
+        formatToParts: jest.fn(),
+        formatRange: jest.fn(),
+        formatRangeToParts: jest.fn()
     };
-    global.Intl.DateTimeFormat = jest.fn(() => mockDateTimeFormat);
+    global.Intl.DateTimeFormat = Object.assign(jest.fn(() => mockDateTimeFormat), {
+        supportedLocalesOf: jest.fn()
+    });
 });
 
 afterEach(() => {
