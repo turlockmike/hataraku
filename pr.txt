@@ -1,0 +1,29 @@
+Task Schema and Package Architecture Improvements
+
+This PR introduces significant improvements to the task schema validation system and overall package architecture:
+
+Core Changes:
+- Implemented strict input/output schema validation for tasks using Zod
+- Added ESM module support alongside existing CommonJS (dual package)
+- Refactored agent system to support async model initialization
+- Improved thread management with truncation support
+- Removed deprecated MCP server implementation in favor of new architecture
+- Added TaskHistory for better task execution tracking
+
+Testing:
+- Added comprehensive tests for task schema validation
+- Updated agent and workflow tests to support new features
+- Added thread truncation tests
+- Improved test coverage for CLI functionality
+
+Documentation:
+- Updated README with clearer package description and features
+- Added detailed documentation for agents and types
+- Improved code examples and API documentation
+
+Build System:
+- Added ESM build configuration
+- Updated dependencies to latest versions
+- Improved TypeScript configuration for dual package support
+
+The changes focus on improving type safety, maintainability, and developer experience while setting up the foundation for future features.

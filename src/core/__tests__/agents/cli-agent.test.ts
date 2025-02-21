@@ -3,6 +3,13 @@ import { createCLIAgent } from '../../agents/cli-agent';
 import * as os from 'node:os';
 import { readdirSync } from 'node:fs';
 
+// Add mock for environment details at the top of the file
+jest.mock('../../prompts/environment', () => ({
+  getEnvironmentInfo: () => `<environment_details>
+Environment Information: static testing info
+</environment_details>`
+}));
+
 // Mock sound-play
 jest.mock('sound-play', () => ({
     play: jest.fn()
@@ -51,10 +58,18 @@ describe('CLI Agent', () => {
         const mockDateTimeFormat = {
             resolvedOptions: () => ({
                 locale: 'en-US',
-                timeZone: 'UTC'
-            })
+                timeZone: 'UTC',
+                calendar: 'gregory',
+                numberingSystem: 'latn'
+            }),
+            format: jest.fn(),
+            formatToParts: jest.fn(),
+            formatRange: jest.fn(),
+            formatRangeToParts: jest.fn()
         };
-        global.Intl.DateTimeFormat = jest.fn(() => mockDateTimeFormat) as any;
+        global.Intl.DateTimeFormat = Object.assign(jest.fn(() => mockDateTimeFormat), {
+            supportedLocalesOf: jest.fn()
+        });
 
         // Setup mock return values to match GitHub Actions environment
         (os.homedir as jest.Mock).mockReturnValue(mockHomedir);
@@ -97,8 +112,11 @@ describe('CLI Agent', () => {
             modelPromise: expect.any(Promise)
         };
         
-        expect(stableAgent).toMatchSnapshot({
-            tools: expect.any(Object)
+        (expect(stableAgent) as any).toMatchSnapshot({
+            tools: expect.any(Object),
+            taskHistory: {
+                historyDir: expect.stringMatching(/^.*\/\.local\/share\/hataraku\/logs$/)
+            }
         });
     });
 }); 

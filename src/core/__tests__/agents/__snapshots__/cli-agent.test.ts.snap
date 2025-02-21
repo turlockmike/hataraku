@@ -25,30 +25,11 @@ exports[`CLI Agent should create CLI agent with correct configuration 1`] = `
 - The user may provide feedback, which you can use to make improvements and try again. But DO NOT continue in pointless back and forth conversations, i.e. don't end your responses with questions or offers for further assistance.
 - Always try to apply diffs rather than editing files if possible. If applying a diff is not possible or doesnt work, then edit the file.
 </rules>
-
-    <environment_details>
-Environment Information:
-Operating System: linux 6.8.0-1021-azure
-Architecture: x64
-CPU Cores: 4
-Total Memory: 16GB
-Free Memory: 14GB
-Default Shell: /bin/bash
-Home Directory: /home/runner
-Current Working Directory: /home/runner/work/hataraku/hataraku
-Files in Current Directory: .changeset,.cursor,.eslintrc.json,.git,.gitattributes,.github,.gitignore,.husky,.npmrc,.nvmrc,.prettierignore,.prettierrc.json,CHANGELOG.md,CONTRIBUTING.md,LICENSE,README.md,docs,esbuild.js,jest.config.cjs,node_modules,package-lock.json,package.json,src,tsconfig.cjs.json,tsconfig.esm.json,tsconfig.json
-Node Version: v20.6.0
-Current Time: 2/19/2025, 2:18:28 PM
-Locale: en-US
-Timezone: UTC
-User Info: runner
-Package Manager: npm
-Terminal: undefined
-Git Branch: HEAD
-</environment_details>
-",
-  "taskHistory": TaskHistory {
-    "historyDir": "/Users/michaeldarmousseh/.local/share/hataraku/logs",
+<environment_details>
+Environment Information: static testing info
+</environment_details>",
+  "taskHistory": {
+    "historyDir": StringMatching /\\^\\.\\*\\\\/\\\\\\.local\\\\/share\\\\/hataraku\\\\/logs\\$/,
   },
   "tools": Any<Object>,
 }
