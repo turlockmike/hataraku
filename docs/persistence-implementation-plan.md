@@ -13,16 +13,16 @@
 - [x] Add profile activation/switching
 
 ### 3. External Tool Configuration
-- [ ] Implement MCP server configuration loading
-- [ ] Add environment variable interpolation
-- [ ] Create tool enable/disable functionality
-- [ ] Add validation for tool configurations
+- [x] Implement MCP server configuration loading
+- [x] Add environment variable interpolation
+- [x] Create tool enable/disable functionality
+- [x] Add validation for tool configurations
 
 ### 4. Agent Configuration System
-- [ ] Implement agent configuration schema
-- [ ] Create agent CRUD operations
-- [ ] Add built-in tool resolution ('hataraku')
-- [ ] Implement agent validation
+- [x] Implement agent configuration schema
+- [x] Create agent CRUD operations
+- [x] Add built-in tool resolution ('hataraku')
+- [x] Implement agent validation
 
 ### 5. Task Configuration System
 - [ ] Implement task configuration schema
