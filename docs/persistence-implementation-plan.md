@@ -31,22 +31,22 @@
 - [x] Implement input schema validation
 
 ### 6. CLI Integration
-- [ ] Update CLI to use profile system
-- [ ] Add profile management commands
-- [ ] Implement configuration override handling
-- [ ] Add configuration validation commands
+- [x] Update CLI to use profile system
+- [x] Add profile management commands
+- [x] Implement configuration override handling
+- [x] Add configuration validation commands
 
 ### 7. Configuration Loading
-- [ ] Implement ConfigLoader
-- [ ] Add effective configuration resolution
-- [ ] Implement configuration inheritance
-- [ ] Add validation system
+- [x] Implement ConfigLoader
+- [x] Add effective configuration resolution
+- [x] Implement configuration inheritance
+- [x] Add validation system
 
 ### 8. First Run Experience
-- [ ] Create FirstRunManager
-- [ ] Implement default profile creation
-- [ ] Add setup wizard
-- [ ] Create initial configuration templates
+- [x] Create FirstRunManager
+- [x] Implement default profile creation
+- [x] Add setup wizard
+- [x] Create initial configuration templates
 
 ### 9. Testing & Validation
 - [ ] Add configuration schema tests
