@@ -25,10 +25,10 @@
 - [x] Implement agent validation
 
 ### 5. Task Configuration System
-- [ ] Implement task configuration schema
-- [ ] Create task CRUD operations
-- [ ] Add task template processing
-- [ ] Implement input schema validation
+- [x] Implement task configuration schema
+- [x] Create task CRUD operations
+- [x] Add task template processing
+- [x] Implement input schema validation
 
 ### 6. CLI Integration
 - [ ] Update CLI to use profile system
