@@ -111,7 +111,8 @@ describe('ConfigLoader', () => {
       const cliOptions = {
         provider: 'openai',
         model: 'gpt-4',
-        stream: false
+        stream: false,
+        agent: 'code-assistant'  // Add agent name to CLI options
       };
 
       const result = await configLoader.getEffectiveConfig(cliOptions);

@@ -133,9 +133,17 @@ describe('TaskManager', () => {
       (fs.access as jest.Mock).mockRejectedValue({ code: 'ENOENT' });
       mockAgentManager.getAgent.mockRejectedValue(new Error('Agent not found'));
 
+      // Create a valid task config
+      const taskConfig: TaskConfig = {
+        name: 'Test Task',
+        description: 'A test task',
+        agent: 'non-existent-agent',
+        task: 'This is a test task'
+      };
+
       // Call the method and expect error
       await expect(
-        taskManager.createTask('new-task', { agent: 'non-existent-agent' } as TaskConfig)
+        taskManager.createTask('new-task', taskConfig)
       ).rejects.toThrow('Referenced agent');
     });
   });
