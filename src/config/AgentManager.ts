@@ -3,6 +3,7 @@ import * as path from 'path';
 import { getConfigPaths, createConfigDirectories } from './configPaths';
 import { AgentConfig, AgentConfigSchema, DEFAULT_CODE_ASSISTANT, DEFAULT_CODE_REVIEWER } from './agentConfig';
 import { ToolManager } from './ToolManager';
+import { ALL_TOOLS } from '../core/tools';
 
 /**
  * Manager for agent configurations
@@ -198,20 +199,10 @@ export class AgentManager {
     if (agent.tools && agent.tools.length > 0) {
       for (const tool of agent.tools) {
         if (tool === 'hataraku') {
-          // Add built-in Hataraku tools
+          // Add built-in Hataraku tools from ALL_TOOLS
+          // Convert underscore-based tool names to hyphen-based names
           resolvedTools.push(
-            'search-files',
-            'write-file',
-            'read-file',
-            'list-files',
-            'play-audio',
-            'search-and-replace',
-            'show-image',
-            'apply-diff',
-            'execute-command',
-            'fetch',
-            'insert-content',
-            'list-code-definitions'
+            ...Object.keys(ALL_TOOLS).map(toolName => toolName.replace(/_/g, '-'))
           );
         } else {
           // For other tools, add the tool name as-is

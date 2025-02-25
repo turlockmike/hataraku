@@ -123,8 +123,8 @@ export class FirstRunManager {
         break;
       case 'bedrock':
         modelChoices = [
-          { name: 'Claude 3.7 Sonnet', value: 'us:anthropic.claude-3-7-sonnet-20250219-v1:0' },
-          { name: 'Claude 3.5 Sonnet', value: 'us:anthropic.claude-3-5-sonnet-20241022-v2:0' }
+          { name: 'Claude 3.7 Sonnet', value: 'us.anthropic.claude-3-7-sonnet-20250219-v1.0' },
+          { name: 'Claude 3.5 Sonnet', value: 'us.anthropic.claude-3-5-sonnet-20241022-v2.0' }
         ];
         break;
       default:

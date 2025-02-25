@@ -14,6 +14,7 @@ export const ProfileSchema = z.object({
   provider: z.string().optional(),
   model: z.string().optional(),
   tools: z.array(z.string()).optional(),
+  providerOptions: z.record(z.string()).optional(),
   options: ProfileOptionsSchema.optional()
 });
 

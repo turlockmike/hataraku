@@ -276,8 +276,8 @@ You can configure custom providers by setting the provider and model in a profil
 - `openai/gpt-4o-mini` - OpenAI GPT-4o Mini
 
 #### Bedrock
-- `us:anthropic.claude-3-7-sonnet-20250219-v1:0` - Claude 3.7 Sonnet
-- `us:anthropic.claude-3-5-sonnet-20241022-v2:0` - Claude 3.5 Sonnet
+- `us.anthropic.claude-3-7-sonnet-20250219-v1:0` - Claude 3.7 Sonnet
+- `us.anthropic.claude-3-5-sonnet-20241022-v2:0` - Claude 3.5 Sonnet
 
 ### Task Templates
 

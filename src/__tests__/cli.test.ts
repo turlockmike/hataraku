@@ -1,7 +1,49 @@
 import { program, main } from '../cli'; // adjust the path as needed
+import { ConfigLoader } from '../config/ConfigLoader';
+import { ProfileManager } from '../config/ProfileManager';
 
+// Create mock function for ConfigLoader
+const mockGetEffectiveConfig = jest.fn().mockResolvedValue({
+  profile: { 
+    provider: 'openrouter', 
+    model: 'anthropic/claude-3-sonnet',
+    options: { stream: true, sound: true }
+  },
+  agent: null
+});
 
 // --- Mocks for dependencies used in the CLI ---
+jest.mock('../config/ConfigLoader', () => {
+  return {
+    ConfigLoader: jest.fn().mockImplementation(() => {
+      return {
+        loadConfig: jest.fn().mockResolvedValue({
+          activeProfile: 'default',
+          profiles: [{ name: 'default', provider: 'openrouter', model: 'anthropic/claude-3-sonnet' }],
+          agents: [],
+          tools: [],
+          tasks: []
+        }),
+        getEffectiveConfig: mockGetEffectiveConfig
+      };
+    })
+  };
+});
+
+jest.mock('../config/ProfileManager', () => {
+  return {
+    ProfileManager: jest.fn().mockImplementation(() => {
+      return {
+        getActiveProfile: jest.fn().mockResolvedValue({
+          name: 'default',
+          provider: 'openrouter',
+          model: 'anthropic/claude-3-sonnet',
+          options: { stream: true, sound: true }
+        })
+      };
+    })
+  };
+});
 jest.mock('@openrouter/ai-sdk-provider', () => ({
   createOpenRouter: jest.fn(() => ({
     chat: jest.fn().mockReturnValue({
@@ -10,13 +52,17 @@ jest.mock('@openrouter/ai-sdk-provider', () => ({
   })),
 }));
 
-jest.mock('../core/providers/bedrock', () => ({
-  createBedrockProvider: jest.fn().mockResolvedValue(
-    jest.fn().mockReturnValue({
-      task: jest.fn().mockResolvedValue('mocked bedrock result'),
-    })
-  ),
-}));
+jest.mock('../core/providers/bedrock', () => {
+  return {
+    createBedrockProvider: jest.fn().mockImplementation(() => {
+      return jest.fn().mockImplementation(() => {
+        return {
+          task: jest.fn().mockResolvedValue('mocked bedrock result'),
+        };
+      });
+    }),
+  };
+});
 
 jest.mock('../core/agents', () => ({
   createCLIAgent: jest.fn(() => ({
@@ -77,8 +123,18 @@ describe('CLI Input Parameters', () => {
   });
 
   test('succeeds with Bedrock provider without API key', async () => {
+    // Mock the getEffectiveConfig for this test only
+    mockGetEffectiveConfig.mockResolvedValueOnce({
+      profile: { 
+        provider: 'bedrock', 
+        model: 'anthropic.claude-3-sonnet',
+        options: { stream: true, sound: true }
+      },
+      agent: null
+    });
+    
     program.setOptionValue('provider', 'bedrock');
-    const code = await main('task');
+    const code = await main('task', program);
     expect(code).toBe(0);
   });
 

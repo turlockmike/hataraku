@@ -86,7 +86,6 @@ export class ConfigLoader {
     // 1. Get active profile (or specified profile)
     const profileName = cliOptions.profile || (await this.profileManager.getActiveProfile()).name;
     const profile = await this.profileManager.getProfile(profileName);
-
     // 2. Apply CLI overrides to profile
     const effectiveProfile: Profile = {
       ...profile,

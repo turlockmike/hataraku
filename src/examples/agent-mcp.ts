@@ -35,8 +35,8 @@ async function main() {
 
         try {
             // Initialize OpenAI provider
-            const bedrock = await createBedrockProvider();
-            const model = bedrock('us:anthropic.claude-3-5-sonnet-20241022-v2:0');
+            const bedrock = await createBedrockProvider('default');
+            const model = bedrock('us.anthropic.claude-3-5-sonnet-20241022-v2.0');
 
             // Create agent with MCP tools
             const agent = createAgent({

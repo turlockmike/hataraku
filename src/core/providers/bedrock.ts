@@ -14,3 +14,8 @@ export async function createBedrockProvider(profile: string = 'default') {
         sessionToken: credentials.sessionToken
     })
 }
+
+export const createBedrockModel = async (profile: string = 'default', model: string = 'us.anthropic.claude-3-7-sonnet-20250219-v1:0') => {
+    const bedrock = await createBedrockProvider(profile);
+    return bedrock(model);
+  }; 
