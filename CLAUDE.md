@@ -4,7 +4,7 @@
 - Build all: `npm run build`
 - Clean: `npm run clean`
 - Dev mode: `npm run dev` 
-- Type check: `npm run check-types`
+- Type check: `npm run typecheck`
 - Lint: `npm run lint`
 
 ## Testing Commands

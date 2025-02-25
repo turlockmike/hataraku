@@ -6,4 +6,5 @@ if [ "$branch" = "main" ]; then
 fi
 
 npx lint-staged
+npm run typecheck
 npm run build
