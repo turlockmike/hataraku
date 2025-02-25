@@ -50,12 +50,14 @@ A profile is a set of preferences for Hataraku, including which provider and mod
   "name": "coding",
   "description": "Profile optimized for coding tasks",
   "provider": "anthropic",
-  "model": "claude-3-opus",
+  "model": "claude-3.7-sonnet",
   "agent": "code-assistant",
   "tools": ["ai-tools", "github-tools"],
   "options": {
     "stream": true,
-    "sound": true
+    "sound": true,
+    "maxRetries": 3,
+    "maxSteps": 50
   }
 }
 ```
@@ -72,8 +74,8 @@ hataraku profile show [name]
 # Create a new profile
 hataraku profile create
 
-# Activate a profile
-hataraku profile activate <name>
+# Use a profile
+hataraku profile use <name>
 ```
 
 ## Agent Configuration
@@ -89,7 +91,7 @@ An agent defines the role, model, and tools used for a specific task.
   "role": "You are an expert code reviewer...",
   "model": {
     "provider": "anthropic",
-    "name": "claude-3-opus",
+    "name": "claude-3.7-sonnet",
     "parameters": {
       "temperature": 0.7,
       "maxTokens": 4000
@@ -148,10 +150,8 @@ Tasks define saved operations that can be run with the CLI.
     },
     "required": ["files"]
   },
-  "task": {
-    "template": "Review the following files:\n${files.join('\\n- ')}\n\nFocus on the following areas:\n${focus_areas ? focus_areas.join('\\n- ') : 'All aspects of code quality and best practices'}",
-    "parameters": ["files", "focus_areas"]
-  }
+  "task": "Review the following files:\n${files.join('\\n- ')}\n\nFocus on the following areas:\n${focus_areas ? focus_areas.join('\\n- ') : 'All aspects of code quality and best practices'}",
+  "parameters": "files,focus_areas"
 }
 ```
 
@@ -252,14 +252,32 @@ You can configure custom providers by setting the provider and model in a profil
 
 ```json
 {
-  "name": "mistral",
+  "name": "custom-model",
   "provider": "openrouter",
-  "model": "mistralai/mistral-large",
+  "model": "deepseek/deepseek-chat",
   "options": {
     "stream": true
   }
 }
 ```
+
+### Available Models
+
+#### Anthropic
+- `claude-3.7-sonnet` - Recommended for most tasks
+
+#### OpenRouter
+- `anthropic/claude-3.7-sonnet` - Anthropic's Claude 3.7 Sonnet
+- `deepseek/deepseek-chat` - DeepSeek Chat
+- `deepseek/deepseek-coder` - DeepSeek Coder
+- `mistralai/mistral-large` - Mistral Large
+- `openai/gpt-4o` - OpenAI GPT-4o
+
+#### Bedrock
+- `anthropic.claude-3-7-sonnet-20240620-v1:0` - Claude 3.7 Sonnet
+- `anthropic.claude-3-opus-20240229-v1:0` - Claude 3 Opus
+- `deepseek.deepseek-chat-r1-v1:0` - DeepSeek Chat R1
+- `deepseek.deepseek-chat-o3-mini-v1:0` - DeepSeek Chat O3 Mini
 
 ### Task Templates
 
@@ -282,7 +300,7 @@ To use AWS Bedrock, set the provider to `bedrock`:
 {
   "name": "bedrock-claude",
   "provider": "bedrock",
-  "model": "anthropic.claude-3-opus-20240229-v1:0",
+  "model": "anthropic.claude-3-7-sonnet-20240620-v1:0",
   "options": {
     "stream": true
   }
