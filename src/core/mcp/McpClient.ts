@@ -80,11 +80,10 @@ export class McpClient {
             await this.disconnectServer(connection.name);
         }
 
+
         // Connect to new servers
-        for (const [name, serverConfig] of Object.entries(config.mcpServers)) {
-            if (!serverConfig.disabledTools) { // Only connect if server isn't fully disabled
-                await this.connectToServer(name, serverConfig);
-            }
+        for (const [name, serverConfig] of Object.entries(config.mcpServers)) {    
+            await this.connectToServer(name, serverConfig);
         }
 
         this.initialized = true;
@@ -113,6 +112,8 @@ export class McpClient {
                     capabilities: {},
                 }
             );
+
+            
 
             const transport = new StdioClientTransport({
                 command: config.command,
@@ -144,7 +145,7 @@ export class McpClient {
                 });
             }
 
-            // Connect to the server
+            // Connect to the server            
             await client.connect(transport);
             connection.status = "connected";
             connection.error = undefined;
