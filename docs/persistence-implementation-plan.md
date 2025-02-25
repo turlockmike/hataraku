@@ -235,10 +235,8 @@ interface TaskConfig {
   description: string;
   agent: string;  // Reference to agent configuration
   schema?: Record<string, unknown>;  // Input/output schema
-  task: string | {
-    template: string;
-    parameters: string[];
-  };
+  task: string;
+  parameters?: string;  // Comma-separated list of parameters
 }
 ```
 
@@ -265,10 +263,8 @@ JSON:
       }
     }
   },
-  "task": {
-    "template": "Review the pull request at ${pr_url}.\nFocus on the following areas:\n${focus_areas.join('\\n- ')}",
-    "parameters": ["pr_url", "focus_areas"]
-  }
+  "task": "Review the pull request at ${pr_url}.\nFocus on the following areas:\n${focus_areas.join('\\n- ')}",
+  "parameters": "pr_url,focus_areas"
 }
 
 // tasks/plan-sprint.json
@@ -289,7 +285,8 @@ JSON:
       }
     }
   },
-  "task": "Create a sprint plan based on the following requirements:\n${requirements}\n\nConsider team size of ${team_size} members."
+  "task": "Create a sprint plan based on the following requirements:\n${requirements}\n\nConsider team size of ${team_size} members.",
+  "parameters": "requirements,team_size"
 }
 ```
 
@@ -373,7 +370,6 @@ interface Profile {
   options?: {
     stream?: boolean;    // Enable/disable streaming by default
     sound?: boolean;     // Enable/disable sound effects
-    interactive?: boolean; // Enable/disable interactive mode
   };
 }
 
@@ -397,8 +393,7 @@ JSON:
       "tools": ["ai-tools", "dev-tools"],
       "options": {
         "stream": true,
-        "sound": true,
-        "interactive": false
+        "sound": true
       }
     },
     {
@@ -410,8 +405,7 @@ JSON:
       "tools": ["github-tools"],
       "options": {
         "stream": true,
-        "sound": false,
-        "interactive": false
+        "sound": false
       }
     },
     {
@@ -423,8 +417,7 @@ JSON:
       "tools": ["jira-tools"],
       "options": {
         "stream": true,
-        "sound": false,
-        "interactive": true
+        "sound": false
       }
     }
   ]

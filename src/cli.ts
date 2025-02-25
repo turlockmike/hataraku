@@ -68,7 +68,8 @@ profileCommand
       console.log(chalk.blue('\nOptions:'));
       console.log(`  ${chalk.gray('•')} Streaming:   ${profile.options?.stream ? chalk.green('Enabled') : chalk.red('Disabled')}`);
       console.log(`  ${chalk.gray('•')} Sound:       ${profile.options?.sound ? chalk.green('Enabled') : chalk.red('Disabled')}`);
-      console.log(`  ${chalk.gray('•')} Interactive: ${profile.options?.interactive ? chalk.green('Enabled') : chalk.red('Disabled')}`);
+      console.log(`  ${chalk.gray('•')} Max Retries: ${profile.options?.maxRetries || 3}`);
+      console.log(`  ${chalk.gray('•')} Max Steps: ${profile.options?.maxSteps || 50}`);
       console.log('');
     } catch (error) {
       console.error(chalk.red('Error showing profile:'), error);
@@ -77,13 +78,13 @@ profileCommand
   });
 
 profileCommand
-  .command('activate <name>')
-  .description('Activate a profile')
+  .command('use <n>')
+  .description('Use a profile')
   .action(async (name: string) => {
     try {
       const profileManager = new ProfileManager();
       await profileManager.setActiveProfile(name);
-      console.log(chalk.green(`Profile '${name}' activated successfully.`));
+      console.log(chalk.green(`Profile '${name}' set as active successfully.`));
     } catch (error) {
       console.error(chalk.red('Error activating profile:'), error);
       process.exit(1);
@@ -251,7 +252,7 @@ taskCommand
         sound: profile.options?.sound
       };
       
-      const result = await executeWithConfig(prompt, cliOptions);
+      const result = await executeWithConfig(prompt, cliOptions, options.interactive);
       process.exit(result);
     } catch (error) {
       console.error(chalk.red('Error running task:'), error);
@@ -398,7 +399,12 @@ async function processStreams(textStream: AsyncIterable<string>, options: any) {
     process.stdout.write('\n');
 }
 
-async function executeWithConfig(task: string, cliOptions: CliOptions) {
+// Add a local interface extension for CLI options
+interface CliOptionsWithInteractive extends CliOptions {
+    interactive?: boolean;
+}
+
+async function executeWithConfig(task: string, cliOptions: CliOptions, interactive?: boolean) {
     try {
         const configLoader = new ConfigLoader();
         const { profile, agent } = await configLoader.getEffectiveConfig(cliOptions);
@@ -440,7 +446,7 @@ async function executeWithConfig(task: string, cliOptions: CliOptions) {
 
         // Initialize agent using our factory function
         const cliAgent = createCLIAgent(model);
-        const isInteractive = cliOptions.interactive !== undefined ? cliOptions.interactive : profile.options?.interactive;
+        const shouldUseInteractive = interactive !== undefined ? interactive : false;
         const shouldStream = cliOptions.stream !== undefined ? cliOptions.stream : profile.options?.stream;
         const shouldPlaySound = cliOptions.sound !== undefined ? cliOptions.sound : profile.options?.sound;
         
@@ -450,7 +456,7 @@ async function executeWithConfig(task: string, cliOptions: CliOptions) {
             stream: shouldStream
         };
 
-        if (isInteractive) {
+        if (shouldUseInteractive) {
             // Interactive mode
             async function runInteractiveTask(currentTask?: string) {
                 let taskToRun = currentTask;
@@ -543,14 +549,16 @@ async function main(task?: string) {
         provider: options.provider,
         model: options.model,
         apiKey: options.apiKey,
-        interactive: options.interactive,
         stream: options.stream,
         sound: options.sound,
         agent: options.agent,
         region: options.region
     };
     
-    return executeWithConfig(task, cliOptions);
+    // Handle interactive mode separately
+    const isInteractive = options.interactive;
+    
+    return executeWithConfig(task, cliOptions, isInteractive);
 }
 
 // Only run the program if this file is being run directly
@@ -588,7 +596,7 @@ export async function runCLI(input: string): Promise<void> {
             sound: false
         };
         
-        await executeWithConfig(input, cliOptions);
+        await executeWithConfig(input, cliOptions, false);
     } catch (error) {
         console.error('Error:', error);
         throw error;

@@ -27,38 +27,16 @@ export type ToolsConfig = z.infer<typeof ToolsConfigSchema>;
 
 /**
  * Default AI tools configuration
- * Includes OpenAI tools with API key from environment
+ * Empty by default, will be configured during setup
  */
 export const DEFAULT_AI_TOOLS: ToolsConfig = {
-  mcpServers: [
-    {
-      name: "openai",
-      command: "node",
-      args: ["/usr/local/lib/node_modules/@hataraku/openai-server/dist/index.js"],
-      env: {
-        "OPENAI_API_KEY": "${OPENAI_API_KEY}"
-      },
-      disabledTools: [
-        "image_generation",
-        "audio_transcription"
-      ]
-    }
-  ]
+  mcpServers: []
 };
 
 /**
  * Default development tools configuration
- * Includes GitHub tools with token from environment
+ * Empty by default, will be configured during setup
  */
 export const DEFAULT_DEV_TOOLS: ToolsConfig = {
-  mcpServers: [
-    {
-      name: "github",
-      command: "node",
-      args: ["/usr/local/lib/node_modules/@hataraku/github-server/dist/index.js"],
-      env: {
-        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
-      }
-    }
-  ]
+  mcpServers: []
 }; 

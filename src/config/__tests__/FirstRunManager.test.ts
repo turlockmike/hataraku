@@ -115,7 +115,6 @@ describe('FirstRunManager', () => {
       (confirm as jest.Mock).mockImplementation((options) => {
         if (options.message.includes('streaming')) return true;
         if (options.message.includes('sound')) return false;
-        if (options.message.includes('interactive')) return true;
         return false;
       });
 
@@ -132,8 +131,7 @@ describe('FirstRunManager', () => {
         model: 'claude-3-opus',
         options: {
           stream: true,
-          sound: false,
-          interactive: true
+          sound: false
         }
       });
 
@@ -141,7 +139,7 @@ describe('FirstRunManager', () => {
       expect(mockProfileManager.createProfile).toHaveBeenCalledWith(result);
       expect(input).toHaveBeenCalledTimes(2);
       expect(select).toHaveBeenCalledTimes(2);
-      expect(confirm).toHaveBeenCalledTimes(3);
+      expect(confirm).toHaveBeenCalledTimes(2);
     });
 
     it('should update profile if it already exists', async () => {
@@ -166,7 +164,7 @@ describe('FirstRunManager', () => {
         description: 'Test description',
         provider: 'test-provider',
         model: 'test-model',
-        options: { stream: true, sound: true, interactive: false }
+        options: { stream: true, sound: true }
       });
 
       // Setup mock implementation

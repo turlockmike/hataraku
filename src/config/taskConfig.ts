@@ -19,9 +19,10 @@ export const TaskConfigSchema = z.object({
   agent: z.string(), // Reference to agent configuration
   schema: z.record(z.string(), z.unknown()).optional(), // Input/output schema as JSON Schema
   task: z.union([
-    z.string(),
-    TaskTemplateSchema
-  ])
+    z.string(), // New format: Task template as a string
+    TaskTemplateSchema // Old format: Task template as an object
+  ]),
+  parameters: z.string().optional() // Comma-separated list of parameters (for new format)
 });
 
 // TypeScript types
@@ -55,10 +56,8 @@ export const DEFAULT_CODE_REVIEW_TASK: TaskConfig = {
     },
     required: ["files"]
   },
-  task: {
-    template: "Review the following files:\n${files.join('\\n- ')}\n\nFocus on the following areas:\n${focus_areas ? focus_areas.join('\\n- ') : 'All aspects of code quality and best practices'}",
-    parameters: ["files", "focus_areas"]
-  }
+  task: "Review the following files:\n${files.join('\\n- ')}\n\nFocus on the following areas:\n${focus_areas ? focus_areas.join('\\n- ') : 'All aspects of code quality and best practices'}",
+  parameters: "files,focus_areas"
 };
 
 /**
@@ -83,8 +82,6 @@ export const DEFAULT_CODE_EXPLANATION_TASK: TaskConfig = {
     },
     required: ["file"]
   },
-  task: {
-    template: "Explain the code in ${file} with ${detail_level || 'medium'} level of detail. Provide an overview of its purpose, structure, and key functions.",
-    parameters: ["file", "detail_level"]
-  }
+  task: "Explain the code in ${file} with ${detail_level || 'medium'} level of detail. Provide an overview of its purpose, structure, and key functions.",
+  parameters: "file,detail_level"
 };

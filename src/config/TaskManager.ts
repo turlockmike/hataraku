@@ -166,13 +166,20 @@ export class TaskManager {
    * @returns Processed task prompt
    */
   processTaskTemplate(task: TaskConfig, input: Record<string, any>): string {
-    // If task is a string, return it directly
-    if (typeof task.task === 'string') {
-      return task.task;
-    }
+    // Handle both old and new format
+    let template: string;
+    let parameters: string[] = [];
     
-    // Otherwise, process the template
-    const { template, parameters } = task.task;
+    // Check if task.task is an object (old format) or string (new format)
+    if (typeof task.task === 'object' && task.task.template) {
+      // Old format: task.task is an object with template and parameters
+      template = task.task.template;
+      parameters = task.task.parameters || [];
+    } else {
+      // New format: task.task is a string and parameters is a comma-separated string
+      template = task.task as string;
+      parameters = task.parameters ? task.parameters.split(',').map(p => p.trim()) : [];
+    }
     
     // Simple template substitution using a function that evaluates expressions in template string
     return template.replace(/\${([^}]*)}/g, (_, expr) => {

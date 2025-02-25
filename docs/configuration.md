@@ -55,8 +55,7 @@ A profile is a set of preferences for Hataraku, including which provider and mod
   "tools": ["ai-tools", "github-tools"],
   "options": {
     "stream": true,
-    "sound": true,
-    "interactive": false
+    "sound": true
   }
 }
 ```
@@ -268,14 +267,12 @@ Tasks can use templates with parameter substitution:
 
 ```json
 {
-  "task": {
-    "template": "Explain the code in ${file} with ${detail_level || 'medium'} level of detail.",
-    "parameters": ["file", "detail_level"]
-  }
+  "task": "Explain the code in ${file} with ${detail_level || 'medium'} level of detail.",
+  "parameters": "file,detail_level"
 }
 ```
 
-The template supports JavaScript expressions within the `${}` placeholders, allowing for conditional logic and string operations.
+The template supports JavaScript expressions within the `${}` placeholders, allowing for conditional logic and string operations. Parameters are specified as a comma-separated string.
 
 ### Bedrock Integration
 

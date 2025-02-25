@@ -23,7 +23,7 @@ hataraku
 Follow the prompts to configure your default profile with:
 - Provider (OpenRouter, Anthropic, Bedrock)
 - Model (Claude, GPT-4, etc.)
-- Default settings for streaming, sound, and interactive mode
+- Default settings for streaming and sound
 
 ## Basic Usage
 

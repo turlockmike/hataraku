@@ -146,11 +146,6 @@ export class FirstRunManager {
       default: true
     });
     
-    const interactive = await confirm({
-      message: 'Enable interactive mode by default?',
-      default: false
-    });
-    
     // Create profile
     const profile: Profile = {
       name: profileName,
@@ -159,8 +154,7 @@ export class FirstRunManager {
       model: model as string,
       options: {
         stream,
-        sound,
-        interactive
+        sound
       }
     };
     

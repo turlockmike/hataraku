@@ -15,7 +15,6 @@ export interface CliOptions {
   provider?: string;
   model?: string;
   apiKey?: string;
-  interactive?: boolean;
   stream?: boolean;
   sound?: boolean;
   tools?: string[];
@@ -96,7 +95,6 @@ export class ConfigLoader {
       tools: cliOptions.tools || profile.tools,
       options: {
         ...profile.options,
-        interactive: cliOptions.interactive !== undefined ? cliOptions.interactive : profile.options?.interactive,
         stream: cliOptions.stream !== undefined ? cliOptions.stream : profile.options?.stream,
         sound: cliOptions.sound !== undefined ? cliOptions.sound : profile.options?.sound
       }
