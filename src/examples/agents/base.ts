@@ -1,5 +1,5 @@
 import { createAgent } from '../../core/agent';
-import { createBedrockChat } from '../providers/bedrock';
+import { createBedrockModel } from '../../core/providers/bedrock';
 import { LanguageModelV1 } from 'ai';
 
 // Common agent roles
@@ -37,7 +37,7 @@ export function createBaseAgent(config: {
     name: config.name,
     description: config.description,
     role: config.role,
-    model: config.model || createBedrockChat(config.profile),
+    model: config.model || createBedrockModel(config.profile),
     tools: config.tools
   });
 } 

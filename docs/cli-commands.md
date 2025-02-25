@@ -53,7 +53,7 @@ hataraku -i "create a new project structure"
 ## Different Models/Providers
 ```bash
 # Use different models
-hataraku --model anthropic/claude-3-opus "explain this codebase"
+hataraku --model anthropic/claude-3.7-sonnet "explain this codebase"
 hataraku --model deepseek/deepseek-chat "optimize this function"
 
 # Use different providers

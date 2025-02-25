@@ -3,7 +3,7 @@ import { UnifiedDiffStrategy } from './strategies/unified'
 import { SearchReplaceDiffStrategy } from './strategies/search-replace'
 /**
  * Get the appropriate diff strategy for the given model
- * @param model The name of the model being used (e.g., 'gpt-4', 'claude-3-opus')
+ * @param model The name of the model being used (e.g., 'gpt-4', 'claude-3-7-sonnet')
  * @returns The appropriate diff strategy for the model
  */
 export function getDiffStrategy(model: string, fuzzyMatchThreshold?: number): DiffStrategy {

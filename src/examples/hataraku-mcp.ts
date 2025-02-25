@@ -42,8 +42,8 @@ import { createBedrockProvider } from '../core/providers/bedrock';
 
 
 async function startServer() {
-  const bedrock = await createBedrockProvider();
-  const model = bedrock('us.anthropic.claude-3-5-sonnet-20241022-v2:0');
+  const bedrock = await createBedrockProvider('default');
+  const model = bedrock('us.anthropic.claude-3-5-sonnet-20241022-v2.0');
   const server = new HatarakuMcpServer(model);
   await server.start();
   // console.log('Hataraku MCP server running on stdio');

@@ -103,8 +103,8 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@ai-sdk/amazon-bedrock": "2.0.2",
-    "@anthropic-ai/sdk": "0.36.3",
+    "@ai-sdk/amazon-bedrock": "2.0.5",
+    "@anthropic-ai/sdk": "0.37.0",
     "@aws-sdk/credential-providers": "3.750.0",
     "@inquirer/prompts": "^3.3.0",
     "@modelcontextprotocol/sdk": "^1.0.1",
@@ -112,7 +112,7 @@
     "@types/express": "^5.0.0",
     "@types/pdf-parse": "^1.1.4",
     "@types/turndown": "^5.0.5",
-    "ai": "4.1.44",
+    "ai": "4.1.46",
     "chalk": "^4.1.2",
     "cheerio": "^1.0.0",
     "chokidar": "^4.0.1",

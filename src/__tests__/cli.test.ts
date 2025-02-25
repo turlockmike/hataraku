@@ -1,7 +1,50 @@
 import { program, main } from '../cli'; // adjust the path as needed
+import { ConfigLoader } from '../config/ConfigLoader';
+import { ProfileManager } from '../config/ProfileManager';
 
+// Create mock function for ConfigLoader
+const mockGetEffectiveConfig = jest.fn().mockResolvedValue({
+  profile: { 
+    provider: 'openrouter', 
+    model: 'anthropic/claude-3-sonnet',
+    options: { stream: true, sound: true }
+  },
+  agent: null
+});
 
 // --- Mocks for dependencies used in the CLI ---
+jest.mock('../config/ConfigLoader', () => {
+  return {
+    ConfigLoader: jest.fn().mockImplementation(() => {
+      return {
+        loadConfig: jest.fn().mockResolvedValue({
+          activeProfile: 'default',
+          profiles: [{ name: 'default', provider: 'openrouter', model: 'anthropic/claude-3-sonnet' }],
+          agents: [],
+          tools: [],
+          tasks: []
+        }),
+        getEffectiveConfig: mockGetEffectiveConfig,
+        initializeDefaults: jest.fn().mockResolvedValue(undefined)
+      };
+    })
+  };
+});
+
+jest.mock('../config/ProfileManager', () => {
+  return {
+    ProfileManager: jest.fn().mockImplementation(() => {
+      return {
+        getActiveProfile: jest.fn().mockResolvedValue({
+          name: 'default',
+          provider: 'openrouter',
+          model: 'anthropic/claude-3-sonnet',
+          options: { stream: true, sound: true }
+        })
+      };
+    })
+  };
+});
 jest.mock('@openrouter/ai-sdk-provider', () => ({
   createOpenRouter: jest.fn(() => ({
     chat: jest.fn().mockReturnValue({
@@ -10,17 +53,19 @@ jest.mock('@openrouter/ai-sdk-provider', () => ({
   })),
 }));
 
-jest.mock('../core/providers/bedrock', () => ({
-  createBedrockProvider: jest.fn().mockResolvedValue(
-    jest.fn().mockReturnValue({
-      task: jest.fn().mockResolvedValue('mocked bedrock result'),
-    })
-  ),
-}));
+jest.mock('../core/providers/bedrock', () => {
+  return {
+    createBedrockModel: jest.fn().mockImplementation(() => {
+      return {
+        task: jest.fn().mockResolvedValue('mocked bedrock result'),
+      };
+    }),
+  };
+});
 
 jest.mock('../core/agents', () => ({
   createCLIAgent: jest.fn(() => ({
-    task: jest.fn().mockResolvedValue('agent result'),
+    task: jest.fn().mockResolvedValue(''),
   })),
 }));
 
@@ -61,29 +106,42 @@ describe('CLI Input Parameters', () => {
   });
 
   test('executes task in normal mode', async () => {
-    const consoleLogSpy = jest.spyOn(console, 'log');
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     process.env.OPENROUTER_API_KEY = 'dummy';
     program.setOptionValue('provider', 'openrouter');
     const code = await main('myTask');
-    console.log('DEBUG - Console output:', consoleLogSpy.mock.calls);
     expect(code).toBe(0);
     consoleLogSpy.mockRestore();
   });
 
   test('errors when API key is missing for non-Bedrock provider', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
     program.setOptionValue('provider', 'openrouter');
     const code = await main('task');
     expect(code).toBe(1);
+    consoleErrorSpy.mockRestore();
   });
 
   test('succeeds with Bedrock provider without API key', async () => {
+    // Mock the getEffectiveConfig for this test only
+    mockGetEffectiveConfig.mockResolvedValueOnce({
+      profile: { 
+        provider: 'bedrock', 
+        model: 'us.anthropic.claude-3-7-sonnet-20250219-v1.0',
+        options: { stream: true, sound: true }
+      },
+      agent: null
+    });
+    
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     program.setOptionValue('provider', 'bedrock');
-    const code = await main('task');
+    const code = await main('task', program);
     expect(code).toBe(0);
+    consoleLogSpy.mockRestore();
   });
 
   test('errors when no task provided in non-interactive mode', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
     const code = await main();
     expect(code).toBe(1);
     expect(consoleErrorSpy).toHaveBeenCalled();
