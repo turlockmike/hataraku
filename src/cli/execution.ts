@@ -3,7 +3,7 @@ import { PassThrough } from 'node:stream';
 import { input } from '@inquirer/prompts';
 import { Command } from 'commander';
 import { createCLIAgent } from '../core/agents';
-import { createBedrockModel, createBedrockProvider } from '../core/providers/bedrock';
+import { createBedrockModel } from '../core/providers/bedrock';
 import { playAudioTool } from '../core/tools/play-audio';
 import { ConfigLoader, CliOptions } from '../config/ConfigLoader';
 import { ProfileManager } from '../config/ProfileManager';
