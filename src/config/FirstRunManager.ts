@@ -107,26 +107,29 @@ export class FirstRunManager {
     switch (provider) {
       case 'openrouter':
         modelChoices = [
+          { name: 'Claude 3.7 Sonnet', value: 'anthropic/claude-3.7-sonnet' },
           { name: 'Claude 3.5 Sonnet', value: 'anthropic/claude-3.5-sonnet' },
-          { name: 'Claude 3 Opus', value: 'anthropic/claude-3-opus' },
-          { name: 'GPT-4o', value: 'openai/gpt-4o' }
+          { name: 'Gemini 2.0 Flash', value: 'google/gemini-2.0-flash-001' },
+          { name: 'Gemini Flash 1.5', value: 'google/gemini-flash-1.5' },
+          { name: 'DeepSeek R1', value: 'deepseek/deepseek-r1' },
+          { name: 'GPT-4o Mini', value: 'openai/gpt-4o-mini' }
         ];
         break;
       case 'anthropic':
         modelChoices = [
-          { name: 'Claude 3.5 Sonnet', value: 'claude-3.5-sonnet' },
-          { name: 'Claude 3 Opus', value: 'claude-3-opus' }
+          { name: 'Claude 3.7 Sonnet', value: 'claude-3-7-sonnet-20250219' },
+          { name: 'Claude 3.5 Sonnet', value: 'claude-3-5-sonnet-20241022' }
         ];
         break;
       case 'bedrock':
         modelChoices = [
-          { name: 'Claude 3.5 Sonnet', value: 'anthropic.claude-3-5-sonnet-20241022-v1:0' },
-          { name: 'Claude 3 Opus', value: 'anthropic.claude-3-opus-20240229-v1:0' }
+          { name: 'Claude 3.7 Sonnet', value: 'us:anthropic.claude-3-7-sonnet-20250219-v1:0' },
+          { name: 'Claude 3.5 Sonnet', value: 'us:anthropic.claude-3-5-sonnet-20241022-v2:0' }
         ];
         break;
       default:
         modelChoices = [
-          { name: 'Claude 3.5 Sonnet', value: 'claude-3.5-sonnet' }
+          { name: 'Claude 3.7 Sonnet', value: 'claude-3-7-sonnet-20250219' }
         ];
     }
     

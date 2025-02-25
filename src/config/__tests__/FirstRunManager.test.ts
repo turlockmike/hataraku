@@ -108,7 +108,7 @@ describe('FirstRunManager', () => {
 
       (select as jest.Mock).mockImplementation((options) => {
         if (options.message.includes('provider')) return 'anthropic';
-        if (options.message.includes('model')) return 'claude-3-opus';
+        if (options.message.includes('model')) return 'claude-3-7-sonnet-20250219';
         return 'other-selection';
       });
 
@@ -128,7 +128,7 @@ describe('FirstRunManager', () => {
         name: 'test-profile',
         description: 'Test profile description',
         provider: 'anthropic',
-        model: 'claude-3-opus',
+        model: 'claude-3-7-sonnet-20250219',
         options: {
           stream: true,
           sound: false

@@ -83,7 +83,7 @@ describe('ConfigLoader', () => {
         name: 'default',
         description: 'Default profile',
         provider: 'anthropic',
-        model: 'claude-3-opus',
+        model: 'claude-3-7-sonnet-20250219',
         tools: ['ai-tools'],
         options: {
           stream: true,
@@ -98,7 +98,7 @@ describe('ConfigLoader', () => {
         role: 'You are a coding assistant',
         model: {
           provider: 'anthropic',
-          name: 'claude-3-opus'
+          name: 'claude-3-7-sonnet-20250219'
         }
       };
 
@@ -131,7 +131,7 @@ describe('ConfigLoader', () => {
         name: 'default',
         description: 'Default profile',
         provider: 'anthropic',
-        model: 'claude-3-opus',
+        model: 'claude-3-7-sonnet-20250219',
         agent: 'non-existent-agent',
         options: {
           stream: true,

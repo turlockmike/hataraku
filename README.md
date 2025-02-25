@@ -42,7 +42,7 @@ import { Task } from 'hataraku';
 // Create a simple task
 const task = new Task({
   description: "Write a hello world function",
-  model: "openrouter/anthropic/claude-3-opus"
+  model: "openrouter/anthropic/claude-3.7-sonnet"
 });
 
 // Execute the task

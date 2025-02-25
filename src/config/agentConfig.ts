@@ -53,7 +53,7 @@ export const DEFAULT_CODE_ASSISTANT: AgentConfig = {
   role: "You are a helpful coding assistant. You help users write, debug, and understand code.",
   model: {
     provider: "anthropic",
-    name: "claude-3-opus",
+    name: "claude-3-7-sonnet-20250219",
     parameters: {
       temperature: 0.7,
       maxTokens: 4000
@@ -74,7 +74,7 @@ export const DEFAULT_CODE_REVIEWER: AgentConfig = {
   role: "You are an expert code reviewer. You analyze code for bugs, security issues, and best practices.",
   model: {
     provider: "anthropic",
-    name: "claude-3-opus",
+    name: "claude-3-7-sonnet-20250219",
     parameters: {
       temperature: 0.3,
       maxTokens: 8000

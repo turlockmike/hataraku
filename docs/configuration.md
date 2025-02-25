@@ -50,7 +50,7 @@ A profile is a set of preferences for Hataraku, including which provider and mod
   "name": "coding",
   "description": "Profile optimized for coding tasks",
   "provider": "anthropic",
-  "model": "claude-3.7-sonnet",
+  "model": "claude-3-7-sonnet-20250219",
   "agent": "code-assistant",
   "tools": ["ai-tools", "github-tools"],
   "options": {
@@ -91,7 +91,7 @@ An agent defines the role, model, and tools used for a specific task.
   "role": "You are an expert code reviewer...",
   "model": {
     "provider": "anthropic",
-    "name": "claude-3.7-sonnet",
+    "name": "claude-3-7-sonnet-20250219",
     "parameters": {
       "temperature": 0.7,
       "maxTokens": 4000
@@ -254,7 +254,7 @@ You can configure custom providers by setting the provider and model in a profil
 {
   "name": "custom-model",
   "provider": "openrouter",
-  "model": "deepseek/deepseek-chat",
+  "model": "deepseek/deepseek-r1",
   "options": {
     "stream": true
   }
@@ -264,20 +264,20 @@ You can configure custom providers by setting the provider and model in a profil
 ### Available Models
 
 #### Anthropic
-- `claude-3.7-sonnet` - Recommended for most tasks
+- `claude-3-7-sonnet-20250219` - Recommended for most tasks
+- `claude-3-5-sonnet-20241022` - Fast and efficient
 
 #### OpenRouter
 - `anthropic/claude-3.7-sonnet` - Anthropic's Claude 3.7 Sonnet
-- `deepseek/deepseek-chat` - DeepSeek Chat
-- `deepseek/deepseek-coder` - DeepSeek Coder
-- `mistralai/mistral-large` - Mistral Large
-- `openai/gpt-4o` - OpenAI GPT-4o
+- `anthropic/claude-3.5-sonnet` - Anthropic's Claude 3.5 Sonnet
+- `google/gemini-2.0-flash-001` - Google's Gemini 2.0 Flash
+- `google/gemini-flash-1.5` - Google's Gemini Flash 1.5
+- `deepseek/deepseek-r1` - DeepSeek R1
+- `openai/gpt-4o-mini` - OpenAI GPT-4o Mini
 
 #### Bedrock
-- `anthropic.claude-3-7-sonnet-20240620-v1:0` - Claude 3.7 Sonnet
-- `anthropic.claude-3-opus-20240229-v1:0` - Claude 3 Opus
-- `deepseek.deepseek-chat-r1-v1:0` - DeepSeek Chat R1
-- `deepseek.deepseek-chat-o3-mini-v1:0` - DeepSeek Chat O3 Mini
+- `us:anthropic.claude-3-7-sonnet-20250219-v1:0` - Claude 3.7 Sonnet
+- `us:anthropic.claude-3-5-sonnet-20241022-v2:0` - Claude 3.5 Sonnet
 
 ### Task Templates
 
@@ -300,7 +300,7 @@ To use AWS Bedrock, set the provider to `bedrock`:
 {
   "name": "bedrock-claude",
   "provider": "bedrock",
-  "model": "anthropic.claude-3-7-sonnet-20240620-v1:0",
+  "model": "us:anthropic.claude-3-7-sonnet-20250219-v1:0",
   "options": {
     "stream": true
   }

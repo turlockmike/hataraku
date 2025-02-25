@@ -324,7 +324,7 @@ Examples:
   $ hataraku "create a hello world html file"                                # Uses default model (claude-3.5-sonnet)
   $ hataraku --model deepseek/deepseek-chat "explain this code"             # Uses different model
   $ hataraku --provider anthropic --model claude-3 "write a test"           # Uses different provider
-  $ hataraku --provider bedrock --model anthropic.claude-3-sonnet-20240229-v1:0 "analyze this code"  # Uses AWS Bedrock
+  $ hataraku --provider bedrock --model us:anthropic.claude-3-7-sonnet-20250219-v1:0 "analyze this code"  # Uses AWS Bedrock
   $ OPENROUTER_API_KEY=<key> hataraku "write a test file"                  # Provides API key via env var
   $ hataraku -i                                                             # Run in interactive mode
   $ hataraku -i "initial task"                                             # Interactive mode with initial task

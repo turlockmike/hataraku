@@ -31,7 +31,7 @@ export const DEFAULT_PROFILE: Profile = {
   name: 'default',
   description: 'Default configuration using Claude',
   provider: 'anthropic',
-  model: 'claude-3-opus',
+  model: 'claude-3-7-sonnet-20250219',
   tools: ['ai-tools', 'dev-tools'],
   options: {
     stream: true,
