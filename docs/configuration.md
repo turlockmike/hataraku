@@ -300,7 +300,7 @@ To use AWS Bedrock, set the provider to `bedrock`:
 {
   "name": "bedrock-claude",
   "provider": "bedrock",
-  "model": "us:anthropic.claude-3-7-sonnet-20250219-v1:0",
+  "model": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
   "options": {
     "stream": true
   }
