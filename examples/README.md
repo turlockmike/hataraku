@@ -35,6 +35,7 @@ npm run example
 
 - `basic` - Basic task execution
 - `docs` - Workflow documentation example
+- `gemini` - Fast poem generation using Google's Gemini Flash Lite model with streaming
 - `hmcp` - Hataraku with MCP integration
 - `jira` - MCP integration with Jira
 - `math` - Simple math operations
