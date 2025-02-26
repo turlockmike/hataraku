@@ -6,25 +6,13 @@ import path from 'path';
 import * as dotenv from 'dotenv';
 
 // Load environment variables from .env file
+// This automatically loads all variables from .env into process.env
 dotenv.config();
 
 // Get example name from command line arguments
 const exampleName = process.argv[2];
 // Get remaining arguments to pass to the example
 const exampleArgs = process.argv.slice(3);
-
-// For environment variables that need to be loaded
-if (!process.env.OPENROUTER_API_KEY && fs.existsSync(path.join(process.cwd(), '.env'))) {
-  try {
-    const envFile = fs.readFileSync(path.join(process.cwd(), '.env'), 'utf8');
-    const openrouterApiKey = envFile.match(/OPENROUTER_API_KEY=(.+)/)?.[1];
-    if (openrouterApiKey) {
-      process.env.OPENROUTER_API_KEY = openrouterApiKey;
-    }
-  } catch (error) {
-    console.warn('Warning: Could not read .env file for OPENROUTER_API_KEY. Cannot use examples that require an OpenRouterAPI key.');
-  }
-}
 
 if (!exampleName || exampleName === 'run' || exampleName === 'help') {
   console.log('Available examples:');
