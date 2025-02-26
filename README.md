@@ -1,6 +1,6 @@
 # Hataraku
 
-An autonomous coding agent and SDK for building AI-powered development tools. The name "Hataraku" (働く) means "to work" in Japanese.
+An autonomous coding agent and SDK for building AI-powered  tools. The name "Hataraku" (働く) means "to work" in Japanese.
 
 [![npm version](https://badge.fury.io/js/hataraku.svg)](https://badge.fury.io/js/hataraku)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -18,45 +18,101 @@ Hataraku is a powerful toolkit that enables the creation of AI-powered developme
 - 📊 Schema validation and structured tasks
 - 🧰 Built-in tool integration system
 - 🔗 Model Context Protocol (MCP) support
+- 🔄 Extends the powerful AI SDK from Vercel.
 
 ## Installation
 
 ```bash
 # Using npm
-npm install hataraku
+npm install -g hataraku
 
 # Using yarn
-yarn add hataraku
+yarn global add hataraku
 
 # Using pnpm
-pnpm add hataraku
+pnpm global add hataraku
 ```
 
 ## Quick Start
 
-### Basic Usage
+### SDK Usage
 
 ```typescript
-import { Task } from 'hataraku';
+// Import the SDK
+import { createAgent, createTask } from 'hataraku';
+import { z } from 'zod';
 
-// Create a simple task
-const task = new Task({
-  description: "Write a hello world function",
-  model: "openrouter/anthropic/claude-3.7-sonnet"
+// Import provider creation functions
+import { createOpenRouterModel, createAnthropicModel } from 'hataraku';
+
+// Set up credentials (alternatively, use environment variables)
+// - OPENROUTER_API_KEY for OpenRouter
+// - ANTHROPIC_API_KEY for direct Anthropic access
+// - BEDROCK_ACCESS_KEY_ID and BEDROCK_SECRET_ACCESS_KEY for Amazon Bedrock
+
+// Create an agent using Claude via OpenRouter
+// You can pass API key directly or use environment variable
+const model = await createOpenRouterModel('anthropic/claude-3-opus-20240229', process.env.OPENROUTER_API_KEY);
+const agent = createAgent({
+  name: 'MyAgent',
+  description: 'A helpful assistant',
+  role: 'You are a helpful assistant that provides accurate information.',
+  model: model
+});
+
+// Run a one-off task
+const result = await agent.task('Create a hello world function');
+
+// Create a simple reusable task with schema validation
+const task = createTask({
+  name: 'HelloWorld',
+  description: 'Say Hello to the user',
+  agent: agent,
+  inputSchema: z.object({ name: z.string() }),
+  task: ({name}) => `Say hello to ${name} in a friendly manner`
 });
 
 // Execute the task
-const result = await task.execute();
+const result = await task.run({name: 'Hataraku'});
+console.log(result);
 ```
 
-### Using the CLI
+### CLI Usage
+
+First, install the CLI globally:
 
 ```bash
-# Install globally
 npm install -g hataraku
+```
 
-# Run the CLI
-hataraku
+Initialize a new project:
+
+```bash
+hataraku init my-project
+cd my-project
+```
+
+Run a task using the CLI:
+
+```bash
+# Run a predefined task
+hataraku task run hello-world
+
+# Run with custom input
+hataraku task run hello-world --input '{"prompt": "Write a function that calculates factorial"}'
+
+# Run with streaming output
+hataraku task run hello-world --stream
+```
+
+Configure providers and explore available commands:
+
+```bash
+# Configure a provider
+hataraku provider configure openrouter
+
+# List all available commands
+hataraku --help
 ```
 
 ## API Overview
@@ -73,14 +129,17 @@ For detailed API documentation, see the [Types Documentation](docs/types.md).
 ## Documentation
 
 - [Agent Documentation](docs/agent.md) - Learn about autonomous agents
-- [CLI Commands](docs/cli-commands.md) - Available CLI commands and options
-- [MCP Integration](docs/mcp.md) - Model Context Protocol integration
-- [Types Reference](docs/types.md) - Complete type definitions
-- [Workflow Guide](docs/workflow-proposal.md) - Building complex workflows
+- [CLI Reference](docs/cli.md) - Available CLI commands and options
+- [API Reference](docs/api-reference.md) - Complete API reference
+- [Configuration Guide](docs/configuration.md) - Configuration options
+- [Providers](docs/providers.md) - Supported AI providers
+- [Tools](docs/tools.md) - Built-in tools and extensions
+- [Architecture](docs/architecture.md) - System architecture
+- [Troubleshooting](docs/troubleshooting.md) - Solving common issues
 
 ## Examples
 
-The package includes various examples demonstrating different features:
+The package includes various examples in the `/examples` directory demonstrating different features:
 
 - Basic task execution
 - Streaming responses
@@ -89,25 +148,7 @@ The package includes various examples demonstrating different features:
 - Tool integration
 - Thread management
 
-Run any example using:
-
-```bash
-npm run example <example-name>
-```
-
-For instance:
-
-```bash
-npm run example basic-task
-npm run example streaming-task
-npm run example workflow-parallel
-```
-
-Run without arguments to see all available examples:
-
-```bash
-npm run example
-```
+These examples are available for reference in the repository and can be examined to understand different use cases and implementation patterns.
 
 See the [examples README](examples/README.md) for more details.
 
@@ -123,3 +164,4 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 
 - GitHub Issues: [Report bugs or request features](https://github.com/turlockmike/hataraku/issues)
 - Documentation: See the [docs](./docs) directory for detailed guides
+
