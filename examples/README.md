@@ -51,8 +51,8 @@ npm run example
 - `thread` - Thread reuse example
 - `tool` - Tool use example (accepts a prompt argument)
 - `vertex` - Google Vertex AI integration example
-- `openai-direct` - Direct OpenAI integration example
-- `anthropic-direct` - Direct Anthropic integration example
+- `openai` - OpenAI integration example
+- `anthropic` - Anthropic integration example
 
 ## Special Commands
 
