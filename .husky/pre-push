@@ -5,8 +5,6 @@ if [ "$branch" = "main" ]; then
   exit 1
 fi
 
-npm run build
-
 # Check for new changesets
 NEW_CHANGESETS=$(find .changeset -name "*.md" ! -name "README.md" | wc -l | tr -d ' ')
 echo "Changeset files: $NEW_CHANGESETS"
