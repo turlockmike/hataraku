@@ -1,4 +1,3 @@
-import { Agent } from '../core/agent';
 import { Tool } from 'ai';
 import { z } from 'zod';
 import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';

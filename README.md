@@ -89,14 +89,27 @@ The package includes various examples demonstrating different features:
 - Tool integration
 - Thread management
 
-Run examples using:
+Run any example using:
 
 ```bash
-npm run example:basic
-npm run example:stream
-npm run example:workflow
-# See package.json for more examples
+npm run example <example-name>
 ```
+
+For instance:
+
+```bash
+npm run example basic-task
+npm run example streaming-task
+npm run example workflow-parallel
+```
+
+Run without arguments to see all available examples:
+
+```bash
+npm run example
+```
+
+See the [examples README](examples/README.md) for more details.
 
 ## Contributing
 

@@ -1,4 +1,3 @@
-import { Agent } from '../core/agent';
 import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
 
 async function main() {

@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { createAnalyzerTasks } from './agents/analyzer';
-import { createOpenRouterChat } from './providers/openrouter';
+import { createOpenRouterModel } from 'hataraku';
 
 async function main() {
   // Get OpenRouter API key from environment
@@ -14,7 +14,7 @@ async function main() {
 
   try {
     // Initialize analyzer tasks with OpenRouter model
-    const model = createOpenRouterChat(apiKey);
+    const model = createOpenRouterModel(apiKey);
     const analyzerTasks = await createAnalyzerTasks(model);
     
     // Input

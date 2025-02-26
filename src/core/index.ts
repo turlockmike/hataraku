@@ -31,3 +31,6 @@ export * from './workflow';
 export * from './task';
 export * from './agent';
 export * from './types'; 
+export * from './providers';
+export * from './mcp';
+export * from './thread';

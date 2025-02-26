@@ -1,8 +1,8 @@
-import { createWorkflow } from '../core/workflow';
+import { createWorkflow } from 'hataraku';
 import { z } from 'zod';
-import { createTask } from '../core/task';
+import { createTask } from 'hataraku';
 import { Tool } from 'ai';
-import type { TaskExecutor } from '../core/workflow';
+import type { TaskExecutor } from 'hataraku';
 import chalk from 'chalk';
 import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
 

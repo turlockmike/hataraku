@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { createTask } from '../core/task';
+import { createTask } from 'hataraku';
 import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
 import { z } from 'zod';
 

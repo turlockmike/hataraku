@@ -1,7 +1,5 @@
-import { createAgent } from '../src/core/agent';
-import { getMcpTools } from '../src/core/mcp/toolWrapper';
+import { createAgent, createBedrockModel, getMcpTools } from 'hataraku';
 import chalk from 'chalk';
-import { createBedrockModel } from '../src/core/providers/bedrock';
 
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant that can use various tools to accomplish tasks.
