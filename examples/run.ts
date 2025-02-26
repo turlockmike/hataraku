@@ -14,15 +14,35 @@ const exampleName = process.argv[2];
 const exampleArgs = process.argv.slice(3);
 
 // For environment variables that need to be loaded
-if (!process.env.OPENROUTER_API_KEY && fs.existsSync(path.join(process.cwd(), '.env'))) {
+if (fs.existsSync(path.join(process.cwd(), '.env'))) {
   try {
     const envFile = fs.readFileSync(path.join(process.cwd(), '.env'), 'utf8');
-    const openrouterApiKey = envFile.match(/OPENROUTER_API_KEY=(.+)/)?.[1];
-    if (openrouterApiKey) {
-      process.env.OPENROUTER_API_KEY = openrouterApiKey;
+    
+    // Load OpenRouter API key
+    if (!process.env.OPENROUTER_API_KEY) {
+      const openrouterApiKey = envFile.match(/OPENROUTER_API_KEY=(.+)/)?.[1];
+      if (openrouterApiKey) {
+        process.env.OPENROUTER_API_KEY = openrouterApiKey;
+      }
+    }
+    
+    // Load Google Cloud project ID
+    if (!process.env.GOOGLE_CLOUD_PROJECT) {
+      const googleCloudProject = envFile.match(/GOOGLE_CLOUD_PROJECT=(.+)/)?.[1];
+      if (googleCloudProject) {
+        process.env.GOOGLE_CLOUD_PROJECT = googleCloudProject;
+      }
+    }
+    
+    // Load Google Application Credentials path
+    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      const googleCredentials = envFile.match(/GOOGLE_APPLICATION_CREDENTIALS=(.+)/)?.[1];
+      if (googleCredentials) {
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = googleCredentials;
+      }
     }
   } catch (error) {
-    console.warn('Warning: Could not read .env file for OPENROUTER_API_KEY. Cannot use examples that require an OpenRouterAPI key.');
+    console.warn('Warning: Could not read .env file for environment variables.');
   }
 }
 
