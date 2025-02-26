@@ -60,7 +60,5 @@ ${getEnvironmentInfo()}`,
     model,
     taskHistory: new TaskHistory(),
     tools,
-    callSettings: {
-    }
   });
 } 

@@ -4,7 +4,7 @@ import { AsyncIterableStream } from './types';
 import { Thread } from './thread/thread';
 import { TaskHistory, HistoryEntry } from './TaskHistory';
 import { v4 as uuid } from 'uuid';
-const DEFAULT_MAX_STEPS = 5;
+const DEFAULT_MAX_STEPS = 25;
 const DEFAULT_MAX_RETRIES = 4;
 
 interface CallSettings {
