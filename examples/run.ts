@@ -41,6 +41,22 @@ if (fs.existsSync(path.join(process.cwd(), '.env'))) {
         process.env.GOOGLE_APPLICATION_CREDENTIALS = googleCredentials;
       }
     }
+    
+    // Load OpenAI API key
+    if (!process.env.OPENAI_API_KEY) {
+      const openaiApiKey = envFile.match(/OPENAI_API_KEY=(.+)/)?.[1];
+      if (openaiApiKey) {
+        process.env.OPENAI_API_KEY = openaiApiKey;
+      }
+    }
+    
+    // Load Anthropic API key
+    if (!process.env.ANTHROPIC_API_KEY) {
+      const anthropicApiKey = envFile.match(/ANTHROPIC_API_KEY=(.+)/)?.[1];
+      if (anthropicApiKey) {
+        process.env.ANTHROPIC_API_KEY = anthropicApiKey;
+      }
+    }
   } catch (error) {
     console.warn('Warning: Could not read .env file for environment variables.');
   }
