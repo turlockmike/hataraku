@@ -31,7 +31,7 @@ const buildConfig = {
 	sourcemap: !production,
 	logLevel: "silent",
 	plugins: [esbuildProblemMatcherPlugin],
-	entryPoints: ["src/cli.ts", "src/examples/hataraku-mcp.ts"],
+	entryPoints: ["src/cli.ts"],
 	format: "cjs",
 	sourcesContent: false,
 	platform: "node",

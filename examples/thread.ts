@@ -1,6 +1,5 @@
-import { Agent } from '../core/agent';
 import chalk from 'chalk';
-import { MemoryThreadStorage } from '../core/thread';
+import { MemoryThreadStorage } from 'hataraku';
 import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
 
 async function main() {

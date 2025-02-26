@@ -3,7 +3,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { Task } from '../../task';
-import { TaskToolAdapter } from './taskToolAdapter';
+import { TaskToolAdapter } from './task-tool-adapter';
 import { Agent, createAgent } from '../../agent';
 import { LanguageModelV1 } from 'ai';
 import {

@@ -1,8 +1,7 @@
-import { createWorkflow } from '../core/workflow';
+import { createWorkflow } from 'hataraku';
 import { z } from 'zod';
-import { Task } from '../core/task';
+import { createTask } from 'hataraku';
 import { Tool } from 'ai';
-import type { TaskExecutor } from '../core/workflow';
 import chalk from 'chalk';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -13,8 +12,8 @@ import {
   searchFilesTool,
   listCodeDefinitionsTool,
   fetchTool
-} from '../core/tools';
-import { getEnvironmentInfo } from '../core/prompts';
+} from 'hataraku';
+import { getEnvironmentInfo } from 'hataraku';
 import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
 
 // Define our custom tools
@@ -296,7 +295,7 @@ async function main() {
 const initializeTasks = async () => {
   const docsAgent = await initializeDocsAgent();
   
-  const analyzeRepoTask = new Task<{ path: string }, z.infer<typeof repoAnalysisSchema>>({
+  const analyzeRepoTask = createTask({
     name: 'Analyze Repository',
     description: 'Analyzes Node.js repository structure and package information',
     agent: docsAgent,
@@ -317,7 +316,7 @@ const initializeTasks = async () => {
        Do NOT include any files from the dist/ directory.`
   });
 
-  const determineExportsTask = new Task<{ filePath: string }, z.infer<typeof fileAnalysisSchemaArray>>({
+  const determineExportsTask = createTask({
     name: 'Determine Exported Items',
     description: 'Determines the nested exported items in a file',
     agent: docsAgent,
@@ -327,7 +326,7 @@ const initializeTasks = async () => {
       `Determine the nested exported items in the file at ${input.filePath}. Return a list of all exported items. If the file is a dist or test file, ignore it and return immediately (still following the correct schema). If an exported item is defined in a different file, read that file and determine the exported items in that file. Iterate as deeply as you need, but ignore items from external node_modules (since those are documented elsewhere) `
   });
 
-  const generateDocumentationTask = new Task<z.infer<typeof fileAnalysisSchema>, DocumentationOutput>({
+  const generateDocumentationTask = createTask({
     name: 'Generate Documentation',
     description: 'Generates user-friendly documentation for a component',
     agent: docsAgent,
@@ -354,7 +353,7 @@ const initializeTasks = async () => {
        Return both the path to the documentation and the structured content.`
   });
 
-  const generateReadmeTask = new Task<{ repoAnalysis: z.infer<typeof repoAnalysisSchema>, detailedDocs: z.infer<typeof detailedDocsSchema>[] }, z.infer<typeof readmeContentSchema>>({
+  const generateReadmeTask = createTask({
     name: 'Generate README',
     description: 'Generates the main README.md file',
     agent: docsAgent,

@@ -65,8 +65,10 @@ export interface CliOptionsWithInteractive extends CliOptions {
  */
 export async function executeWithConfig(task: string, cliOptions: CliOptions, interactive?: boolean) {
   try {
-  const configLoader = new ConfigLoader();
+    const configLoader = new ConfigLoader();
     const { profile, agent } = await configLoader.getEffectiveConfig(cliOptions);
+    
+    console.log(chalk.cyan('\n🔍 Processing task...'));
     
     // Determine which model to use
     let model: LanguageModelV1 | Promise<LanguageModelV1>;
@@ -83,13 +85,10 @@ export async function executeWithConfig(task: string, cliOptions: CliOptions, in
       return 1;
     }
     
-    
-
     if (provider === 'bedrock') {
       // Use AWS Bedrock
       const awsProfile = cliOptions.profile || profile.providerOptions?.profile || 'default';
       model = await createBedrockModel(awsProfile, modelName);
-      // model = bedrock(modelName);
     } else {
       // Check for API key for other providers
       const apiKey = cliOptions.apiKey || process.env[`${provider.toUpperCase()}_API_KEY`];
@@ -105,8 +104,8 @@ export async function executeWithConfig(task: string, cliOptions: CliOptions, in
       model = openrouter.chat(modelName);
     }
 
-    // Initialize agent using our factory function
-    const cliAgent = createCLIAgent(model);
+    // Initialize agent using our factory function and include MCP tools
+    const cliAgent = await createCLIAgent(model);
     const shouldUseInteractive = interactive !== undefined ? interactive : false;
     const shouldStream = cliOptions.stream !== undefined ? cliOptions.stream : profile.options?.stream;
     const shouldPlaySound = cliOptions.sound !== undefined ? cliOptions.sound : profile.options?.sound;

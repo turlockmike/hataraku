@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "lib": ["ES2022", "DOM"],
+    "declaration": false,
+    "sourceMap": true,
+    "outDir": "../dist/examples",
+    "rootDir": "../",
+    "strict": false,
+    "moduleResolution": "nodenext",
+    "baseUrl": "../",
+    "paths": {
+      "hataraku/*": ["./src/*"]
+    },
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "useUnknownInCatchVariables": false,
+    "noImplicitAny": false,
+    "noEmit": true
+  },
+  "include": ["./**/*"],
+  "exclude": ["../node_modules", "../dist", "../src"]
+} 

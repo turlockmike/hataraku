@@ -1,7 +1,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { McpError } from '@modelcontextprotocol/sdk/types.js';
-import { HatarakuMcpServer } from '../../../core/mcp/server/hatarakuMcpServer';
+import { HatarakuMcpServer } from '../../mcp/server/hataraku-mcp-server';
 import { Task } from '../../../core/task';
 import { Agent, createAgent } from '../../../core/agent';
 import { LanguageModelV1 } from 'ai';

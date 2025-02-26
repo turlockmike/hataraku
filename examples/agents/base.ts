@@ -1,5 +1,4 @@
-import { createAgent } from '../../core/agent';
-import { createBedrockModel } from '../../core/providers/bedrock';
+import { createAgent, createBedrockModel } from 'hataraku';
 import { LanguageModelV1 } from 'ai';
 
 // Common agent roles

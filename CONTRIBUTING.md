@@ -75,6 +75,14 @@ We use GitHub issues to track public bugs. Report a bug by [opening a new issue]
 
 6. Push to your fork and submit a pull request.
 
+## Build Commands
+
+- Build all: `npm run build`
+- Clean: `npm run clean`
+- Dev mode: `npm run dev` 
+- Type check: `npm run typecheck`
+- Lint: `npm run lint`
+
 ## Testing
 
 We use Jest for testing. Please write tests for new code you create. Run the test suite with:
@@ -83,6 +91,10 @@ We use Jest for testing. Please write tests for new code you create. Run the tes
 npm test
 ```
 
+Additional testing commands:
+- Run single test: `npx jest src/path/to/test.test.ts`
+- Run tests with pattern: `npx jest -t "test name pattern"`
+
 ## Coding Style
 
 - We use TypeScript for type safety
@@ -90,6 +102,23 @@ npm test
 - We follow a consistent code style
 - We use meaningful variable names
 - We write comments for complex logic
+
+**Additional Style Guidelines:**
+- **TypeScript**: Use strict types when possible (though `strict: false` is allowed in config)
+- **Naming**: camelCase for variables/methods, PascalCase for classes/types/interfaces
+- **Imports**: Group imports by source (standard libs → external deps → internal)
+- **Error Handling**: Use custom error classes (see `core/errors.ts`) and async/await with try/catch
+- **Architecture**: Follow modular design with services, core components, and utilities separation
+- **Formatting**: No trailing semicolons (see ESLint config)
+- **Documentation**: Add JSDoc for public APIs, use markdown docs for larger concepts
+
+**ESLint Rules:**
+- **Filenames**: Use kebab-case for filenames (`example-file.ts`) with test files as exceptions
+- **Import Names**: Use camelCase or PascalCase for imports
+- **Code Style**:
+  - Always use curly braces for control statements
+  - Use strict equality (`===` and `!==`)
+  - Don't throw literals (use Error objects)
 
 ## License
 

@@ -1,4 +1,4 @@
-import { createTask } from '../../core/task';
+import { createTask } from 'hataraku';
 import { createBaseAgent, ROLES, DESCRIPTIONS } from './base';
 
 // Initialize the greeter agent

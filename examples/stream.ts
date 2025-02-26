@@ -1,10 +1,9 @@
-import { Agent } from '../core/agent';
 import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
-import { createBedrockChat } from './providers/bedrock';
+import { createBedrockModel } from 'hataraku';
 
 async function main() {
   // Create a model instance
-  const model = createBedrockChat();
+  const model = createBedrockModel();
 
   // Create agent using our base configuration with explicit model
   const agent = await createBaseAgent({

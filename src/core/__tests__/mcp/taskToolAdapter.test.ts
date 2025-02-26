@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Task } from '../../task';
 import { Agent } from '../../agent';
-import { TaskToolAdapter } from '../../mcp/server/taskToolAdapter';
+import { TaskToolAdapter } from '../../mcp/server/task-tool-adapter';
 import { createAgent } from '../../agent';
 import { McpError, ErrorCode } from '../../mcp/types';
 import { LanguageModelV1 } from 'ai';

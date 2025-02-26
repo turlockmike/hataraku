@@ -1,5 +1,4 @@
 import assert from 'node:assert';
-import { Agent } from '../core/agent';
 import { z } from 'zod';
 import { createBaseAgent, ROLES, DESCRIPTIONS } from './agents/base';
 

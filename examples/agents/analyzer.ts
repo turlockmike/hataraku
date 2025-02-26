@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createTask } from '../../core/task';
+import { createTask } from 'hataraku';
 import { Tool } from 'ai';
 import { createBaseAgent, ROLES, DESCRIPTIONS } from './base';
 import { LanguageModelV1 } from 'ai';

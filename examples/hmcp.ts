@@ -1,5 +1,4 @@
-import { HatarakuMcpServer } from '../core/mcp/server/hatarakuMcpServer';
-import { createBedrockProvider } from '../core/providers/bedrock';
+import { HatarakuMcpServer, createBedrockProvider } from 'hataraku';
 
 /**
  * This example demonstrates running Hataraku as an MCP server.

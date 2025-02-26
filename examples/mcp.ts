@@ -1,8 +1,5 @@
-import { createAgent } from '../core/agent';
-import { getMcpTools } from '../core/mcp/toolWrapper';
-import { JiraGetTicketTool } from '../core/mcp/types';
+import { createAgent, createBedrockModel, getMcpTools } from 'hataraku';
 import chalk from 'chalk';
-import { createBedrockProvider } from '../core/providers/bedrock';
 
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant that can use various tools to accomplish tasks.
@@ -35,8 +32,7 @@ async function main() {
 
         try {
             // Initialize OpenAI provider
-            const bedrock = await createBedrockProvider('default');
-            const model = bedrock('us.anthropic.claude-3-5-sonnet-20241022-v2.0');
+            const model = await createBedrockModel('default');
 
             // Create agent with MCP tools
             const agent = createAgent({
