@@ -9,7 +9,7 @@ async function initializeAgent() {
   // Initialize Google Vertex AI model
   // Note: This requires GOOGLE_APPLICATION_CREDENTIALS environment variable
   // or other Google Cloud authentication method to be set up
-  const model = await createVertexModel('gemini-1.5-flash');
+  const model = await createVertexModel('gemini-2.0-flash-lite-001');
   
   // Create an agent using our configuration
   return createAgent({

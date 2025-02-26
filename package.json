@@ -92,7 +92,9 @@
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "2.0.5",
+    "@ai-sdk/anthropic": "^1.1.11",
     "@ai-sdk/google-vertex": "^2.1.19",
+    "@ai-sdk/openai": "^1.1.14",
     "@anthropic-ai/sdk": "0.37.0",
     "@aws-sdk/credential-providers": "3.750.0",
     "@inquirer/prompts": "^3.3.0",
