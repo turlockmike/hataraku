@@ -52,28 +52,29 @@ export class Task<TInput = string, TOutput = unknown> {
         return (this.task as (input: TInput) => string)(input);
     }
 
+
+
     /**
      * Execute the task with the given input
      */
     async run(input: TInput): Promise<TOutput>;
-    async run(input: TInput, options: { stream: false, thread?: Thread }): Promise<TOutput>;
-    async run(input: TInput, options: { stream: true, thread?: Thread }): Promise<AsyncIterable<string> & ReadableStream<string>>;
-    async run(input: TInput, options?: { stream?: boolean, thread?: Thread }): Promise<TOutput | AsyncIterableStream<string>> {
+    async run(input: TInput, options: { stream: false, thread?: Thread, verbose?: boolean }): Promise<TOutput>;
+    async run(input: TInput, options: { stream: true, thread?: Thread, verbose?: boolean }): Promise<AsyncIterable<string> & ReadableStream<string>>;
+    async run(input: TInput, options: { thread?: Thread, verbose?: boolean }): Promise<TOutput>;
+    async run(input: TInput, options?: { stream?: boolean, thread?: Thread, verbose?: boolean }): Promise<TOutput | AsyncIterableStream<string>> {
         // Validate input against schema
         const validInput = await this.inputSchema.parseAsync(input);
-        
         // Generate prompt with validated input
         const prompt = this.getTaskPrompt(validInput);
         
         if (options?.stream) {
-            return this.agent.task(prompt, { stream: true, thread: options.thread });
+            return this.agent.task(prompt, { stream: true, thread: options.thread, verbose: options.verbose });
         }
-        // console.log('Executing task:', this.name, prompt, JSON.stringify(zodToJsonSchema(this.outputSchema)));
         if (this.outputSchema) {
-            const result = await this.agent.task<TOutput>(prompt, { schema: this.outputSchema, thread: options?.thread });
+            const result = await this.agent.task<TOutput>(prompt, { schema: this.outputSchema, thread: options?.thread, verbose: options?.verbose });
             return result;
         }
-        return this.agent.task(prompt, { thread: options?.thread }) as Promise<TOutput>;
+        return this.agent.task(prompt, { thread: options?.thread, verbose: options?.verbose }) as Promise<TOutput>;
     }
 
     /**

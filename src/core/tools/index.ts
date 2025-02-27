@@ -12,6 +12,7 @@ import { createExecuteCommandTool } from './execute-command';
 import { listCodeDefinitionsTool } from './list-code-definitions';
 import { playAudioTool } from './play-audio';
 import { showImageTool } from './show-image';
+import { searchReplaceV2Tool } from './search-and-replace-v2';
 
 // Create the execute command tool with grey output
 const executeCommandTool = createExecuteCommandTool({ outputColor: 'grey' });
@@ -29,7 +30,8 @@ export {
   executeCommandTool,
   listCodeDefinitionsTool,
   playAudioTool,
-  showImageTool
+  showImageTool,
+  searchReplaceV2Tool
 };
 
 // Tool Sets

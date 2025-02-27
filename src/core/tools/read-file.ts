@@ -11,7 +11,6 @@ export const readFileTool: Tool = {
   execute: async ({ path: filePath }) => {
     try {
       const absolutePath = path.resolve(process.cwd(), filePath);
-      
       // Check if file exists
       try {
         await fs.access(absolutePath);
@@ -24,7 +23,6 @@ export const readFileTool: Tool = {
           }]
         };
       }
-
       // Read file content
       const content = await fs.readFile(absolutePath, 'utf-8');
       
@@ -42,7 +40,6 @@ export const readFileTool: Tool = {
       const numberedLines = content.split('\n').map((line, index) => 
         `${index + 1} | ${line}`
       ).join('\n');
-
       return {
         content: [{
           type: "text",

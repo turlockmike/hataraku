@@ -3,6 +3,15 @@ import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+/**
+ * Interface representing the result of a diff operation.
+ *
+ * @interface DiffResult
+ * @property {boolean} success - Indicates whether the diff operation was successful.
+ * @property {string} [content] - The modified content after applying the diff (only present if successful).
+ * @property {string} [error] - Error message if the diff operation failed.
+ * @property {unknown} [details] - Additional details about the operation or error.
+ */
 interface DiffResult {
   success: boolean;
   content?: string;
