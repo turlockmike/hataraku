@@ -211,8 +211,10 @@ export class Agent {
         onStepFinish: (step) => {
           if (isVerbose) {
             log.system(`\n📝 Step finished:`);
-            log.system(`Reasoning: ${step.reasoning?.substring(0, 100)}${step.reasoning && step.reasoning.length > 100 ? '...' : ''}`);
-            log.system(`Text: ${step.text.substring(0, 100)}${step.text.length > 100 ? '...' : ''}`);
+            if (step.reasoning) {
+              log.system(`<thinking> ${step.reasoning?.substring(0, 100)}${step.reasoning?.length > 100 ? '...' : ''}</thinking>`);
+            }
+            log.system(`<response> ${step.text}</response>`);
             
             // Log tool calls if any
             if (step.toolCalls && step.toolCalls.length > 0) {
@@ -416,7 +418,6 @@ export class Agent {
         log.system('\n🔄 Starting text generation...');
       }
       
-      console.log('Generating text');
       result = await generateText({
         model,
         system: this.getSystemPrompt(),

@@ -30,11 +30,10 @@ export interface ExportedItem {
  */
 export interface NestedExportedItem {
   name: string;
-  source: string;
+  filePath: string;
   originalSource?: string;
   originalName?: string;
   isDefault?: boolean;
-  kind?: string;
   documentation?: string;
 }
 
@@ -471,7 +470,8 @@ function findReExportsInFile(filePath: string): NestedExportedItem[] {
           const propertyName = element.propertyName?.text || name;
           reExports.push({ 
             name: propertyName !== name ? `${propertyName} as ${name}` : name, 
-            source 
+            originalSource: source,
+            filePath
           });
         });
       }
@@ -479,7 +479,8 @@ function findReExportsInFile(filePath: string): NestedExportedItem[] {
       else if (!node.exportClause) {
         reExports.push({ 
           name: '*', 
-          source 
+          originalSource: source,
+          filePath
         });
       }
     }
@@ -502,6 +503,7 @@ function findReExportsInFile(filePath: string): NestedExportedItem[] {
 function findDirectExportsInFile(filePath: string): NestedExportedItem[] {
   const directExports: NestedExportedItem[] = [];
   const fileContent = fs.readFileSync(filePath, 'utf-8');
+  const baseDir = path.dirname(filePath);
   
   // Create a SourceFile
   const sourceFile = ts.createSourceFile(
@@ -510,6 +512,9 @@ function findDirectExportsInFile(filePath: string): NestedExportedItem[] {
     ts.ScriptTarget.Latest,
     true
   );
+
+  // Track imported items with their resolved paths
+  const importedItems = new Map<string, string | null>();
   
   // Helper function to extract JSDoc comment if available
   const getJSDocComment = (node: ts.Node): string | undefined => {
@@ -520,26 +525,28 @@ function findDirectExportsInFile(filePath: string): NestedExportedItem[] {
     return undefined;
   };
   
-  // Helper function to get node kind as string
-  const getNodeKindName = (node: ts.Node): string => {
-    if (ts.isFunctionDeclaration(node)) return 'function';
-    if (ts.isClassDeclaration(node)) return 'class';
-    if (ts.isInterfaceDeclaration(node)) return 'interface';
-    if (ts.isTypeAliasDeclaration(node)) return 'type';
-    if (ts.isEnumDeclaration(node)) return 'enum';
-    if (ts.isVariableDeclaration(node)) {
-      if (node.initializer) {
-        if (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer)) {
-          return 'function';
+  // First pass: collect imports
+  function collectImports(node: ts.Node) {
+    if (ts.isImportDeclaration(node)) {
+      const source = node.moduleSpecifier.getText(sourceFile).replace(/['"]/g, '');
+      const resolvedPath = resolveSourcePath(baseDir, source);
+      if (node.importClause) {
+        if (node.importClause.name) {
+          // Default import
+          importedItems.set(node.importClause.name.text, resolvedPath);
         }
-        if (ts.isObjectLiteralExpression(node.initializer)) {
-          return 'object';
+        if (node.importClause.namedBindings) {
+          if (ts.isNamedImports(node.importClause.namedBindings)) {
+            // Named imports
+            node.importClause.namedBindings.elements.forEach(element => {
+              importedItems.set(element.name.text, resolvedPath);
+            });
+          }
         }
       }
-      return 'variable';
     }
-    return ts.SyntaxKind[node.kind] || 'unknown';
-  };
+    ts.forEachChild(node, collectImports);
+  }
   
   // Visit each node in the source file
   function visit(node: ts.Node) {
@@ -548,31 +555,26 @@ function findDirectExportsInFile(filePath: string): NestedExportedItem[] {
       const isDefault = (node as any).modifiers.some((modifier: ts.Modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword);
       
       let name = '';
-      let kind = '';
       
       if (ts.isFunctionDeclaration(node) && node.name) {
         name = node.name.text;
-        kind = 'function';
       } else if (ts.isClassDeclaration(node) && node.name) {
         name = node.name.text;
-        kind = 'class';
       } else if (ts.isInterfaceDeclaration(node) && node.name) {
         name = node.name.text;
-        kind = 'interface';
       } else if (ts.isTypeAliasDeclaration(node) && node.name) {
         name = node.name.text;
-        kind = 'type';
       } else if (ts.isEnumDeclaration(node) && node.name) {
         name = node.name.text;
-        kind = 'enum';
       } else if (ts.isVariableStatement(node)) {
         node.declarationList.declarations.forEach(declaration => {
           if (ts.isIdentifier(declaration.name)) {
+            const name = declaration.name.text;
+            const resolvedPath = importedItems.get(name);
             directExports.push({
-              name: declaration.name.text,
-              source: 'local',
+              name,
+              filePath: resolvedPath || filePath,
               isDefault,
-              kind: getNodeKindName(declaration),
               documentation: getJSDocComment(node)
             });
           }
@@ -581,11 +583,11 @@ function findDirectExportsInFile(filePath: string): NestedExportedItem[] {
       }
       
       if (name) {
+        const resolvedPath = importedItems.get(name);
         directExports.push({
           name,
-          source: 'local',
+          filePath: resolvedPath || filePath,
           isDefault,
-          kind,
           documentation: getJSDocComment(node)
         });
       }
@@ -597,9 +599,6 @@ function findDirectExportsInFile(filePath: string): NestedExportedItem[] {
         node.exportClause.elements.forEach(element => {
           const name = element.name.text;
           const propertyName = element.propertyName?.text || name;
-          
-          // Find the declaration in the file to get its kind
-          let kind = 'unknown';
           let documentation;
           
           ts.forEachChild(sourceFile, innerNode => {
@@ -609,32 +608,26 @@ function findDirectExportsInFile(filePath: string): NestedExportedItem[] {
                 innerNode.name && 
                 innerNode.name.text === propertyName) {
               foundNode = innerNode;
-              kind = 'function';
             } else if (ts.isClassDeclaration(innerNode) && 
                       innerNode.name && 
                       innerNode.name.text === propertyName) {
               foundNode = innerNode;
-              kind = 'class';
             } else if (ts.isInterfaceDeclaration(innerNode) && 
                       innerNode.name && 
                       innerNode.name.text === propertyName) {
               foundNode = innerNode;
-              kind = 'interface';
             } else if (ts.isTypeAliasDeclaration(innerNode) && 
                       innerNode.name && 
                       innerNode.name.text === propertyName) {
               foundNode = innerNode;
-              kind = 'type';
             } else if (ts.isEnumDeclaration(innerNode) && 
                       innerNode.name && 
                       innerNode.name.text === propertyName) {
               foundNode = innerNode;
-              kind = 'enum';
             } else if (ts.isVariableStatement(innerNode)) {
               innerNode.declarationList.declarations.forEach(decl => {
                 if (ts.isIdentifier(decl.name) && decl.name.text === propertyName) {
                   foundNode = decl;
-                  kind = getNodeKindName(decl);
                 }
               });
             }
@@ -644,10 +637,10 @@ function findDirectExportsInFile(filePath: string): NestedExportedItem[] {
             }
           });
           
+          const resolvedPath = importedItems.get(propertyName);
           directExports.push({
             name: propertyName !== name ? `${propertyName} as ${name}` : name,
-            source: 'local',
-            kind,
+            filePath: resolvedPath || filePath,
             documentation
           });
         });
@@ -658,7 +651,9 @@ function findDirectExportsInFile(filePath: string): NestedExportedItem[] {
     ts.forEachChild(node, visit);
   }
   
-  // Start the traversal
+  // First collect imports
+  collectImports(sourceFile);
+  // Then process exports
   visit(sourceFile);
   
   return directExports;
@@ -688,20 +683,20 @@ export async function findNestedExports(filePath: string, maxDepth = 10, visited
     // Handle wildcard exports
     if (reExport.name === '*') {
       // For wildcard exports, we need to find all exports from the source file
-      const sourcePath = resolveSourcePath(baseDir, reExport.source);
+      const sourcePath = resolveSourcePath(baseDir, reExport.originalSource);
       if (sourcePath) {
         try {
           // Find all exports in the source file
           const sourceExports = await findNestedExports(sourcePath, maxDepth - 1, new Set(visited));
           // Add them to our results with the original source path
           sourceExports.forEach(item => {
-            if (!item.originalSource || item.originalSource === 'local') {
-              item.originalSource = reExport.source;
+            if (!item.originalSource) {
+              item.originalSource = reExport.originalSource;
             }
           });
           result.push(...sourceExports);
         } catch (error) {
-          console.error(`Error processing wildcard export from ${reExport.source}: ${error}`);
+          console.error(`Error processing wildcard export from ${reExport.originalSource}: ${error}`);
         }
       }
       continue;
@@ -710,7 +705,7 @@ export async function findNestedExports(filePath: string, maxDepth = 10, visited
     let currentItem = { ...reExport };
     
     // Resolve the source path
-    let sourcePath = resolveSourcePath(baseDir, reExport.source);
+    let sourcePath = resolveSourcePath(baseDir, reExport.originalSource);
     if (!sourcePath) {
       // If we can't resolve the path, keep the original
       result.push(currentItem);
@@ -740,13 +735,13 @@ export async function findNestedExports(filePath: string, maxDepth = 10, visited
         }
         
         // Update the current item and continue following the chain
-        currentItem.originalSource = currentItem.originalSource || currentItem.source;
+        currentItem.originalSource = currentItem.originalSource || currentItem.filePath;
         currentItem.originalName = currentItem.originalName || currentItem.name;
-        currentItem.source = nestedExport.source;
+        currentItem.filePath = nestedExport.filePath;
         
         // Resolve the new source path
         const newBaseDir = path.dirname(sourcePath);
-        sourcePath = resolveSourcePath(newBaseDir, nestedExport.source);
+        sourcePath = resolveSourcePath(newBaseDir, nestedExport.originalSource);
         if (!sourcePath) {
           break;
         }

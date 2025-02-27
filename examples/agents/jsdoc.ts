@@ -1,9 +1,31 @@
 import { createTask, createAgent, createBedrockModel, applyDiffTool, searchReplaceV2Tool } from 'hataraku';
 import { z } from 'zod';
-import {
-  readFileTool,
-} from 'hataraku';
+import { readFileTool, executeCommandTool } from 'hataraku';
 
+// Create a combo tool that runs search/replace followed by lint
+const searchReplaceAndLintTool = {
+  ...searchReplaceV2Tool,
+  execute: async (params, options) => {
+    // First run the original search/replace
+    const result = await searchReplaceV2Tool.execute(params, options);
+    
+    // If search/replace succeeded, run lint
+    if (!result.isError) {
+      const filePathsArray = Array.from(new Set([params.filePath]));
+      const lintCommand = `npx eslint ${filePathsArray.join(' ')} --max-warnings 0`;
+      try {
+        const { execSync } = require('child_process');
+        execSync(lintCommand, { stdio: 'inherit' });
+      } catch (error) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: `Lint failed: ${error.message}` }]
+        };
+      }
+    }
+    return result;
+  }
+};
 
 const model = createBedrockModel(); //Defaults to sonnet 3.7
 const jsdocAgent = createAgent({
@@ -14,9 +36,9 @@ const jsdocAgent = createAgent({
   tools: {
     read_file: readFileTool,
     search_and_replace: searchReplaceV2Tool,
+    execute_command: executeCommandTool
   }
 });
-
 
 export const analyzeFileTask = createTask({
   name: 'Analyze and Update File',
@@ -26,38 +48,62 @@ export const analyzeFileTask = createTask({
     filePath: z.string(),
     exportedFunctions: z.array(z.object({
       name: z.string(),
-      kind: z.string().optional(),
-      source: z.string().optional(),
+      filePath: z.string(),
       originalSource: z.string().optional(),
+      originalName: z.string().optional(),
       documentation: z.string().optional(),
       isDefault: z.boolean().optional()
     })).optional()
   }),
-  task: (input) =>
-    `Analyze the file at ${input.filePath} to identify exported functions, classes, and interfaces that need JSDoc comments.
-      
-      
-      1. Read the file content
-      2. IMPORTANT: Only document actual function/class/interface definitions, NOT re-exports
-        - Skip index files that only re-export from other files
-        - Focus on files where the actual implementation is defined
-        - If a file only has "export * from './something'" statements, skip it
-      3. For each ACTUAL exported function/class/interface definition (not re-exports):
-        - Determine its signature (parameters, return type)
-        - Check if it already has JSDoc comments
-        - If it doesn't have JSDoc comments or the comments are incomplete, generate comprehensive JSDoc comments
-        - If a class is exported, document all non-private methods and properties
-      4. Update the file content with the new JSDoc comments
-      
-      Follow these JSDoc guidelines:
-      - Include a description of what the function/class/interface does
-      - Document all parameters with @param tags, including types and descriptions
-      - Document return values with @return tags, including types and descriptions
-      - Add @example tags with usage examples where appropriate
-      - Use @throws tags to document exceptions that might be thrown
-      
-      5. If changes were made, use the search_and_replace tool to save the updated content back to ${input.filePath}. Only document 1 item at a time. 
-      
-      You don't need to return any data, just update the file if needed. Otherwise finish the task.`
+  task: (input) => {
+    // Get unique file paths from exported functions
+    const filePaths = new Set<string>();
+    if (input.exportedFunctions) {
+      input.exportedFunctions.forEach(exp => {
+        if (exp.filePath) {
+          filePaths.add(exp.filePath);
+        }
+      });
+    }
+    
+    // Add the input file path if not already included
+    filePaths.add(input.filePath);
+    
+    const filePathsArray = Array.from(filePaths);
+    
+    return `I will analyze and document the following files:
+${filePathsArray.map(path => `- ${path}`).join('\n')}
+
+For each file:
+
+1. Read the file content
+2. IMPORTANT: Only document actual function/class/interface definitions, NOT re-exports
+  - Skip index files that only re-export from other files
+  - Focus on files where the actual implementation is defined
+  - If a file only has "export * from './something'" statements, skip it
+3. For each ACTUAL exported function/class/interface definition (not re-exports):
+  - Determine its signature (parameters, return type)
+  - Check if it already has JSDoc comments
+  - If it doesn't have JSDoc comments or the comments are incomplete, generate comprehensive JSDoc comments
+  - If a class is exported, document all non-private methods and properties
+4. Update the file content with the new JSDoc comments
+
+Follow these JSDoc guidelines:
+- Include a description of what the function/class/interface does
+- Document all parameters with @param tags, including types and descriptions
+- Document return values with @return tags, including types and descriptions
+- Add @example tags with usage examples where appropriate
+- Use @throws tags to document exceptions that might be thrown
+
+5. For each change:
+   a. Use the search_and_replace tool to save the updated content back to the file. Only document 1 item at a time.
+   b. IMPORTANT: After EACH search_and_replace operation, run:
+      \`\`\`bash
+      npx eslint ${filePathsArray.join(' ')} --max-warnings 0
+      \`\`\`
+   c. If lint errors are found, revert the change and try a different approach
+
+You don't need to return any data, just update the files if needed. Otherwise finish the task.`
+  }
 });
   
