@@ -1,5 +1,11 @@
 # hataraku
 
+## 0.6.0
+
+### Minor Changes
+
+-   Big changes and enhancements, too many to list
+
 ## 0.5.2
 
 ### Patch Changes
