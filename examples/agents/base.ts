@@ -23,7 +23,25 @@ export const DESCRIPTIONS = {
   ASSISTANT: 'An agent that provides helpful responses to questions'
 };
 
-// Base agent configuration
+/**
+ * Creates a base agent with the specified configuration.
+ *
+ * @param {object} config - The configuration object for the agent.
+ * @param {string} config.name - The name of the agent.
+ * @param {string} config.description - The description of the agent.
+ * @param {string} config.role - The role of the agent.
+ * @param {Record<string, any>} [config.tools] - Optional tools for the agent.
+ * @param {LanguageModelV1 | Promise<LanguageModelV1>} [config.model] - Optional language model for the agent.
+ * @param {string} [config.profile] - Optional profile for the agent.
+ * @returns {any} The created agent.
+ * @example
+ * const agent = createBaseAgent({
+ *   name: 'MathAgent',
+ *   description: 'An agent that performs mathematical operations',
+ *   role: ROLES.MATH,
+ *   tools: { calculator: new CalculatorTool() }
+ * });
+ */
 export function createBaseAgent(config: {
   name: string;
   description: string;
@@ -39,4 +57,4 @@ export function createBaseAgent(config: {
     model: config.model || createBedrockModel(config.profile),
     tools: config.tools
   });
-} 
+}

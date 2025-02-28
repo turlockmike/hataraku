@@ -24,36 +24,74 @@ interface CallSettings {
   toolChoice?: 'auto' | 'none' | 'required';
 }
 
+/**
+ * Configuration options for creating an Agent.
+ * @interface AgentConfig
+ */
 export interface AgentConfig {
+  /** The name of the agent */
   name: string;
+  /** A description of what the agent does */
   description: string;
-  role: string; // System instructions for the agent
+  /** System instructions for the agent that define its behavior and capabilities */
+  role: string;
+  /** The language model to use for the agent, can be provided directly or as a Promise */
   model: LanguageModelV1 | Promise<LanguageModelV1>;
+  /** Optional set of tools the agent can use to perform tasks */
   tools?: ToolSet;
+  /** Optional settings to customize model API calls */
   callSettings?: CallSettings;
+  /** Optional task history manager to track agent interactions */
   taskHistory?: TaskHistory;
-  verbose?: boolean; // Add verbose flag to configuration
+  /** Whether to enable verbose logging of agent operations */
+  verbose?: boolean;
 }
 
+/**
+ * Input parameters for an agent task.
+ * @interface TaskInput
+ * @template T - The expected return type when using a schema
+ */
 export interface TaskInput<T = unknown> {
+  /** Optional thread containing message history for context */
   thread?: Thread;
+  /** Optional Zod schema to validate and structure the response */
   schema?: z.ZodType<T>;
+  /** Whether to stream the response as it's generated */
   stream?: boolean;
-  verbose?: boolean; // Add verbose flag to TaskInput
+  /** Whether to enable verbose logging for this specific task */
+  verbose?: boolean;
 }
 
+/**
+ * Result of a streaming task execution.
+ * @interface StreamingTaskResult
+ */
 export interface StreamingTaskResult {
+  /** An async generator that yields chunks of the response as they become available */
   stream: AsyncGenerator<string>;
 }
 
+/**
+ * Agent class that can execute tasks using a language model.
+ * The agent can use tools, maintain conversation history, and generate structured responses.
+ */
 export class Agent {
+  /** The name of the agent */
   public readonly name: string;
+  /** A description of what the agent does */
   public readonly description: string;
+  /** Promise that resolves to the language model used by the agent */
   private readonly modelPromise: Promise<LanguageModelV1>;
+  /** Set of tools the agent can use to perform tasks */
   public readonly tools: ToolSet;
+  /** Settings to customize model API calls */
   public readonly callSettings: CallSettings;
+  /** System instructions that define the agent's behavior and capabilities */
   public readonly role: string;
+  /** Optional task history manager to track agent interactions */
   private readonly taskHistory?: TaskHistory;
+  /** Whether to enable verbose logging of agent operations */
   private readonly verbose: boolean;
 
   constructor(config: AgentConfig) {
@@ -148,15 +186,50 @@ export class Agent {
     };
    
     if (input?.stream) {
-      const {textStream} = streamText({
-        model,
-        system: this.getSystemPrompt(),
-        messages: thread.getFormattedMessages(),
-        maxSteps,
-        maxRetries,
+      if (isVerbose) {
+        log.system('\n🔄 Starting streaming text generation...');
+      }
+      try {
+        const {textStream} = streamText({
+          model,
+          system: this.getSystemPrompt(),
+          messages: thread.getFormattedMessages(),
+          maxSteps,
+          maxRetries,
         tools: this.tools,
         ...this.callSettings,
+        onChunk: (event) => {
+          if (isVerbose) {
+            const chunk = event.chunk;
+            if (chunk.type === 'text-delta' || chunk.type === 'reasoning') {
+              log.system(chunk.textDelta);
+            } else {
+              log.system(JSON.stringify(chunk));
+            }
+          }
+        },
+        onStepFinish: (step) => {
+          if (isVerbose) {
+            log.system(`\n📝 Step finished:`);
+            if (step.reasoning) {
+              log.system(`<thinking> ${step.reasoning?.substring(0, 100)}${step.reasoning?.length > 100 ? '...' : ''}</thinking>`);
+            }
+            log.system(`<response> ${step.text}</response>`);
+            
+            // Log tool calls if any
+            if (step.toolCalls && step.toolCalls.length > 0) {
+              log.system(`\n🔧 Tool calls in this step: ${step.toolCalls.length}`);
+              for (let i = 0; i < step.toolCalls.length; i++) {
+                const toolCall = step.toolCalls[i];
+                log.system(`Tool call #${i + 1}: ${JSON.stringify(toolCall).substring(0, 150)}...`);
+              }
+            }
+          }
+        },
         onError: (error) => {
+          if (isVerbose) {
+            log.system(`\n❌ Error streaming text: ${error instanceof Error ? error.message : String(error)}`);
+          }
           console.error('Error streaming text', error);
           if (this.taskHistory && historyEntry.debug) {
             historyEntry.debug.responses.push({
@@ -180,6 +253,10 @@ export class Agent {
           }
         },
         onFinish: (result) => {
+          if (isVerbose) {
+            log.system(`\n✅ Streaming completed: ${result.text.substring(0, 50)}${result.text.length > 50 ? '...' : ''}`);
+            log.system(`Tokens: In=${result.usage?.promptTokens || 0}, Out=${result.usage?.completionTokens || 0}`);
+          }
           thread.addMessage('assistant', result.text);
           if (this.taskHistory && historyEntry.debug) {
             historyEntry.debug.responses.push({
@@ -198,21 +275,52 @@ export class Agent {
         }
       });
 
-      return textStream;
+        return textStream;
+      } catch (error) {
+        console.error('Error streaming text', error);
+        throw error;
+      }
     }
 
     try {
       let result;
       if (Object.keys(this.tools).length > 0 && input?.schema) {
+        if (isVerbose) {
+          log.system('\n🔄 Starting text generation with tools and schema...');
+          log.system(JSON.stringify(this.tools));
+        }
+        
         result = await generateText({
           model,
           system: this.getSystemPrompt(),
           messages: thread.getFormattedMessages(),
           maxSteps,
           maxRetries,
+          onStepFinish: (step) => {
+            if (isVerbose) {
+              log.system(`\n📝 Step finished:`);
+              log.system(`Reasoning: ${step.reasoning?.substring(0, 100)}${step.reasoning && step.reasoning.length > 100 ? '...' : ''}`);
+              log.system(`Text: ${step.text.substring(0, 100)}${step.text.length > 100 ? '...' : ''}`);
+              
+              // Log tool calls if any
+              if (step.toolCalls && step.toolCalls.length > 0) {
+                log.system(`\n🔧 Tool calls in this step: ${step.toolCalls.length}`);
+                for (let i = 0; i < step.toolCalls.length; i++) {
+                  const toolCall = step.toolCalls[i];
+                  log.system(`Tool call #${i + 1}: ${JSON.stringify(toolCall).substring(0, 150)}...`);
+                }
+              }
+            }
+          },
           tools: this.tools,
           ...this.callSettings,
         });
+        
+        if (isVerbose) {
+          log.system(`\n✅ Text generation completed: ${result.text.substring(0, 50)}${result.text.length > 50 ? '...' : ''}`);
+          log.system(`Tokens: In=${result.usage?.promptTokens || 0}, Out=${result.usage?.completionTokens || 0}`);
+        }
+        
         thread.addMessage('assistant', result.text);
         thread.addMessage('user', 'Based on the last response, please create a response that matches the schema provided. It must be valid JSON and match the schema exactly.');
         
@@ -230,6 +338,10 @@ export class Agent {
           historyEntry.tokensOut += result.usage?.completionTokens || 0;
         }
 
+        if (isVerbose) {
+          log.system('\n🔄 Starting object generation with schema...');
+        }
+        
         const { object } = await generateObject({
           model,
           system: this.getSystemPrompt(),
@@ -240,6 +352,10 @@ export class Agent {
           ...this.callSettings,
         });
 
+        if (isVerbose) {
+          log.system(`\n✅ Object generation completed: ${JSON.stringify(object).substring(0, 50)}${JSON.stringify(object).length > 50 ? '...' : ''}`);
+        }
+        
         thread.addMessage('assistant', JSON.stringify(object));
         
         if (this.taskHistory && historyEntry.debug) {
@@ -259,6 +375,10 @@ export class Agent {
       }
 
       if (input?.schema) {
+        if (isVerbose) {
+          log.system('\n🔄 Starting object generation with schema...');
+        }
+        
         const result = await generateObject({
           model,
           system: this.getSystemPrompt(),
@@ -268,6 +388,11 @@ export class Agent {
           schema: input.schema,
           ...this.callSettings,
         });
+        
+        if (isVerbose) {
+          log.system(`\n✅ Object generation completed: ${JSON.stringify(result.object).substring(0, 50)}${JSON.stringify(result.object).length > 50 ? '...' : ''}`);
+          log.system(`Tokens: In=${result.usage?.promptTokens || 0}, Out=${result.usage?.completionTokens || 0}`);
+        }
         
         thread.addMessage('assistant', JSON.stringify(result.object));
         
@@ -288,16 +413,41 @@ export class Agent {
 
         return result.object;
       }
-
+      
+      if (isVerbose) {
+        log.system('\n🔄 Starting text generation...');
+      }
+      
       result = await generateText({
         model,
         system: this.getSystemPrompt(),
         messages: thread.getFormattedMessages(),
         tools: this.tools,
+        onStepFinish: (step) => {
+          if (isVerbose) {
+            log.system(`\n📝 Step finished:`);
+            log.system(`Reasoning: ${step.reasoning?.substring(0, 100)}${step.reasoning && step.reasoning.length > 100 ? '...' : ''}`);
+            log.system(`Text: ${step.text.substring(0, 100)}${step.text.length > 100 ? '...' : ''}`);
+            
+            // Log tool calls if any
+            if (step.toolCalls && step.toolCalls.length > 0) {
+              log.system(`\n🔧 Tool calls in this step: ${step.toolCalls.length}`);
+              for (let i = 0; i < step.toolCalls.length; i++) {
+                const toolCall = step.toolCalls[i];
+                log.system(`Tool call #${i + 1}: ${JSON.stringify(toolCall).substring(0, 150)}...`);
+              }
+            }
+          }
+        },
         maxSteps,
         maxRetries,
         ...this.callSettings,
       });
+      
+      if (isVerbose) {
+        log.system(`\n✅ Text generation completed: ${result.text.substring(0, 50)}${result.text.length > 50 ? '...' : ''}`);
+        log.system(`Tokens: In=${result.usage?.promptTokens || 0}, Out=${result.usage?.completionTokens || 0}`);
+      }
         
       thread.addMessage('assistant', result.text);
       
@@ -318,6 +468,10 @@ export class Agent {
 
       return result.text;
     } catch (error) {
+      if (isVerbose) {
+        log.system(`\n❌ Error in task execution: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      
       if (this.taskHistory && historyEntry.debug) {
         historyEntry.debug.responses.push({
           timestamp: Date.now(),
@@ -343,6 +497,23 @@ export class Agent {
   }
 }
 
+/**
+ * Creates a new Agent instance with the provided configuration.
+ *
+ * @param config - The configuration options for the agent
+ * @returns A new Agent instance
+ *
+ * @example
+ * ```typescript
+ * const agent = createAgent({
+ *   name: 'MyAssistant',
+ *   description: 'A helpful assistant',
+ *   role: 'You are a helpful assistant that answers questions accurately.',
+ *   model: new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
+ *   verbose: true
+ * });
+ * ```
+ */
 export function createAgent(config: AgentConfig): Agent {
   return new Agent(config);
 }

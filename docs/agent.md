@@ -27,6 +27,8 @@ interface AgentConfig {
   model: LanguageModelV1;   // Language model to use
   tools?: ToolSet;          // Optional set of tools the agent can use
   callSettings?: CallSettings; // Optional model call settings
+  taskHistory?: TaskHistory; // Optional task history tracker
+  verbose?: boolean;        // Optional verbose logging flag
 }
 ```
 
@@ -39,6 +41,7 @@ interface TaskInput<T = unknown> {
   thread?: Thread;           // Optional conversation thread
   schema?: z.ZodType<T>;    // Optional Zod schema for response validation
   stream?: boolean;         // Enable streaming response
+  verbose?: boolean;        // Optional verbose logging flag
 }
 ```
 
@@ -199,7 +202,7 @@ interface CallSettings {
    - First generates a text response
    - Then generates a schema-validated object
 3. Default values:
-   - `maxSteps`: 5
+   - `maxSteps`: 25
    - `maxRetries`: 4
 4. Streaming responses and schema validation cannot be used simultaneously.
 5. Tool integration requires proper error handling and may impact response time due to the two-step process.

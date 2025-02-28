@@ -9,6 +9,13 @@ import { exec } from 'child_process';
 const SUPPORTED_FORMATS = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'];
 
 // Platform-specific open command
+/**
+ * Returns the platform-specific command to open an image file
+ *
+ * @param imagePath - The absolute path to the image file
+ * @returns The command string to execute for opening the image
+ * @throws Will throw an error if the current platform is not supported
+ */
 function getOpenCommand(imagePath: string): string {
   switch (platform()) {
     case 'win32':
@@ -22,6 +29,18 @@ function getOpenCommand(imagePath: string): string {
   }
 }
 
+/**
+ * Tool for displaying image files using the system's default image viewer.
+ *
+ * @example
+ * ```typescript
+ * // Display an image file
+ * await showImageTool.execute({ path: './images/example.png' });
+ * ```
+ *
+ * @throws Will throw an error if the platform is not supported
+ * @throws Will return an error object if the file doesn't exist or has an unsupported format
+ */
 export const showImageTool: Tool = {
   description: "Display an image file using the system's default image viewer.",
   parameters: z.object({
