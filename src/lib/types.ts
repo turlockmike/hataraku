@@ -95,25 +95,6 @@ export interface HatarakuTool<TInput = any> extends MCPTool {
     streamHandler?: StreamHandler;
 }
 
-export interface ToolExecutor {
-    executeCommand(command: string): Promise<[boolean, ToolResponse]>;
-    writeFile(path: string, content: string, lineCount: number): Promise<[boolean, ToolResponse]>;
-    readFile(path: string): Promise<[boolean, ToolResponse]>;
-    listFiles(path: string, recursive?: boolean): Promise<[boolean, ToolResponse]>;
-    searchFiles(path: string, regex: string, filePattern?: string): Promise<[boolean, ToolResponse]>;
-    listCodeDefinitions(path: string): Promise<[boolean, ToolResponse]>;
-    browserAction(action: string, url?: string, coordinate?: string, text?: string): Promise<[boolean, ToolResponse]>;
-    waitForUser(prompt: string): Promise<[boolean, ToolResponse]>;
-    showImage(path: string): Promise<[boolean, ToolResponse]>;
-    playAudio(path: string): Promise<[boolean, ToolResponse]>;
-    fetch(url: string, options?: { 
-        usePlaywright?: boolean; 
-        headers?: string; 
-        method?: string; 
-        body?: string; 
-    }): Promise<[boolean, ToolResponse]>;
-}
-
 export interface CliConfig {
     mode?: string;
     mcpEnabled?: boolean;

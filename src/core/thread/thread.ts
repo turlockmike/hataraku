@@ -1,4 +1,3 @@
-import { Anthropic } from '@anthropic-ai/sdk';
 import { MessageRole } from '../../lib/types';
 import { randomUUID as uuid} from 'node:crypto';
 import { CoreMessage } from 'ai';

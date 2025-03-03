@@ -1,31 +1,7 @@
-import { createTask, createAgent, createBedrockModel, applyDiffTool, searchReplaceV2Tool } from 'hataraku';
+import { createTask, createAgent, createBedrockModel, searchReplaceV2Tool } from 'hataraku';
 import { z } from 'zod';
 import { readFileTool, executeCommandTool } from 'hataraku';
 
-// Create a combo tool that runs search/replace followed by lint
-const searchReplaceAndLintTool = {
-  ...searchReplaceV2Tool,
-  execute: async (params, options) => {
-    // First run the original search/replace
-    const result = await searchReplaceV2Tool.execute(params, options);
-    
-    // If search/replace succeeded, run lint
-    if (!result.isError) {
-      const filePathsArray = Array.from(new Set([params.filePath]));
-      const lintCommand = `npx eslint ${filePathsArray.join(' ')} --max-warnings 0`;
-      try {
-        const { execSync } = require('child_process');
-        execSync(lintCommand, { stdio: 'inherit' });
-      } catch (error) {
-        return {
-          isError: true,
-          content: [{ type: 'text', text: `Lint failed: ${error.message}` }]
-        };
-      }
-    }
-    return result;
-  }
-};
 
 const model = createBedrockModel(); //Defaults to sonnet 3.7
 const jsdocAgent = createAgent({
