@@ -8,8 +8,12 @@ import { LanguageModelV1 } from 'ai';
  * @returns Google Vertex AI provider
  */
 export async function createVertexProvider(project?: string, location: string = 'us-central1') {
+    const projectId = project || process.env.GOOGLE_CLOUD_PROJECT;
+    if (!projectId) {
+        throw new Error('GOOGLE_CLOUD_PROJECT is not set');
+    }
     return createVertex({
-        project: project || process.env.GOOGLE_CLOUD_PROJECT,
+        project: projectId,
         location
     });
 }

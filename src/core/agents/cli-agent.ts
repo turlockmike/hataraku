@@ -7,10 +7,39 @@ import { getMcpTools } from '../mcp/toolWrapper';
 import { ToolManager } from '../../config/ToolManager';
 import { colors, log } from '../../utils/colors';
 
+/**
+ * Options for configuring the CLI agent.
+ * @interface CLIAgentOptions
+ */
 export interface CLIAgentOptions {
+  /**
+   * Whether to enable verbose logging for the agent.
+   * When true, the agent will output additional information about its operations.
+   */
   verbose?: boolean;
 }
 
+/**
+ * Creates a CLI agent with built-in tools and MCP tools.
+ *
+ * The agent is initialized with standard tools and attempts to load additional
+ * MCP (Model-Code-Prompt) tools from the tool manager configurations.
+ *
+ * @param model - The language model to use for the agent
+ * @param options - Configuration options for the CLI agent
+ * @returns A promise that resolves to the created agent instance
+ * @throws Will log a warning if MCP tools fail to load but won't throw an error
+ *
+ * @example
+ * ```typescript
+ * import { createCLIAgent } from './cli-agent';
+ * import { openai } from 'ai';
+ *
+ * const model = openai('gpt-4');
+ * const agent = await createCLIAgent(model, { verbose: true });
+ * const response = await agent.run('What can you help me with?');
+ * ```
+ */
 export async function createCLIAgent(model: LanguageModelV1 | Promise<LanguageModelV1>, options?: CLIAgentOptions) {
   const verbose = options?.verbose === true;
   

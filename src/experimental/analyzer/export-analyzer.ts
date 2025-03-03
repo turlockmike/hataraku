@@ -1,7 +1,7 @@
 import * as ts from 'typescript';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as glob from 'glob';
+import * as glob from 'fast-glob';
 
 /**
  * Interface representing an exported function
