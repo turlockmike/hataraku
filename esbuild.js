@@ -39,7 +39,6 @@ const buildConfig = {
 	outExtension: { '.js': '.cjs' },
 	external: [
 		"web-tree-sitter", // Tree-sitter needs to be external
-		"puppeteer-core", // Puppeteer needs to be external
 		"node:worker_threads", // Node worker threads need to be external
 		"worker_threads", // Also mark without node: prefix
 	],
