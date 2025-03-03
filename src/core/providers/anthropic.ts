@@ -7,8 +7,12 @@ import { LanguageModelV1 } from 'ai';
  * @returns Anthropic provider
  */
 export async function createAnthropicProvider(apiKey?: string) {
+    const key = apiKey || process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+        throw new Error('ANTHROPIC_API_KEY is not set');
+    }
     return createAnthropic({
-        apiKey: apiKey || process.env.ANTHROPIC_API_KEY
+        apiKey: key
     });
 }
 

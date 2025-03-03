@@ -7,8 +7,12 @@ import { LanguageModelV1 } from 'ai';
  * @returns OpenAI provider
  */
 export async function createOpenAIProvider(apiKey?: string) {
+    const key = apiKey || process.env.OPENAI_API_KEY;
+    if (!key) {
+        throw new Error('OPENAI_API_KEY is not set');
+    }
     return createOpenAI({
-        apiKey: apiKey || process.env.OPENAI_API_KEY
+        apiKey: key
     });
 }
 

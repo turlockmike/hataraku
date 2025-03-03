@@ -4,8 +4,8 @@ import { fromIni } from "@aws-sdk/credential-providers"
 // Configure AWS SDK to use credentials from config file
 process.env.AWS_SDK_LOAD_CONFIG = '1';
 
-export async function createBedrockProvider(profile: string = 'default') {
-    process.env.AWS_PROFILE = profile;
+export async function createBedrockProvider(profile?: string) {
+    process.env.AWS_PROFILE = process.env.AWS_PROFILE ||profile || 'default';
     const credentials = await fromIni({ profile })()
     return createAmazonBedrock({
         region: process.env.AWS_REGION || 'us-east-1',
