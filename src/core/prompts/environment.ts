@@ -1,6 +1,7 @@
 import * as os from 'node:os';
-import defaultShell from "default-shell"
 import {readdirSync} from "node:fs"
+import * as process from 'node:process';
+import { getDefaultShell } from '../lib/utils/shell';
 
 // Should only return max files at most, evenly divided into three sections with ellipsis in between
 export function getFilesInCurrentDirectory(max = 30) {
@@ -24,7 +25,7 @@ Architecture: ${os.arch()}
 CPU Cores: ${os.cpus().length}
 Total Memory: ${Math.round(os.totalmem() / (1024 * 1024 * 1024))}GB
 Free Memory: ${Math.round(os.freemem() / (1024 * 1024 * 1024))}GB
-Default Shell: ${defaultShell}
+Default Shell: ${getDefaultShell()}
 Home Directory: ${os.homedir()}
 Current Working Directory: ${process.cwd()}
 Files in Current Directory: ${getFilesInCurrentDirectory()}

@@ -1,11 +1,13 @@
 // Mock default shell based on platform
-const os = require('os');
+const process = require('process');
 
 let defaultShell;
-if (os.platform() === 'win32') {
-  defaultShell = 'cmd.exe';
+if (process.env.SHELL) {
+    defaultShell = process.env.SHELL;
+} else if (process.platform === 'win32') {
+    defaultShell = process.env.COMSPEC || 'cmd.exe';
 } else {
-  defaultShell = '/bin/bash';
+    defaultShell = '/bin/sh';
 }
 
 module.exports = defaultShell;
