@@ -1,5 +1,11 @@
 # hataraku
 
+## 0.6.2
+
+### Patch Changes
+
+-   remove esm only package
+
 ## 0.6.1
 
 ### Patch Changes
