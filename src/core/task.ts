@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { Agent } from './agent.js';
 import { AsyncIterableStream } from './types.js';
 import { Thread } from './thread/thread.js';
+import { LanguageModelV1 } from 'ai';
 
 export interface TaskConfig<TInput = string, TOutput = unknown> {
     name: string;
@@ -58,23 +59,23 @@ export class Task<TInput = string, TOutput = unknown> {
      * Execute the task with the given input
      */
     async run(input: TInput): Promise<TOutput>;
-    async run(input: TInput, options: { stream: false, thread?: Thread, verbose?: boolean }): Promise<TOutput>;
-    async run(input: TInput, options: { stream: true, thread?: Thread, verbose?: boolean }): Promise<AsyncIterable<string> & ReadableStream<string>>;
-    async run(input: TInput, options: { thread?: Thread, verbose?: boolean }): Promise<TOutput>;
-    async run(input: TInput, options?: { stream?: boolean, thread?: Thread, verbose?: boolean }): Promise<TOutput | AsyncIterableStream<string>> {
+    async run(input: TInput, options: { stream: false, thread?: Thread, verbose?: boolean, model?: LanguageModelV1 }): Promise<TOutput>;
+    async run(input: TInput, options: { stream: true, thread?: Thread, verbose?: boolean, model?: LanguageModelV1 }): Promise<AsyncIterable<string> & ReadableStream<string>>;
+    async run(input: TInput, options: { thread?: Thread, verbose?: boolean, model?: LanguageModelV1 }): Promise<TOutput>;
+    async run(input: TInput, options?: { stream?: boolean, thread?: Thread, verbose?: boolean, model?: LanguageModelV1 }): Promise<TOutput | AsyncIterableStream<string>> {
         // Validate input against schema
         const validInput = await this.inputSchema.parseAsync(input);
         // Generate prompt with validated input
         const prompt = this.getTaskPrompt(validInput);
         
         if (options?.stream) {
-            return this.agent.task(prompt, { stream: true, thread: options.thread, verbose: options.verbose });
+            return this.agent.task(prompt, { stream: true, thread: options.thread, verbose: options.verbose, model: options.model });
         }
         if (this.outputSchema) {
-            const result = await this.agent.task<TOutput>(prompt, { schema: this.outputSchema, thread: options?.thread, verbose: options?.verbose });
+            const result = await this.agent.task<TOutput>(prompt, { schema: this.outputSchema, thread: options?.thread, verbose: options?.verbose, model: options?.model });
             return result;
         }
-        return this.agent.task(prompt, { thread: options?.thread, verbose: options?.verbose }) as Promise<TOutput>;
+        return this.agent.task(prompt, { thread: options?.thread, verbose: options?.verbose, model: options?.model }) as Promise<TOutput>;
     }
 
     /**
