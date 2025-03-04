@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { version } from '../../package.json';
-import { FirstRunManager } from '../config/FirstRunManager';
+import { FirstRunManager } from '../config/first-run-manager';
 
 // Import command registration 
 import { registerAllCommands } from './commands';

@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { getConfigPaths, createConfigDirectories } from './configPaths';
-import { AgentConfig, AgentConfigSchema, DEFAULT_CODE_ASSISTANT, DEFAULT_CODE_REVIEWER } from './agentConfig';
+import { AgentConfig, AgentConfigSchema, DEFAULT_CODE_ASSISTANT, DEFAULT_CODE_REVIEWER } from './agent-config';
 import { ToolManager } from './ToolManager';
 import { ALL_TOOLS } from '../core/tools';
 

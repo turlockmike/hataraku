@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { TaskManager } from '../TaskManager';
-import { AgentManager } from '../AgentManager';
+import { AgentManager } from '../agent-manager';
 import { TaskConfig } from '../taskConfig';
 
 // Mock fs and AgentManager

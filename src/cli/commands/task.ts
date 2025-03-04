@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { input, select } from '@inquirer/prompts';
 import { TaskManager } from '../../config/TaskManager';
 import { ProfileManager } from '../../config/ProfileManager';
-import { AgentManager } from '../../config/AgentManager';
+import { AgentManager } from '../../config/agent-manager';
 import { ConfigLoader, CliOptions } from '../../config/ConfigLoader';
 import { executeWithConfig } from '../execution';
 import { createCLIAgent } from '../../core/agents';
@@ -213,6 +213,7 @@ export function registerTaskCommands(program: Command): Command {
             console.error(chalk.red(`Task execution failed with code ${code}`));
             process.exit(code);
           }
+          process.exit(0);
         } catch (execError) {
           console.error(chalk.red('Error executing task:'), execError);
           process.exit(1);

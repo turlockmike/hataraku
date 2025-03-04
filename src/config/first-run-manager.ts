@@ -107,6 +107,7 @@ export class FirstRunManager {
     switch (provider) {
       case 'openrouter':
         modelChoices = [
+          { name: 'Claude 3.7 Sonnet (thinking)', value: 'anthropic/claude-3.7-sonnet:thinking'},
           { name: 'Claude 3.7 Sonnet', value: 'anthropic/claude-3.7-sonnet' },
           { name: 'Claude 3.5 Sonnet', value: 'anthropic/claude-3.5-sonnet' },
           { name: 'Gemini 2.0 Flash', value: 'google/gemini-2.0-flash-001' },
@@ -123,8 +124,8 @@ export class FirstRunManager {
         break;
       case 'bedrock':
         modelChoices = [
-          { name: 'Claude 3.7 Sonnet', value: 'us.anthropic.claude-3-7-sonnet-20250219-v1.0' },
-          { name: 'Claude 3.5 Sonnet', value: 'us.anthropic.claude-3-5-sonnet-20241022-v2.0' }
+          { name: 'Claude 3.7 Sonnet', value: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0' },
+          { name: 'Claude 3.5 Sonnet', value: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0' }
         ];
         break;
       default:

@@ -1,10 +1,10 @@
 import { ConfigLoader } from '../ConfigLoader';
 import { ProfileManager } from '../ProfileManager';
-import { AgentManager } from '../AgentManager';
+import { AgentManager } from '../agent-manager';
 import { TaskManager } from '../TaskManager';
 import { ToolManager } from '../ToolManager';
 import { Profile } from '../profileConfig';
-import { AgentConfig } from '../agentConfig';
+import { AgentConfig } from '../agent-config';
 
 // Mock the managers
 jest.mock('../ProfileManager');

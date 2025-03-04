@@ -1,9 +1,9 @@
-import { AgentManager } from './AgentManager';
+import { AgentManager } from './agent-manager';
 import { ProfileManager } from './ProfileManager';
 import { TaskManager } from './TaskManager';
 import { ToolManager } from './ToolManager';
 import { Profile } from './profileConfig';
-import { AgentConfig } from './agentConfig';
+import { AgentConfig } from './agent-config';
 import { TaskConfig } from './taskConfig';
 import { ToolsConfig } from './toolConfig';
 

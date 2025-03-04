@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { ConfigLoader } from '../../config/ConfigLoader';
-import { FirstRunManager } from '../../config/FirstRunManager';
+import { FirstRunManager } from '../../config/first-run-manager';
 
 export function registerConfigCommands(program: Command): Command {
   // Add configuration command
