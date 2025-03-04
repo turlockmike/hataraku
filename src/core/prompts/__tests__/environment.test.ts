@@ -25,6 +25,7 @@ const mockCwd = '/home/runner/work/hataraku/hataraku';
 const mockHomedir = '/home/runner';
 process.cwd = jest.fn().mockReturnValue(mockCwd);
 process.env.TERM_PROGRAM = undefined;
+process.env.SHELL = '/bin/bash';
 
 // Mock child_process
 jest.mock('child_process', () => ({
