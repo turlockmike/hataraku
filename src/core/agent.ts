@@ -36,7 +36,7 @@ export interface AgentConfig {
   /** System instructions for the agent that define its behavior and capabilities */
   role: string;
   /** The language model to use for the agent, can be provided directly or as a Promise */
-  model: LanguageModelV1 | Promise<LanguageModelV1>;
+  model?: LanguageModelV1 | Promise<LanguageModelV1>;
   /** Optional set of tools the agent can use to perform tasks */
   tools?: ToolSet;
   /** Optional settings to customize model API calls */
@@ -61,6 +61,8 @@ export interface TaskInput<T = unknown> {
   stream?: boolean;
   /** Whether to enable verbose logging for this specific task */
   verbose?: boolean;
+  /** Whether to use the model provided in the agent config */
+  model?: LanguageModelV1;
 }
 
 /**
@@ -82,7 +84,7 @@ export class Agent {
   /** A description of what the agent does */
   public readonly description: string;
   /** Promise that resolves to the language model used by the agent */
-  private readonly modelPromise: Promise<LanguageModelV1>;
+  private readonly modelPromise?: Promise<LanguageModelV1>;
   /** Set of tools the agent can use to perform tasks */
   public readonly tools: ToolSet;
   /** Settings to customize model API calls */
@@ -100,7 +102,7 @@ export class Agent {
     }
     this.name = config.name;
     this.description = config.description;
-    this.modelPromise = Promise.resolve(config.model);
+    this.modelPromise = config.model ? (config.model instanceof Promise ? config.model : Promise.resolve(config.model)) : undefined;
     this.tools = config.tools || {};
     this.callSettings = config.callSettings || {};
     this.role = config.role;
@@ -129,7 +131,10 @@ export class Agent {
   async task<T>(task: string, input?: TaskInput<T> & { schema: z.ZodType<T>}): Promise<T>;
   async task(task: string, input?: TaskInput ): Promise<string>;
   async task<T>(task: string, input?: TaskInput<T> & { stream?: boolean; schema?: z.ZodType<T>}): Promise<string | AsyncIterableStream<string> | T> {
-    const model = await this.modelPromise;
+    const model = input?.model || (this.modelPromise ? await this.modelPromise : undefined);
+    if (!model) {
+      throw new Error('No model provided');
+    }
     const thread = input?.thread || new Thread();
     const maxSteps = this.callSettings.maxSteps || DEFAULT_MAX_STEPS;
     const maxRetries = this.callSettings.maxRetries || DEFAULT_MAX_RETRIES;
