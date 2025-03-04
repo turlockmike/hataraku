@@ -19,6 +19,7 @@ Hataraku is a powerful toolkit that enables the creation of AI-powered developme
 - 🧰 Built-in tool integration system
 - 🔗 Model Context Protocol (MCP) support
 - 🔄 Extends the powerful AI SDK from Vercel.
+- 🧪 Test case generation for tasks based on metadata and schema
 
 ## Installation
 
@@ -39,7 +40,7 @@ pnpm global add hataraku
 
 ```typescript
 // Import the SDK
-import { createAgent, createTask } from 'hataraku';
+import { createAgent, createTask, createTaskTestGenerator } from 'hataraku';
 import { z } from 'zod';
 
 // Import provider creation functions
@@ -76,6 +77,96 @@ const task = createTask({
 const result = await task.run({name: 'Hataraku'});
 console.log(result);
 ```
+
+### Test Case Generation
+
+Hataraku includes a powerful test case generator that can create test cases for your tasks based on their metadata and schema:
+
+```typescript
+import { createAgent, createTask, createTaskTestGenerator } from 'hataraku';
+import { z } from 'zod';
+import { anthropic } from '@ai-sdk/anthropic';
+
+// Define schemas
+const inputSchema = z.object({
+  query: z.string().min(1).describe("The search query"),
+  filters: z.object({
+    category: z.string().optional().describe("Optional category filter"),
+    minPrice: z.number().optional().describe("Minimum price filter"),
+    maxPrice: z.number().optional().describe("Maximum price filter")
+  }).optional()
+});
+
+const outputSchema = z.object({
+  results: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    price: z.number(),
+    category: z.string()
+  })).min(1).max(10),
+  totalResults: z.number().int().positive()
+});
+
+// Create an agent
+const agent = createAgent({
+  name: "Search Agent",
+  description: "An agent that performs product searches",
+  role: "You are a helpful assistant that searches for products based on user queries.",
+  model: anthropic("claude-3-haiku-20240307")
+});
+
+// Create a task with output schema
+const searchTask = createTask({
+  name: "Product Search",
+  description: "Search for products based on a query and optional filters",
+  agent,
+  inputSchema,
+  outputSchema, // Include output schema in the task
+  task: (input) => `
+    Search for products matching the query: "${input.query}"
+    ${input.filters ? `Apply the following filters: ${JSON.stringify(input.filters)}` : ""}
+    
+    Return a list of relevant products with their details.
+  `
+});
+
+// Create a task test generator
+const testGenerator = createTaskTestGenerator(agent);
+
+// Generate test cases - no need to provide outputSchema in options
+// since it's already defined in the task
+const testCases = await testGenerator.generateTestCasesForTask(searchTask, {
+  testCaseCount: 3,
+  edgeCaseCount: 2,
+  boundaryTestCount: 2
+});
+
+console.log("Generated test cases:", testCases);
+
+// For tasks without output schema, provide it in options
+const simpleTask = createTask({
+  name: "Simple Search",
+  description: "Basic search without schema validation",
+  agent,
+  inputSchema,
+  task: (input) => `Perform a search for: ${input.query}`
+});
+
+const testCasesWithSchema = await testGenerator.generateTestCasesForTask(simpleTask, {
+  outputSchema, // Required for tasks without output schema
+  testCaseCount: 2
+});
+```
+
+The test generator creates:
+- Regular test cases that cover common scenarios
+- Edge cases that test unusual inputs
+- Boundary tests that focus on the limits of valid inputs
+
+Each test case includes:
+- Metadata (description, tags, priority, etc.)
+- Valid input that follows the input schema
+- Expected output that follows the output schema
 
 ### CLI Usage
 
