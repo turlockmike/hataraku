@@ -1,5 +1,11 @@
 # hataraku
 
+## 0.6.4
+
+### Patch Changes
+
+-   fixed bug
+
 ## 0.6.3
 
 ### Patch Changes
