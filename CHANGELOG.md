@@ -1,5 +1,23 @@
 # hataraku
 
+## 0.6.3
+
+### Patch Changes
+
+-   Make model optional for loading purposes
+
+## 0.6.2
+
+### Patch Changes
+
+-   remove esm only package
+
+## 0.6.1
+
+### Patch Changes
+
+-   Clean up dependencies
+
 ## 0.6.0
 
 ### Minor Changes
