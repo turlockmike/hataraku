@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { FirstRunManager } from '../FirstRunManager';
+import { FirstRunManager } from '../first-run-manager';
 import { ConfigLoader } from '../ConfigLoader';
 import { ProfileManager } from '../ProfileManager';
 import { input, select, confirm } from '@inquirer/prompts';

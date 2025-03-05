@@ -1,12 +1,12 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { TaskManager } from '../TaskManager';
-import { AgentManager } from '../AgentManager';
+import { AgentManager } from '../agent-manager';
 import { TaskConfig } from '../taskConfig';
 
 // Mock fs and AgentManager
 jest.mock('fs/promises');
-jest.mock('../AgentManager');
+jest.mock('../agent-manager');
 jest.mock('../configPaths', () => ({
   getConfigPaths: jest.fn().mockReturnValue({
     tasksDir: '/mock/tasks/dir'

@@ -52,7 +52,7 @@ A profile is a set of preferences for Hataraku, including which provider and mod
   "provider": "anthropic",
   "model": "claude-3-7-sonnet-20250219",
   "agent": "code-assistant",
-  "tools": ["ai-tools", "github-tools"],
+  "tools": ["hataraku"],
   "options": {
     "stream": true,
     "sound": true,
@@ -99,7 +99,6 @@ An agent defines the role, model, and tools used for a specific task.
   },
   "tools": [
     "hataraku",
-    "github-tools"
   ]
 }
 ```

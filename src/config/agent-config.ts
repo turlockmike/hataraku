@@ -80,7 +80,7 @@ export const DEFAULT_CODE_REVIEWER: AgentConfig = {
       maxTokens: 8000
     }
   },
-  tools: ["hataraku", "github-tools"],
+  tools: ["hataraku"],
   maxSteps: 10,
   maxRetries: 3
 };

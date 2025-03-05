@@ -10,8 +10,8 @@ export { ToolManager } from './ToolManager';
 export { ToolSetConfig, ToolsConfig, ToolSetConfigSchema, ToolsConfigSchema } from './toolConfig';
 
 // Agent Management
-export { AgentManager } from './AgentManager';
-export { AgentConfig, ModelConfig, ModelParameters, AgentConfigSchema, ModelConfigSchema } from './agentConfig';
+export { AgentManager } from './agent-manager';
+export { AgentConfig, ModelConfig, ModelParameters, AgentConfigSchema, ModelConfigSchema } from './agent-config';
 
 // Task Management
 export { TaskManager } from './TaskManager';
@@ -21,4 +21,4 @@ export { TaskConfig, TaskTemplate, TaskConfigSchema, TaskTemplateSchema } from '
 export { ConfigLoader, CliOptions } from './ConfigLoader';
 
 // First Run Manager
-export { FirstRunManager } from './FirstRunManager';
+export { FirstRunManager } from './first-run-manager';
