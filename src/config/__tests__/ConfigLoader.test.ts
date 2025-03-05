@@ -8,7 +8,7 @@ import { AgentConfig } from '../agent-config';
 
 // Mock the managers
 jest.mock('../ProfileManager');
-jest.mock('../AgentManager');
+jest.mock('../agent-manager');
 jest.mock('../TaskManager');
 jest.mock('../ToolManager');
 
