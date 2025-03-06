@@ -217,7 +217,7 @@ export class McpClient {
     /**
      * Call a tool on a specific server and parse its response
      */
-    async callTool<T = any>(serverName: string, toolName: string, args: Record<string, unknown>): Promise<ParsedMcpToolResponse<T>> {
+    async callTool<T = string>(serverName: string, toolName: string, args: Record<string, unknown>): Promise<ParsedMcpToolResponse<T>> {
         if (!this.initialized) {
             throw new Error('MCP servers have not been initialized');
         }
@@ -259,7 +259,11 @@ export class McpClient {
                 raw: response
             };
         } catch (error) {
-            throw new Error(`Failed to parse response from ${serverName}/${toolName}`);
+            // If the content is not JSON, return the content as a string
+            return {
+                data: content as T,
+                raw: response
+            };
         }
     }
 }

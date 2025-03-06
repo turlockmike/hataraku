@@ -25,7 +25,7 @@ async function main() {
                             HOME: process.env.HOME || '/home/user',
                             PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
                         },
-                    },
+                    }
                 },
             },
         });
@@ -55,9 +55,9 @@ async function main() {
             console.log(chalk.cyan('\n📝 Agent Result:'));
             console.log(chalk.green(result));
             console.log();
-
         } finally {
             await disconnect();
+            process.exit(0);
         }
 
     } catch (error) {

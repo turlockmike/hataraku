@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { ToolManager } from '../../config/ToolManager';
 import { input, select, confirm } from '@inquirer/prompts';
 import { ToolsConfig } from '../../config/toolConfig';
-import { McpClient } from '../../core/mcp/McpClient';
+import { McpClient } from '../../core/mcp/mcp-client';
 import { getMcpTools } from '../../core/mcp/toolWrapper';
 
 export function registerToolCommands(program: Command): Command {
