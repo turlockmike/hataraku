@@ -1,5 +1,11 @@
 # hataraku
 
+## 0.6.5
+
+### Patch Changes
+
+-   small fixes
+
 ## 0.6.4
 
 ### Patch Changes
