@@ -1,5 +1,5 @@
 import { ToolSet, ToolExecutionOptions, jsonSchema } from 'ai';
-import { McpClient } from "./McpClient";
+import { McpClient } from "./mcp-client";
 import { McpConfig, McpConfigSchema, isMcpConfig } from './config';
 import { McpTool, ParsedMcpToolResponse } from './types';
 import { readFile } from 'node:fs/promises';

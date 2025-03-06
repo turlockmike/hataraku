@@ -42,17 +42,16 @@ pnpm global add hataraku
 import { createAgent, createTask } from 'hataraku';
 import { z } from 'zod';
 
-// Import provider creation functions
-import { createOpenRouterModel, createAnthropicModel } from 'hataraku';
-
-// Set up credentials (alternatively, use environment variables)
-// - OPENROUTER_API_KEY for OpenRouter
-// - ANTHROPIC_API_KEY for direct Anthropic access
-// - BEDROCK_ACCESS_KEY_ID and BEDROCK_SECRET_ACCESS_KEY for Amazon Bedrock
+// Bring in any ai-sdk provider https://sdk.vercel.ai/providers/ai-sdk-providers
+import { createOpenRouter } from "@openrouter/ai-sdk-provider"; 
 
 // Create an agent using Claude via OpenRouter
 // You can pass API key directly or use environment variable
-const model = await createOpenRouterModel('anthropic/claude-3-opus-20240229', process.env.OPENROUTER_API_KEY);
+const openrouter = createOpenRouter({
+  apiKey: 'YOUR_OPENROUTER_API_KEY',
+});
+const model = openrouter.chatModel('anthropic/claude-3.5-sonnet');
+
 const agent = createAgent({
   name: 'MyAgent',
   description: 'A helpful assistant',
