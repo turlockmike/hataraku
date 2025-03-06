@@ -14,6 +14,7 @@ Hataraku is a powerful toolkit that enables the creation of AI-powered developme
 - 🤖 Autonomous coding agent capabilities
 - 🛠️ Extensible SDK for building AI-powered tools
 - 📦 Support for multiple AI providers (OpenRouter, Claude, Amazon Bedrock)
+- 🧠 AWS Bedrock Knowledge Base integration for RAG applications
 - 🔄 Workflow automation and parallel task execution
 - 📊 Schema validation and structured tasks
 - 🧰 Built-in tool integration system
@@ -133,6 +134,7 @@ For detailed API documentation, see the [Types Documentation](docs/types.md).
 - [API Reference](docs/api-reference.md) - Complete API reference
 - [Configuration Guide](docs/configuration.md) - Configuration options
 - [Providers](docs/providers.md) - Supported AI providers
+- [Knowledge Base](docs/knowledge-base.md) - AWS Bedrock Knowledge Base integration
 - [Tools](docs/tools.md) - Built-in tools and extensions
 - [Architecture](docs/architecture.md) - System architecture
 - [Troubleshooting](docs/troubleshooting.md) - Solving common issues
