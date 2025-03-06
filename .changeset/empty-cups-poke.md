@@ -1,0 +1,5 @@
+---
+"hataraku": patch
+---
+
+small fixes
