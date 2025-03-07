@@ -60,9 +60,6 @@ export async function processStreams(textStream: AsyncIterable<string>, options:
     try {
       for await (const chunk of textStream) {
         sourceStream.write(chunk);
-        if (options.withAudio) {
-          fullText += chunk;  // Collect text for TTS
-        }
       }
       sourceStream.end();
     } catch (err) {
