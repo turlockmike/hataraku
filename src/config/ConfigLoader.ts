@@ -21,6 +21,8 @@ export interface CliOptions {
   tools?: string[];
   agent?: string;
   region?: string;
+  kbId?: string;  // Knowledge Base ID for the knowledge-base provider
+  withStream?: boolean;
 }
 
 /**

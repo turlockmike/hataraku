@@ -106,6 +106,66 @@ Available models depend on your AWS Bedrock configuration, but typically include
 - `amazon.titan-text-express-v1`
 - `meta.llama2-70b-chat-v1`
 
+### AWS Bedrock Knowledge Base
+
+Hataraku provides integration with AWS Bedrock Knowledge Base, allowing you to query your knowledge bases:
+
+```typescript
+import { BedrockAgentRuntimeClient } from '@aws-sdk/client-bedrock-agent-runtime';
+import { fromIni } from '@aws-sdk/credential-providers';
+import { createKnowledgeBaseProvider } from 'hataraku';
+
+// Create the AWS Bedrock client
+const client = new BedrockAgentRuntimeClient({ 
+  region: 'us-east-1',
+  credentials: await fromIni({ profile: 'default' })()
+});
+
+// Create a knowledge base provider instance
+const kbProvider = await createKnowledgeBaseProvider(client, {
+  knowledgeBaseId: 'your-knowledge-base-id', // REQUIRED
+  modelArn: 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0', // Optional
+  region: 'us-east-1' // Optional
+});
+
+// Query the knowledge base
+const response = await kbProvider('What is the capital of France?');
+console.log(response.content);
+
+// Access sources and metadata
+if (response.sources && response.sources.length > 0) {
+  console.log('Sources:', response.sources);
+}
+console.log('Metadata:', response.metadata);
+```
+
+Using the CLI:
+
+```bash
+# Using command line option
+npm run cli -- --provider knowledge-base --kb-id your-knowledge-base-id "Your query here"
+
+# Using environment variable
+KB_ID=your-knowledge-base-id npm run cli -- --provider knowledge-base "Your query here"
+
+# Using environment variables for both knowledge base ID and model ARN
+KB_ID=your-knowledge-base-id KB_MODEL_ARN="arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0" npm run cli -- --provider knowledge-base "Your query here"
+
+# Using a profile with knowledge base configuration
+npm run cli -- --profile your-profile --provider knowledge-base "Your query here"
+```
+
+To set up a profile with knowledge base configuration:
+
+```bash
+npm run cli -- profile set-kb your-profile
+```
+
+This will prompt you for:
+- Knowledge Base ID (required)
+- Model ARN (optional)
+- AWS Region (optional)
+
 ### OpenAI
 
 Integration with OpenAI models:
