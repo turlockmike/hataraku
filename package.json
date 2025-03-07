@@ -126,6 +126,7 @@
     "@ai-sdk/anthropic": "1.1.13",
     "@ai-sdk/google-vertex": "2.1.22",
     "@ai-sdk/openai": "1.2.0",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.758.0",
     "@aws-sdk/credential-providers": "3.758.0",
     "@openrouter/ai-sdk-provider": "0.4.3"
   },
