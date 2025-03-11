@@ -283,4 +283,139 @@ describe('Thread', () => {
       expect(messages[0].content.length).toBe(400);
     });
   });
+
+  describe('System Messages', () => {
+    test('should add and retrieve system message', () => {
+      thread.addSystemMessage('You are a helpful assistant');
+      expect(thread.hasSystemMessage()).toBeTruthy();
+      const systemMessage = thread.getSystemMessage();
+      expect(systemMessage).toBeDefined();
+      expect(systemMessage?.content).toBe('You are a helpful assistant');
+      expect(systemMessage?.role).toBe('system');
+    });
+
+    test('should throw error when adding second system message', () => {
+      thread.addSystemMessage('You are a helpful assistant');
+      expect(() => {
+        thread.addSystemMessage('Another system message');
+      }).toThrow('Thread already has a system message');
+    });
+
+    test('should add system message at the beginning of messages array', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addSystemMessage('You are a helpful assistant');
+      const messages = thread.getMessages();
+      expect(messages.length).toBe(2);
+      expect(messages[0].role).toBe('system');
+      expect(messages[1].role).toBe('user');
+    });
+
+    test('should include system message in formatted messages', () => {
+      thread.addSystemMessage('You are a helpful assistant');
+      thread.addMessage('user', 'Hello');
+      const formatted = thread.getFormattedMessages();
+      expect(formatted.length).toBe(2);
+      expect(formatted[0].role).toBe('system');
+      expect(formatted[0].content).toBe('You are a helpful assistant');
+    });
+  });
+
+  describe('Provider Options', () => {
+    test('should add and retrieve provider options with messages', () => {
+      const providerOptions = {
+        anthropic: { cacheControl: { type: 'ephemeral' } }
+      };
+      thread.addMessage('user', 'Hello', providerOptions);
+      const messages = thread.getMessages();
+      expect(messages[0].providerOptions).toEqual(providerOptions);
+    });
+
+    test('should add and retrieve provider options with system message', () => {
+      const providerOptions = {
+        anthropic: { cacheControl: { type: 'ephemeral' } }
+      };
+      thread.addSystemMessage('You are a helpful assistant', providerOptions);
+      const systemMessage = thread.getSystemMessage();
+      expect(systemMessage?.providerOptions).toEqual(providerOptions);
+    });
+
+    test('should include provider options in formatted messages', () => {
+      const providerOptions = {
+        anthropic: { cacheControl: { type: 'ephemeral' } }
+      };
+      thread.addSystemMessage('You are a helpful assistant', providerOptions);
+      const formatted = thread.getFormattedMessages();
+      expect(formatted[0].providerOptions).toEqual(providerOptions);
+    });
+  });
+
+  describe('Cache Control Points', () => {
+    test('should add cache control point to a message', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addCacheControlPoint(0, 'anthropic');
+      const messages = thread.getMessages();
+      expect(messages[0].providerOptions?.anthropic?.cacheControl).toEqual({ type: 'ephemeral' });
+    });
+
+    test('should add cache control point to system message', () => {
+      thread.addSystemMessage('You are a helpful assistant');
+      const result = thread.addCacheControlPointToSystemMessage('anthropic');
+      expect(result).toBeTruthy();
+      const systemMessage = thread.getSystemMessage();
+      expect(systemMessage?.providerOptions?.anthropic?.cacheControl).toEqual({ type: 'ephemeral' });
+    });
+
+    test('should add cache control point to last message', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addMessage('assistant', 'Hi there!');
+      const result = thread.addCacheControlPointToLastMessage('anthropic');
+      expect(result).toBeTruthy();
+      const messages = thread.getMessages();
+      expect(messages[1].providerOptions?.anthropic?.cacheControl).toEqual({ type: 'ephemeral' });
+    });
+
+    test('should return false when adding cache control point to system message that does not exist', () => {
+      const result = thread.addCacheControlPointToSystemMessage('anthropic');
+      expect(result).toBeFalsy();
+    });
+
+    test('should return false when adding cache control point to last message in empty thread', () => {
+      const result = thread.addCacheControlPointToLastMessage('anthropic');
+      expect(result).toBeFalsy();
+    });
+
+    test('should throw error when adding cache control point to out of bounds message index', () => {
+      expect(() => {
+        thread.addCacheControlPoint(5, 'anthropic');
+      }).toThrow('Message index 5 is out of bounds');
+    });
+
+    test('should add bedrock cache control point', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addCacheControlPoint(0, 'bedrock');
+      const messages = thread.getMessages();
+      expect(messages[0].providerOptions?.bedrock?.cachePoints).toBeTruthy();
+    });
+
+    test('should add openrouter cache control point', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addCacheControlPoint(0, 'openrouter');
+      const messages = thread.getMessages();
+      expect(messages[0].providerOptions?.openrouter?.cacheControl).toEqual({ type: 'ephemeral' });
+    });
+
+    test('should add vertex cache control point (same as anthropic)', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addCacheControlPoint(0, 'vertex');
+      const messages = thread.getMessages();
+      expect(messages[0].providerOptions?.anthropic?.cacheControl).toEqual({ type: 'ephemeral' });
+    });
+
+    test('should include cache control points in formatted messages', () => {
+      thread.addSystemMessage('You are a helpful assistant');
+      thread.addCacheControlPointToSystemMessage('anthropic');
+      const formatted = thread.getFormattedMessages();
+      expect(formatted[0].providerOptions?.anthropic?.cacheControl).toEqual({ type: 'ephemeral' });
+    });
+  });
 }); 

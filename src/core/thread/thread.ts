@@ -13,6 +13,8 @@ export interface ThreadMessage {
   content: string;
   /** The timestamp when the message was created */
   timestamp: Date;
+  /** Provider-specific options for the message (e.g., cache control) */
+  providerOptions?: Record<string, any>;
 }
 
 /**
@@ -146,15 +148,54 @@ export class Thread {
    * Adds a new message to the thread
    * @param role The role of the message sender (e.g., 'user', 'assistant')
    * @param content The text content of the message
+   * @param providerOptions Optional provider-specific options for the message (e.g., cache control)
    */
-  addMessage(role: MessageRole, content: string): void {
+  addMessage(role: MessageRole, content: string, providerOptions?: Record<string, any>): void {
     const message: ThreadMessage = {
       role,
       content,
-      timestamp: new Date()
+      timestamp: new Date(),
+      providerOptions
     };
     this.state.messages.push(message);
     this.state.updated = new Date();
+  }
+
+  /**
+   * Checks if the thread has a system message
+   * @returns True if the thread has a system message, false otherwise
+   */
+  hasSystemMessage(): boolean {
+    return this.state.messages.some(msg => msg.role === 'system');
+  }
+
+  /**
+   * Adds a system message to the thread
+   * @param content The text content of the system message
+   * @param providerOptions Optional provider-specific options for the message (e.g., cache control)
+   * @throws Error if the thread already has a system message
+   */
+  addSystemMessage(content: string, providerOptions?: Record<string, any>): void {
+    if (this.hasSystemMessage()) {
+      throw new Error('Thread already has a system message. Only one system message is allowed per thread.');
+    }
+    
+    // Add the system message at the beginning of the messages array
+    this.state.messages.unshift({
+      role: 'system',
+      content,
+      timestamp: new Date(),
+      providerOptions
+    });
+    this.state.updated = new Date();
+  }
+
+  /**
+   * Gets the system message from the thread if it exists
+   * @returns The system message if it exists, undefined otherwise
+   */
+  getSystemMessage(): ThreadMessage | undefined {
+    return this.state.messages.find(msg => msg.role === 'system');
   }
 
   /**
@@ -186,7 +227,8 @@ export class Thread {
     // Add thread messages
     messages.push(...this.state.messages.map(msg => ({
       role: msg.role,
-      content: msg.content
+      content: msg.content,
+      providerOptions: msg.providerOptions
     })));
 
     return messages;
@@ -472,5 +514,72 @@ export class Thread {
         updated: new Date()
       }
     });
+  }
+
+  /**
+   * Adds a cache control point to a message
+   * @param messageIndex The index of the message to add the cache control point to
+   * @param provider The provider to add the cache control point for (e.g., 'anthropic', 'bedrock')
+   * @throws Error if the message index is out of bounds
+   */
+  addCacheControlPoint(messageIndex: number, provider: string): void {
+    if (messageIndex < 0 || messageIndex >= this.state.messages.length) {
+      throw new Error(`Message index ${messageIndex} is out of bounds`);
+    }
+    
+    const message = this.state.messages[messageIndex];
+    if (!message.providerOptions) {
+      message.providerOptions = {};
+    }
+    
+    // Add provider-specific cache control
+    if (provider === 'anthropic' || provider === 'vertex') {
+      message.providerOptions.anthropic = {
+        ...(message.providerOptions.anthropic || {}),
+        cacheControl: { type: 'ephemeral' }
+      };
+    } else if (provider === 'bedrock') {
+      message.providerOptions.bedrock = {
+        ...(message.providerOptions.bedrock || {}),
+        cachePoints: true
+      };
+    } else if (provider === 'openrouter') {
+      // OpenRouter follows Anthropic's pattern
+      message.providerOptions.openrouter = {
+        ...(message.providerOptions.openrouter || {}),
+        cacheControl: { type: 'ephemeral' }
+      };
+    }
+    
+    this.state.updated = new Date();
+  }
+
+  /**
+   * Adds a cache control point to the system message if it exists
+   * @param provider The provider to add the cache control point for (e.g., 'anthropic', 'bedrock')
+   * @returns True if the cache control point was added, false if there is no system message
+   */
+  addCacheControlPointToSystemMessage(provider: string): boolean {
+    const systemMessageIndex = this.state.messages.findIndex(msg => msg.role === 'system');
+    if (systemMessageIndex === -1) {
+      return false;
+    }
+    
+    this.addCacheControlPoint(systemMessageIndex, provider);
+    return true;
+  }
+
+  /**
+   * Adds a cache control point to the last message in the thread
+   * @param provider The provider to add the cache control point for (e.g., 'anthropic', 'bedrock')
+   * @returns True if the cache control point was added, false if there are no messages
+   */
+  addCacheControlPointToLastMessage(provider: string): boolean {
+    if (this.state.messages.length === 0) {
+      return false;
+    }
+    
+    this.addCacheControlPoint(this.state.messages.length - 1, provider);
+    return true;
   }
 } 
