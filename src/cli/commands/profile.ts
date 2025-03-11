@@ -267,28 +267,28 @@ export function registerProfileCommands(program: Command): Command {
     });
 
   profileCommand
-		.command("delete <name>")
-		.description("Delete a profile")
-		.action(async (name: string) => {
-			try {
-				const profileManager = new ProfileManager()
-				const confirmed = await confirm({
-					message: `Are you sure you want to delete profile '${name}'?`,
-					default: false,
-				})
+    .command("delete <name>")
+    .description("Delete a profile")
+    .action(async (name: string) => {
+      try {
+        const profileManager = new ProfileManager()
+        const confirmed = await confirm({
+          message: `Are you sure you want to delete profile '${name}'?`,
+          default: false,
+        })
 
-				if (!confirmed) {
-					console.log(chalk.yellow("Profile deletion cancelled."))
-					return
-				}
+        if (!confirmed) {
+          console.log(chalk.yellow("Profile deletion cancelled."))
+          return
+        }
 
-				await profileManager.deleteProfile(name)
-				console.log(chalk.green(`Profile '${name}' deleted successfully.`))
-			} catch (error) {
-				console.error(chalk.red("Error deleting profile:"), error)
-				process.exit(1)
-			}
-		})
+        await profileManager.deleteProfile(name)
+        console.log(chalk.green(`Profile '${name}' deleted successfully.`))
+      } catch (error) {
+        console.error(chalk.red("Error deleting profile:"), error)
+        process.exit(1)
+      }
+    })
 
   return program;
 } 
