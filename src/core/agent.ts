@@ -110,6 +110,10 @@ export class Agent {
     this.verbose = config.verbose || false;
   }
 
+  /**
+   * Gets the system prompt content for the agent
+   * @returns The system prompt content
+   */
   private getSystemPrompt() {
     return `
     ROLE:
@@ -118,6 +122,29 @@ export class Agent {
     DESCRIPTION given to the user:
     ${this.description}
     `
+  }
+
+  /**
+   * Detects the provider from the model name
+   * @param model The language model
+   * @returns The provider name or undefined if not detected
+   */
+  private detectProvider(model: LanguageModelV1): string | undefined {
+    const modelName = model.constructor.name.toLowerCase();
+    
+    if (modelName.includes('anthropic')) {
+      return 'anthropic';
+    } else if (modelName.includes('openai')) {
+      return 'openai';
+    } else if (modelName.includes('bedrock')) {
+      return 'bedrock';
+    } else if (modelName.includes('vertex')) {
+      return 'vertex';
+    } else if (modelName.includes('openrouter')) {
+      return 'openrouter';
+    }
+    
+    return undefined;
   }
 
   /**
@@ -138,6 +165,18 @@ export class Agent {
     const thread = input?.thread || new Thread();
     const maxSteps = this.callSettings.maxSteps || DEFAULT_MAX_STEPS;
     const maxRetries = this.callSettings.maxRetries || DEFAULT_MAX_RETRIES;
+    
+    // Add system message if the thread doesn't have one
+    if (!thread.hasSystemMessage()) {
+      thread.addSystemMessage(this.getSystemPrompt());
+    }
+    
+    // Detect provider and add cache control point to system message
+    const provider = this.detectProvider(model);
+    if (provider) {
+      thread.addCacheControlPointToSystemMessage(provider);
+    }
+    
     thread.addMessage('user', task);
     
     // Use verbose mode if specified in input or agent config
@@ -197,88 +236,92 @@ export class Agent {
       try {
         const {textStream} = streamText({
           model,
-          system: this.getSystemPrompt(),
           messages: thread.getFormattedMessages(),
           maxSteps,
           maxRetries,
-        tools: this.tools,
-        ...this.callSettings,
-        onChunk: (event) => {
-          if (isVerbose) {
-            const chunk = event.chunk;
-            if (chunk.type === 'text-delta' || chunk.type === 'reasoning') {
-              log.system(chunk.textDelta);
-            } else {
-              log.system(JSON.stringify(chunk));
-            }
-          }
-        },
-        onStepFinish: (step) => {
-          if (isVerbose) {
-            log.system(`\n📝 Step finished:`);
-            if (step.reasoning) {
-              log.system(`<thinking> ${step.reasoning?.substring(0, 100)}${step.reasoning?.length > 100 ? '...' : ''}</thinking>`);
-            }
-            log.system(`<response> ${step.text}</response>`);
-            
-            // Log tool calls if any
-            if (step.toolCalls && step.toolCalls.length > 0) {
-              log.system(`\n🔧 Tool calls in this step: ${step.toolCalls.length}`);
-              for (let i = 0; i < step.toolCalls.length; i++) {
-                const toolCall = step.toolCalls[i];
-                log.system(`Tool call #${i + 1}: ${JSON.stringify(toolCall).substring(0, 150)}...`);
+          tools: this.tools,
+          ...this.callSettings,
+          onChunk: (event) => {
+            if (isVerbose) {
+              const chunk = event.chunk;
+              if (chunk.type === 'text-delta' || chunk.type === 'reasoning') {
+                log.system(chunk.textDelta);
+              } else {
+                log.system(JSON.stringify(chunk));
               }
             }
-          }
-        },
-        onError: (error) => {
-          if (isVerbose) {
-            log.system(`\n❌ Error streaming text: ${error instanceof Error ? error.message : String(error)}`);
-          }
-          console.error('Error streaming text', error);
-          if (this.taskHistory && historyEntry.debug) {
-            historyEntry.debug.responses.push({
-              timestamp: Date.now(),
-              content: error instanceof Error ? error.message : String(error),
-              usage: {
-                tokensIn: 0,
-                tokensOut: 0,
-                cost: 0
+          },
+          onStepFinish: (step) => {
+            if (isVerbose) {
+              log.system(`\n📝 Step finished:`);
+              if (step.reasoning) {
+                log.system(`<thinking> ${step.reasoning?.substring(0, 100)}${step.reasoning?.length > 100 ? '...' : ''}</thinking>`);
               }
-            });
-            // Add to tool usage for error tracking
-            historyEntry.debug.toolUsage.push({
-              timestamp: Date.now(),
-              tool: 'stream',
-              params: {},
-              result: error instanceof Error ? error.message : String(error),
-              error: true
-            });
-            this.taskHistory.saveTask(historyEntry).catch(console.error);
-          }
-        },
-        onFinish: (result) => {
-          if (isVerbose) {
-            log.system(`\n✅ Streaming completed: ${result.text.substring(0, 50)}${result.text.length > 50 ? '...' : ''}`);
-            log.system(`Tokens: In=${result.usage?.promptTokens || 0}, Out=${result.usage?.completionTokens || 0}`);
-          }
-          thread.addMessage('assistant', result.text);
-          if (this.taskHistory && historyEntry.debug) {
-            historyEntry.debug.responses.push({
-              timestamp: Date.now(),
-              content: result.text,
-              usage: {
-                tokensIn: result.usage?.promptTokens || 0,
-                tokensOut: result.usage?.completionTokens || 0,
-                cost: 0 // Cost calculation would need provider-specific logic
+              log.system(`<response> ${step.text}</response>`);
+              
+              // Log tool calls if any
+              if (step.toolCalls && step.toolCalls.length > 0) {
+                log.system(`\n🔧 Tool calls in this step: ${step.toolCalls.length}`);
+                for (let i = 0; i < step.toolCalls.length; i++) {
+                  const toolCall = step.toolCalls[i];
+                  log.system(`Tool call #${i + 1}: ${JSON.stringify(toolCall).substring(0, 150)}...`);
+                }
               }
-            });
-            historyEntry.tokensIn += result.usage?.promptTokens || 0;
-            historyEntry.tokensOut += result.usage?.completionTokens || 0;
-            this.taskHistory.saveTask(historyEntry).catch(console.error);
+            }
+          },
+          onError: (error) => {
+            if (isVerbose) {
+              log.system(`\n❌ Error streaming text: ${error instanceof Error ? error.message : String(error)}`);
+            }
+            console.error('Error streaming text', error);
+            if (this.taskHistory && historyEntry.debug) {
+              historyEntry.debug.responses.push({
+                timestamp: Date.now(),
+                content: error instanceof Error ? error.message : String(error),
+                usage: {
+                  tokensIn: 0,
+                  tokensOut: 0,
+                  cost: 0
+                }
+              });
+              // Add to tool usage for error tracking
+              historyEntry.debug.toolUsage.push({
+                timestamp: Date.now(),
+                tool: 'stream',
+                params: {},
+                result: error instanceof Error ? error.message : String(error),
+                error: true
+              });
+              this.taskHistory.saveTask(historyEntry).catch(console.error);
+            }
+          },
+          onFinish: (result) => {
+            if (isVerbose) {
+              log.system(`\n✅ Streaming completed: ${result.text.substring(0, 50)}${result.text.length > 50 ? '...' : ''}`);
+              log.system(`Tokens: In=${result.usage?.promptTokens || 0}, Out=${result.usage?.completionTokens || 0}`);
+            }
+            thread.addMessage('assistant', result.text);
+            if (this.taskHistory && historyEntry.debug) {
+              historyEntry.debug.responses.push({
+                timestamp: Date.now(),
+                content: result.text,
+                usage: {
+                  tokensIn: result.usage?.promptTokens || 0,
+                  tokensOut: result.usage?.completionTokens || 0,
+                  cost: 0 // Cost calculation would need provider-specific logic
+                }
+              });
+              historyEntry.tokensIn += result.usage?.promptTokens || 0;
+              historyEntry.tokensOut += result.usage?.completionTokens || 0;
+              this.taskHistory.saveTask(historyEntry).catch(console.error);
+            }
+
+            // Add cache control point to the last message
+            if (provider) {
+              thread.addCacheControlPointToLastMessage(provider);
+            }
           }
-        }
-      });
+        });
 
         return textStream;
       } catch (error) {
@@ -297,7 +340,6 @@ export class Agent {
         
         result = await generateText({
           model,
-          system: this.getSystemPrompt(),
           messages: thread.getFormattedMessages(),
           maxSteps,
           maxRetries,
@@ -327,6 +369,12 @@ export class Agent {
         }
         
         thread.addMessage('assistant', result.text);
+        
+        // Add cache control point to the assistant message
+        if (provider) {
+          thread.addCacheControlPointToLastMessage(provider);
+        }
+        
         thread.addMessage('user', 'Based on the last response, please create a response that matches the schema provided. It must be valid JSON and match the schema exactly.');
         
         if (this.taskHistory && historyEntry.debug) {
@@ -349,7 +397,6 @@ export class Agent {
         
         const { object } = await generateObject({
           model,
-          system: this.getSystemPrompt(),
           messages: thread.getFormattedMessages(),
           maxRetries,
           maxSteps,
@@ -362,6 +409,11 @@ export class Agent {
         }
         
         thread.addMessage('assistant', JSON.stringify(object));
+        
+        // Add cache control point to the last message
+        if (provider) {
+          thread.addCacheControlPointToLastMessage(provider);
+        }
         
         if (this.taskHistory && historyEntry.debug) {
           historyEntry.debug.responses.push({
@@ -386,7 +438,6 @@ export class Agent {
         
         const result = await generateObject({
           model,
-          system: this.getSystemPrompt(),
           messages: thread.getFormattedMessages(),
           maxRetries,
           maxSteps,
@@ -400,6 +451,11 @@ export class Agent {
         }
         
         thread.addMessage('assistant', JSON.stringify(result.object));
+        
+        // Add cache control point to the last message
+        if (provider) {
+          thread.addCacheControlPointToLastMessage(provider);
+        }
         
         if (this.taskHistory && historyEntry.debug) {
           historyEntry.debug.responses.push({
@@ -425,9 +481,9 @@ export class Agent {
       
       result = await generateText({
         model,
-        system: this.getSystemPrompt(),
         messages: thread.getFormattedMessages(),
-        tools: this.tools,
+        maxSteps,
+        maxRetries,
         onStepFinish: (step) => {
           if (isVerbose) {
             log.system(`\n📝 Step finished:`);
@@ -444,8 +500,7 @@ export class Agent {
             }
           }
         },
-        maxSteps,
-        maxRetries,
+        tools: this.tools,
         ...this.callSettings,
       });
       
@@ -455,6 +510,11 @@ export class Agent {
       }
         
       thread.addMessage('assistant', result.text);
+      
+      // Add cache control point to the last message
+      if (provider) {
+        thread.addCacheControlPointToLastMessage(provider);
+      }
       
       if (this.taskHistory && historyEntry.debug) {
         historyEntry.debug.responses.push({

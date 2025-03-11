@@ -10,6 +10,7 @@ import { ConfigLoader, CliOptions } from '../config/ConfigLoader';
 import { ProfileManager } from '../config/ProfileManager';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { LanguageModelV1 } from 'ai';
+import { Thread } from '../core/thread/thread';
 /**
  * Process streams from agent responses
  */
@@ -132,6 +133,7 @@ export async function executeWithConfig(task: string, cliOptions: CliOptions, in
 
     if (shouldUseInteractive) {
       // Interactive mode
+      const thread = new Thread();
       async function runInteractiveTask(currentTask?: string) {
         let taskToRun = currentTask;
 
@@ -153,12 +155,14 @@ export async function executeWithConfig(task: string, cliOptions: CliOptions, in
           if (shouldStream) {
             const result = await cliAgent.task(taskToRun, {
               stream: true,
-              verbose: shouldShowVerbose
+              verbose: shouldShowVerbose,
+              thread
             });
             await processStreams(result, options);
           } else {
             const result = await cliAgent.task(taskToRun, {
-              verbose: shouldShowVerbose
+              verbose: shouldShowVerbose,
+              thread
             });
             log.success(result);
           }

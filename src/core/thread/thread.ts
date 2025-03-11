@@ -63,6 +63,8 @@ export interface ThreadState {
   id: string;
   /** Array of messages in the thread */
   messages: ThreadMessage[];
+  /** Optional system message for the thread */
+  systemMessage?: ThreadMessage;
   /** Map of context items associated with the thread */
   contexts: Map<string, ThreadContext>;
   /** Additional metadata associated with the thread */
@@ -127,6 +129,7 @@ export class Thread {
     this.state = {
       id: options?.id || options?.state?.id || uuid(),
       messages: options?.state?.messages || [],
+      systemMessage: options?.state?.systemMessage,
       contexts: options?.state?.contexts || new Map<string, ThreadContext>(),
       metadata: options?.state?.metadata || {},
       created: options?.state?.created || new Date(),
@@ -166,7 +169,7 @@ export class Thread {
    * @returns True if the thread has a system message, false otherwise
    */
   hasSystemMessage(): boolean {
-    return this.state.messages.some(msg => msg.role === 'system');
+    return !!this.state.systemMessage;
   }
 
   /**
@@ -180,13 +183,12 @@ export class Thread {
       throw new Error('Thread already has a system message. Only one system message is allowed per thread.');
     }
     
-    // Add the system message at the beginning of the messages array
-    this.state.messages.unshift({
+    this.state.systemMessage = {
       role: 'system',
       content,
       timestamp: new Date(),
       providerOptions
-    });
+    };
     this.state.updated = new Date();
   }
 
@@ -195,15 +197,19 @@ export class Thread {
    * @returns The system message if it exists, undefined otherwise
    */
   getSystemMessage(): ThreadMessage | undefined {
-    return this.state.messages.find(msg => msg.role === 'system');
+    return this.state.systemMessage;
   }
 
   /**
    * Gets all messages in the thread
-   * @returns Array of thread messages in chronological order
+   * @returns Array of thread messages in chronological order, with system message first if it exists
    */
   getMessages(): ThreadMessage[] {
-    return this.state.messages;
+    const messages = [...this.state.messages];
+    if (this.state.systemMessage) {
+      messages.unshift(this.state.systemMessage);
+    }
+    return messages;
   }
 
   /**
@@ -212,8 +218,17 @@ export class Thread {
    */
   getFormattedMessages(includeContext: boolean = true): CoreMessage[] {
     const messages: CoreMessage[] = [];
+    
+    // Add system message first if it exists
+    if (this.state.systemMessage) {
+      messages.push({
+        role: this.state.systemMessage.role,
+        content: this.state.systemMessage.content,
+        providerOptions: this.state.systemMessage.providerOptions
+      });
+    }
 
-    // Add context messages first if requested
+    // Add context messages next if requested
     if (includeContext) {
       const contexts = this.getAllContexts();
       for (const [key, value] of contexts) {
@@ -224,7 +239,7 @@ export class Thread {
       }
     }
 
-    // Add thread messages
+    // Add regular thread messages
     messages.push(...this.state.messages.map(msg => ({
       role: msg.role,
       content: msg.content,
@@ -240,6 +255,7 @@ export class Thread {
    */
   clearMessages(): void {
     this.state.messages = [];
+    this.state.systemMessage = undefined;
     this.state.updated = new Date();
   }
 
@@ -343,6 +359,14 @@ export class Thread {
       timestamp: new Date(msg.timestamp)
     }));
 
+    // Clone system message if it exists
+    if (this.state.systemMessage) {
+      clonedThread.state.systemMessage = {
+        ...this.state.systemMessage,
+        timestamp: new Date(this.state.systemMessage.timestamp)
+      };
+    }
+
     // Clone contexts (deep copy)
     this.state.contexts.forEach((context, key) => {
       if (context.type === 'file') {
@@ -378,13 +402,22 @@ export class Thread {
    * - Messages are merged and sorted chronologically
    * - Context items from the other thread override any with the same key in this thread
    * - Metadata is merged with the other thread's metadata taking precedence on conflicts
+   * - If this thread doesn't have a system message but the other does, the other's system message is used
    */
   merge(other: Thread): void {
     // Merge messages (maintaining chronological order)
-    const allMessages = [...this.state.messages, ...other.getMessages()];
+    const allMessages = [...this.state.messages, ...other.state.messages];
     this.state.messages = allMessages.sort((a, b) =>
       a.timestamp.getTime() - b.timestamp.getTime()
     );
+
+    // Merge system message (other thread's system message takes precedence)
+    if (other.state.systemMessage && !this.state.systemMessage) {
+      this.state.systemMessage = {
+        ...other.state.systemMessage,
+        timestamp: new Date(other.state.systemMessage.timestamp)
+      };
+    }
 
     // Merge contexts (other thread's contexts take precedence on conflict)
     other.getAllContexts().forEach((context, key) => {
@@ -425,6 +458,14 @@ export class Thread {
     await this.storage.save(this.state);
   }
 
+
+  private truncateMessage(message: ThreadMessage, maxChars: number): ThreadMessage {
+    const truncatedMessage = { ...message };
+    if (message.content.length > maxChars) {
+      truncatedMessage.content = message.content.slice(0, maxChars);
+    }
+    return truncatedMessage;
+  }
   /**
    * Returns a truncated version of this thread, containing only the most recent messages such that
    * the estimated token count does not exceed maxTokens. The first message is always preserved.
@@ -432,86 +473,58 @@ export class Thread {
    * @param maxTokens The maximum number of tokens for the entire thread
    * @param maxTokensPerMessage Optional maximum number of tokens per individual message (defaults to 50000)
    */
-  public truncate(maxTokens: number, maxTokensPerMessage: number = 50000): Thread {
-    if (this.state.messages.length === 0) {
-      return new Thread({ state: { ...this.state, messages: [] } });
+  public truncate(maxChars: number = 100_000, maxCharsPerMessage: number = 50000): Thread {
+
+    const realMaxCharsPerMessage = Math.min(maxCharsPerMessage, maxChars);
+
+    let totalChars = 0;
+    const truncatedMessages: ThreadMessage[] = [];
+
+    const { systemMessage, messages } = this.state;
+
+    // System message should NEVER be truncated.
+    const truncatedSystemMessage = systemMessage ? { ...systemMessage } : undefined;
+
+    if (truncatedSystemMessage) {
+      totalChars += truncatedSystemMessage.content.length;
     }
 
-    const MAX_CHARS_PER_MESSAGE = maxTokensPerMessage * 4;
-    const MAX_CHARS = maxTokens * 4;
-
-    // Always keep the first message, but truncate it if needed
-    const firstMessage = this.state.messages[0];
-    let firstMessageContent = firstMessage.content;
-    if (firstMessageContent.length > MAX_CHARS) {
-      firstMessageContent = firstMessageContent.slice(0, MAX_CHARS);
-    } else if (firstMessageContent.length > MAX_CHARS_PER_MESSAGE) {
-      firstMessageContent = firstMessageContent.slice(0, MAX_CHARS_PER_MESSAGE);
-    }
-    let tokenCount = Math.ceil(firstMessageContent.length / 4);
-
-    const truncatedMessages: ThreadMessage[] = [
-      { ...firstMessage, content: firstMessageContent }
-    ];
-
-    // If we have more messages and space for at least one more
-    if (this.state.messages.length > 1 && tokenCount < maxTokens) {
-      // Calculate remaining space
-      const remainingTokens = maxTokens - tokenCount;
-      const remainingChars = remainingTokens * 4;
-
-      // Try to fit the last message
-      const lastMessage = this.state.messages[this.state.messages.length - 1];
-      let lastMessageContent = lastMessage.content;
-      
-      // Truncate last message to fit in remaining space if needed
-      if (lastMessageContent.length > remainingChars) {
-        lastMessageContent = lastMessageContent.slice(0, remainingChars);
-      }
-      if (lastMessageContent.length > MAX_CHARS_PER_MESSAGE) {
-        lastMessageContent = lastMessageContent.slice(0, MAX_CHARS_PER_MESSAGE);
-      }
-
-      // Add the last message
-      truncatedMessages.push({ ...lastMessage, content: lastMessageContent });
-      tokenCount += Math.ceil(lastMessageContent.length / 4);
-
-      // If we still have space, try to add more messages from the end
-      const stillRemainingTokens = maxTokens - tokenCount;
-      if (stillRemainingTokens > 0) {
-        for (let i = this.state.messages.length - 2; i > 0; i--) {
-          const message = this.state.messages[i];
-          let content = message.content;
-          if (content.length > MAX_CHARS_PER_MESSAGE) {
-            content = content.slice(0, MAX_CHARS_PER_MESSAGE);
-          }
-          const messageTokens = Math.ceil(content.length / 4);
-          if (tokenCount + messageTokens > maxTokens) {
-            break;
-          }
-          tokenCount += messageTokens;
-          truncatedMessages.push({ ...message, content });
-        }
-      }
-
-      // Reverse the remaining messages to restore chronological order
-      // (excluding the first message which is already in position)
-      const remainingMessages = truncatedMessages.slice(1).reverse();
+    if (messages.length === 0) {
       return new Thread({
         state: {
           ...this.state,
-          messages: [truncatedMessages[0], ...remainingMessages],
-          updated: new Date()
+          systemMessage: truncatedSystemMessage,
+          messages: [],
         }
       });
     }
 
-    // If we can't fit any more messages, just return the truncated first message
+    // First message always included
+    const firstMessage = this.truncateMessage(messages[0], realMaxCharsPerMessage);
+    totalChars += firstMessage.content.length;
+
+    // Prepare messages in priority order (last, second last, third last, etc.)
+    const intermediateMessages: ThreadMessage[] = [];
+    for (let i = messages.length - 1; i > 0; i--) {
+      const remainingChars = maxChars - totalChars;
+      if (remainingChars <= 0) {
+        break;
+      }
+      const msg = this.truncateMessage(messages[i], Math.min(realMaxCharsPerMessage, remainingChars));
+      intermediateMessages.unshift(msg);
+      totalChars += msg.content.length;
+    }
+
+    // Add messages preserving order
+    truncatedMessages.push(firstMessage);
+    truncatedMessages.push(...intermediateMessages);
+
+
     return new Thread({
       state: {
         ...this.state,
+        systemMessage: truncatedSystemMessage,
         messages: truncatedMessages,
-        updated: new Date()
       }
     });
   }
@@ -560,12 +573,34 @@ export class Thread {
    * @returns True if the cache control point was added, false if there is no system message
    */
   addCacheControlPointToSystemMessage(provider: string): boolean {
-    const systemMessageIndex = this.state.messages.findIndex(msg => msg.role === 'system');
-    if (systemMessageIndex === -1) {
+    if (!this.state.systemMessage) {
       return false;
     }
     
-    this.addCacheControlPoint(systemMessageIndex, provider);
+    if (!this.state.systemMessage.providerOptions) {
+      this.state.systemMessage.providerOptions = {};
+    }
+    
+    // Add provider-specific cache control
+    if (provider === 'anthropic' || provider === 'vertex') {
+      this.state.systemMessage.providerOptions.anthropic = {
+        ...(this.state.systemMessage.providerOptions.anthropic || {}),
+        cacheControl: { type: 'ephemeral' }
+      };
+    } else if (provider === 'bedrock') {
+      this.state.systemMessage.providerOptions.bedrock = {
+        ...(this.state.systemMessage.providerOptions.bedrock || {}),
+        cachePoints: true
+      };
+    } else if (provider === 'openrouter') {
+      // OpenRouter follows Anthropic's pattern
+      this.state.systemMessage.providerOptions.openrouter = {
+        ...(this.state.systemMessage.providerOptions.openrouter || {}),
+        cacheControl: { type: 'ephemeral' }
+      };
+    }
+    
+    this.state.updated = new Date();
     return true;
   }
 

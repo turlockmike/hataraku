@@ -171,26 +171,47 @@ describe('Thread', () => {
 
   describe('truncate', () => {
     test('should truncate thread to respect max total tokens', () => {
-      // Add messages that total to more than 100 tokens (400 chars)
+      // Add messages that total to more than  400 chars
       thread.addMessage('user', 'A'.repeat(200));
       thread.addMessage('assistant', 'B'.repeat(300));
       thread.addMessage('user', 'C'.repeat(100));
       
-      // Truncate to 100 tokens (400 chars)
+      // Truncate to 400 chars
+      const truncated = thread.truncate(400);
+      const messages = truncated.getMessages();
+
+      expect(messages[0].content).toBe('A'.repeat(200));
+      expect(messages[1].content).toBe('B'.repeat(100));
+      expect(messages[2].content).toBe('C'.repeat(100));
+    });
+    
+    test('should preserve system message during truncation', () => {
+      // Add a system message and several regular messages
+      thread.addSystemMessage('X'.repeat(100));
+      thread.addMessage('user', 'A'.repeat(200));
+      thread.addMessage('assistant', 'B'.repeat(300));
+      thread.addMessage('user', 'C'.repeat(100));
+      
+      // Truncate to a small token limit
       const truncated = thread.truncate(100);
       const messages = truncated.getMessages();
       
-      // Should only keep the most recent messages that fit within token limit
-      expect(messages.length).toBeLessThan(3);
-      expect(messages[messages.length - 1].content).toBe('C'.repeat(100));
+      // System message should be preserved
+      expect(messages[0].role).toBe('system');
+      expect(messages[0].content).toBe('X'.repeat(100));
+      
+      // First message should be preserved
+      expect(messages[1].content).toBe('A'.repeat(100)); // Truncated to 100 chars even though system message is 100 chars
+      expect(messages[2]).toBeUndefined();
+      
     });
 
-    test('should truncate individual messages that exceed maxTokensPerMessage', () => {
-      // Add a message that exceeds 10 tokens (40 chars)
+    test('should truncate individual messages that exceed maxCharsPerMessage', () => {
+      // Add a message that exceeds 40 chars
       thread.addMessage('user', 'A'.repeat(100));
       
-      // Truncate with maxTokensPerMessage = 10
-      const truncated = thread.truncate(1000, 10);
+      // Truncate with maxCharsPerMessage = 40
+      const truncated = thread.truncate(1000, 40);
       const messages = truncated.getMessages();
       
       // Message should be truncated to 40 characters (10 tokens)
@@ -227,16 +248,16 @@ describe('Thread', () => {
       expect(truncated.id).toBe(thread.id);
     });
 
-    test('should use default maxTokensPerMessage when not specified', () => {
-      // Add a message that exceeds default 50k tokens (200k chars)
+    test('should use default maxCharsPerMessage when not specified', () => {
+      // Add a message that exceeds default (50k chars)
       const longMessage = 'A'.repeat(250000);
       thread.addMessage('user', longMessage);
       
-      const truncated = thread.truncate(100000);
+      const truncated = thread.truncate(300000);
       const messages = truncated.getMessages();
       
-      // Message should be truncated to 200k characters (50k tokens)
-      expect(messages[0].content.length).toBe(200000);
+      // Message should be truncated to 50000 chars
+      expect(messages[0].content.length).toBe(50000);
     });
 
     test('should always preserve the first message after truncation', () => {
@@ -245,12 +266,12 @@ describe('Thread', () => {
       thread.addMessage('assistant', 'B'.repeat(300));
       thread.addMessage('user', 'C'.repeat(300));
       
-      // Truncate to a small token limit that would normally exclude all but the most recent message
       const truncated = thread.truncate(50);
       const messages = truncated.getMessages();
       
       // First message should always be present
       expect(messages[0].content).toBe(firstMessage);
+      expect(messages[1].content).toBe('C'.repeat(50 - firstMessage.length));
       expect(messages.length).toBe(2); // First message + most recent that fits
     });
 
@@ -260,7 +281,7 @@ describe('Thread', () => {
       thread.addMessage('assistant', 'Short message');
       
       // Truncate with small maxTokensPerMessage
-      const truncated = thread.truncate(1000, 10); // 10 tokens = 40 chars
+      const truncated = thread.truncate(1000, 40); // 10 tokens = 40 chars
       const messages = truncated.getMessages();
       
       // First message should be truncated but present
@@ -275,12 +296,12 @@ describe('Thread', () => {
       thread.addMessage('assistant', 'Second message');
       
       // Truncate to less tokens than the first message
-      const truncated = thread.truncate(100); // 100 tokens = 400 chars
+      const truncated = thread.truncate(400)
       const messages = truncated.getMessages();
       
       // Should still keep truncated first message
       expect(messages.length).toBe(1);
-      expect(messages[0].content.length).toBe(400);
+      expect(messages[0].content).toBe(longFirstMessage.slice(0, 400));
     });
   });
 
@@ -317,6 +338,55 @@ describe('Thread', () => {
       expect(formatted.length).toBe(2);
       expect(formatted[0].role).toBe('system');
       expect(formatted[0].content).toBe('You are a helpful assistant');
+    });
+    
+    test('should respect the one system message rule when merging threads', () => {
+      // Add a system message to the first thread
+      thread.addSystemMessage('System message 1');
+      thread.addMessage('user', 'Hello');
+      
+      // Create another thread with a system message
+      const anotherThread = new Thread();
+      anotherThread.addSystemMessage('System message 2');
+      anotherThread.addMessage('assistant', 'Hi');
+      
+      // Merge the threads
+      thread.merge(anotherThread);
+      
+      // Verify that the original system message is preserved
+      const systemMessage = thread.getSystemMessage();
+      expect(systemMessage).toBeDefined();
+      expect(systemMessage?.content).toBe('System message 1');
+      
+      // Verify that all other messages were merged
+      const messages = thread.getMessages();
+      expect(messages.length).toBe(3); // system + user + assistant
+      expect(messages[0].role).toBe('system');
+      expect(messages[0].content).toBe('System message 1');
+    });
+
+    test('should adopt system message from other thread when merging if none exists', () => {
+      // First thread has no system message
+      thread.addMessage('user', 'Hello');
+      
+      // Create another thread with a system message
+      const anotherThread = new Thread();
+      anotherThread.addSystemMessage('System message from other');
+      anotherThread.addMessage('assistant', 'Hi');
+      
+      // Merge the threads
+      thread.merge(anotherThread);
+      
+      // Verify that the system message from the other thread was adopted
+      const systemMessage = thread.getSystemMessage();
+      expect(systemMessage).toBeDefined();
+      expect(systemMessage?.content).toBe('System message from other');
+      
+      // Verify that all messages were merged properly
+      const messages = thread.getMessages();
+      expect(messages.length).toBe(3); // system + user + assistant
+      expect(messages[0].role).toBe('system');
+      expect(messages[0].content).toBe('System message from other');
     });
   });
 
