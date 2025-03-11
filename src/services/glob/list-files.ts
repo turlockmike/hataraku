@@ -3,6 +3,24 @@ import os from "os"
 import * as path from "path"
 import { arePathsEqual } from "../../utils/path"
 
+/**
+ * Lists files in a directory with safety checks for root and home directories.
+ *
+ * @param dirPath - The directory path to list files from
+ * @param recursive - Whether to list files recursively in subdirectories
+ * @param limit - Maximum number of files to return
+ * @returns A tuple containing [array of file paths, boolean indicating if limit was reached]
+ * @throws Will throw an error if the globbing process times out (via internal globbyLevelByLevel function)
+ *
+ * @example
+ * ```typescript
+ * // List up to 100 files in the current directory (non-recursive)
+ * const [files, limitReached] = await listFiles('.', false, 100);
+ *
+ * // List up to 1000 files recursively
+ * const [allFiles, hitLimit] = await listFiles('./src', true, 1000);
+ * ```
+ */
 export async function listFiles(dirPath: string, recursive: boolean, limit: number): Promise<[string[], boolean]> {
 	const absolutePath = path.resolve(dirPath)
 	// Do not allow listing files in root or home directory, which cline tends to want to do when the user's prompt is vague.
@@ -50,18 +68,25 @@ export async function listFiles(dirPath: string, recursive: boolean, limit: numb
 	return [files, files.length >= limit]
 }
 
-/*
-Breadth-first traversal of directory structure level by level up to a limit:
-   - Queue-based approach ensures proper breadth-first traversal
-   - Processes directory patterns level by level
-   - Captures a representative sample of the directory structure up to the limit
-   - Minimizes risk of missing deeply nested files
-
-- Notes:
-   - Relies on fast-glob to mark directories with /
-   - Potential for loops if symbolic links reference back to parent (we could use followSymlinks: false but that may not be ideal for some projects and it's pointless if they're not using symlinks wrong)
-   - Timeout mechanism prevents infinite loops
-*/
+/**
+ * Performs breadth-first traversal of directory structure level by level up to a limit.
+ *
+ * Features:
+ * - Queue-based approach ensures proper breadth-first traversal
+ * - Processes directory patterns level by level
+ * - Captures a representative sample of the directory structure up to the limit
+ * - Minimizes risk of missing deeply nested files
+ *
+ * @param limit - Maximum number of files to return
+ * @param options - Options to pass to fast-glob
+ * @returns Array of file paths up to the specified limit
+ * @throws Will throw an error if the globbing process times out (after 10 seconds)
+ *
+ * Notes:
+ * - Relies on fast-glob to mark directories with /
+ * - Potential for loops if symbolic links reference back to parent
+ * - Timeout mechanism prevents infinite loops
+ */
 async function globbyLevelByLevel(limit: number, options?: fg.Options) {
 	let results: Set<string> = new Set()
 	let queue: string[] = ["*"]

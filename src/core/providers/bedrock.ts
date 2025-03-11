@@ -11,7 +11,8 @@ export async function createBedrockProvider(profile?: string) {
         region: process.env.AWS_REGION || 'us-east-1',
         accessKeyId: credentials.accessKeyId,
         secretAccessKey: credentials.secretAccessKey,
-        sessionToken: credentials.sessionToken
+        sessionToken: credentials.sessionToken,
+        
     })
 }
 
