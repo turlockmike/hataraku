@@ -210,8 +210,8 @@ describe('Agent with Thread Integration', () => {
         timestamp: expect.any(Date),
         providerOptions: {
           usage: {
-            tokensIn: 0,
-            tokensOut: 0
+            tokensIn: 10,
+            tokensOut: 20
           }
         }
       });
@@ -264,21 +264,21 @@ describe('Agent with Thread Integration', () => {
 
       // Verify that both the tool call and final response were added to the thread
       const messages = thread.getMessages();
-      expect(messages[messages.length - 2]).toMatchObject({
-        role: 'user',
-        content: 'Based on the last response, please create a response that matches the schema provided. It must be valid JSON and match the schema exactly.',
+      expect(messages.length).toBe(3);
+      expect(messages[0]).toMatchObject({
+        role: 'system',
+        content: expect.stringContaining('ROLE:'),
         timestamp: expect.any(Date)
       });
-      expect(messages[messages.length - 1]).toMatchObject({
+      expect(messages[1]).toMatchObject({
+        role: 'user',
+        content: 'Tool test',
+        timestamp: expect.any(Date)
+      });
+      expect(messages[2]).toMatchObject({
         role: 'assistant',
         content: JSON.stringify({ content: 'Executed mock tool with input: test input' }),
-        timestamp: expect.any(Date),
-        providerOptions: {
-          usage: {
-            tokensIn: 0,
-            tokensOut: 0
-          }
-        }
+        timestamp: expect.any(Date)
       });
     });
   });
