@@ -14,6 +14,7 @@ Hataraku is a powerful toolkit that enables the creation of AI-powered developme
 - 🤖 Autonomous coding agent capabilities
 - 🛠️ Extensible SDK for building AI-powered tools
 - 📦 Support for multiple AI providers (OpenRouter, Claude, Amazon Bedrock)
+- 🧠 AWS Bedrock Knowledge Base integration for RAG applications
 - 🔄 Workflow automation and parallel task execution
 - 📊 Schema validation and structured tasks
 - 🧰 Built-in tool integration system
@@ -114,6 +115,41 @@ hataraku provider configure openrouter
 hataraku --help
 ```
 
+### Enhancing Output with Glow
+
+Hataraku's output can be enhanced using [Glow](https://github.com/charmbracelet/glow), a terminal-based markdown viewer that makes the output more readable and visually appealing.
+
+#### Installing Glow
+
+```bash
+# macOS
+brew install glow
+
+# Ubuntu/Debian
+sudo apt-get update && sudo apt-get install glow
+
+# Windows with Chocolatey
+choco install glow
+```
+
+#### Using Glow with Hataraku
+
+Create a function in your shell configuration file (`.bashrc`, `.zshrc`, etc.):
+
+```bash
+# Alias for Hataraku
+alias h="hataraku"
+
+# Function to pipe Hataraku output to Glow
+hd() {
+  hataraku "$@" | glow -
+}
+```
+
+Now you can use the `hd` command to run Hataraku with enhanced output:
+
+For more details, see the [Glow Integration Guide](docs/glow-guide.md).
+
 ## API Overview
 
 Hataraku provides several core components:
@@ -132,9 +168,11 @@ For detailed API documentation, see the [Types Documentation](docs/types.md).
 - [API Reference](docs/api-reference.md) - Complete API reference
 - [Configuration Guide](docs/configuration.md) - Configuration options
 - [Providers](docs/providers.md) - Supported AI providers
+- [Knowledge Base](docs/knowledge-base.md) - AWS Bedrock Knowledge Base integration
 - [Tools](docs/tools.md) - Built-in tools and extensions
 - [Architecture](docs/architecture.md) - System architecture
 - [Troubleshooting](docs/troubleshooting.md) - Solving common issues
+- [Glow Integration](docs/glow-guide.md) - Using Glow to enhance Hataraku output
 
 ## Examples
 

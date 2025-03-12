@@ -2,6 +2,30 @@
 
 This document provides a comprehensive list of example commands to test various features of the Hataraku CLI.
 
+## Profile Management
+```bash
+# List all profiles
+hataraku profile list
+
+# Show profile details
+hataraku profile show <name>
+
+# Create a new profile
+hataraku profile create
+
+# Edit an existing profile
+hataraku profile edit <name>
+
+# Delete a profile
+hataraku profile delete <name>
+
+# Use a specific profile
+hataraku profile use <name>
+
+# Set knowledge base for a profile
+hataraku profile set-kb <name>
+```
+
 ## File Operations
 ```bash
 # Create a new file

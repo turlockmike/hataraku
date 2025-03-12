@@ -51,6 +51,14 @@ export function registerProfileCommands(program: Command): Command {
         console.log(`${chalk.blue('Agent:')}        ${profile.agent || 'Not set'}`);
         console.log(`${chalk.blue('Tools:')}        ${profile.tools?.join(', ') || 'None'}`);
         
+        // Display knowledge base settings if available
+        if (profile.knowledgeBase) {
+          console.log(chalk.blue('\nKnowledge Base Settings:'));
+          console.log(`  ${chalk.gray('•')} ID:         ${profile.knowledgeBase.knowledgeBaseId}`);
+          console.log(`  ${chalk.gray('•')} Model ARN:  ${profile.knowledgeBase.modelArn || 'Default'}`);
+          console.log(`  ${chalk.gray('•')} Region:     ${profile.knowledgeBase.region || 'Default'}`);
+        }
+        
         console.log(chalk.blue('\nOptions:'));
         console.log(`  ${chalk.gray('•')} Streaming:   ${profile.options?.stream ? chalk.green('Enabled') : chalk.red('Disabled')}`);
         console.log(`  ${chalk.gray('•')} Sound:       ${profile.options?.sound ? chalk.green('Enabled') : chalk.red('Disabled')}`);
@@ -208,6 +216,79 @@ export function registerProfileCommands(program: Command): Command {
         process.exit(1);
       }
     });
+
+  profileCommand
+    .command('set-kb <profile>')
+    .description('Set knowledge base configuration for a profile')
+    .action(async (profileName: string) => {
+      try {
+        const profileManager = new ProfileManager();
+        
+        // Check if profile exists
+        try {
+          await profileManager.getProfile(profileName);
+        } catch (error) {
+          console.error(chalk.red(`Profile '${profileName}' not found.`));
+          process.exit(1);
+        }
+        
+        console.log(chalk.cyan(`\nConfiguring Knowledge Base settings for profile: ${chalk.bold(profileName)}`));
+        
+        // Get knowledge base ID
+        const knowledgeBaseId = await input({
+          message: 'Knowledge Base ID:',
+          validate: (value) => value.trim() !== '' ? true : 'Knowledge Base ID is required'
+        });
+        
+        // Get model ARN (optional)
+        const modelArn = await input({
+          message: 'Model ARN (optional, press Enter to use default):',
+        });
+        
+        // Get region (optional)
+        const region = await input({
+          message: 'AWS Region (optional, press Enter to use default):',
+        });
+        
+        // Update profile
+        await profileManager.updateProfile(profileName, {
+          knowledgeBase: {
+            knowledgeBaseId,
+            ...(modelArn ? { modelArn } : {}),
+            ...(region ? { region } : {})
+          }
+        });
+        
+        console.log(chalk.green(`\nKnowledge Base configuration for profile '${profileName}' updated successfully.`));
+      } catch (error) {
+        console.error(chalk.red('Error setting knowledge base configuration:'), error);
+        process.exit(1);
+      }
+    });
+
+  profileCommand
+    .command("delete <name>")
+    .description("Delete a profile")
+    .action(async (name: string) => {
+      try {
+        const profileManager = new ProfileManager()
+        const confirmed = await confirm({
+          message: `Are you sure you want to delete profile '${name}'?`,
+          default: false,
+        })
+
+        if (!confirmed) {
+          console.log(chalk.yellow("Profile deletion cancelled."))
+          return
+        }
+
+        await profileManager.deleteProfile(name)
+        console.log(chalk.green(`Profile '${name}' deleted successfully.`))
+      } catch (error) {
+        console.error(chalk.red("Error deleting profile:"), error)
+        process.exit(1)
+      }
+    })
 
   return program;
 } 

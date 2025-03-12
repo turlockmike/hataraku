@@ -8,6 +8,12 @@ export const ProfileOptionsSchema = z.object({
   maxSteps: z.number().int().positive().optional().default(50)
 });
 
+export const KnowledgeBaseConfigSchema = z.object({
+  knowledgeBaseId: z.string(),
+  modelArn: z.string().optional(),
+  region: z.string().optional()
+});
+
 export const ProfileSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
@@ -16,7 +22,8 @@ export const ProfileSchema = z.object({
   model: z.string().optional(),
   tools: z.array(z.string()).optional(),
   providerOptions: z.record(z.string()).optional(),
-  options: ProfileOptionsSchema.optional()
+  options: ProfileOptionsSchema.optional(),
+  knowledgeBase: KnowledgeBaseConfigSchema.optional()
 });
 
 export const ProfilesConfigSchema = z.object({
@@ -25,6 +32,7 @@ export const ProfilesConfigSchema = z.object({
 });
 
 export type ProfileOptions = z.infer<typeof ProfileOptionsSchema>;
+export type KnowledgeBaseConfig = z.infer<typeof KnowledgeBaseConfigSchema>;
 export type Profile = z.infer<typeof ProfileSchema>;
 export type ProfilesConfig = z.infer<typeof ProfilesConfigSchema>;
 

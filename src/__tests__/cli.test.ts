@@ -107,9 +107,13 @@ describe('CLI Input Parameters', () => {
 
   test('executes task in normal mode', async () => {
     const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+    // Set the environment variable for OpenRouter API key
     process.env.OPENROUTER_API_KEY = 'dummy';
+    // Set the provider option
     program.setOptionValue('provider', 'openrouter');
-    const code = await main('myTask');
+    // Set the API key in the program options
+    program.setOptionValue('apiKey', 'dummy');
+    const code = await main('myTask', program);
     expect(code).toBe(0);
     consoleLogSpy.mockRestore();
   });
