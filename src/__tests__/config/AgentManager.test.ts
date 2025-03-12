@@ -2,10 +2,10 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { AgentManager } from '../../config/agent-manager';
 import { AgentConfig, DEFAULT_CODE_ASSISTANT } from '../../config/agent-config';
-import { getConfigPaths } from '../../config/configPaths';
+import { getConfigPaths } from '../../config/config-paths';
 import { ToolManager } from '../../config/ToolManager';
 
-jest.mock('../../config/configPaths', () => ({
+jest.mock('../../config/config-paths', () => ({
   getConfigPaths: jest.fn(),
   createConfigDirectories: jest.fn()
 }));

@@ -2,12 +2,12 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ToolManager } from '../../config/ToolManager';
 import { ToolsConfig, DEFAULT_AI_TOOLS } from '../../config/toolConfig';
-import { getConfigPaths } from '../../config/configPaths';
+import { getConfigPaths } from '../../config/config-paths';
 
 // Mock fs and path modules
 jest.mock('fs/promises');
 jest.mock('path');
-jest.mock('../../config/configPaths');
+jest.mock('../../config/config-paths');
 
 describe('ToolManager', () => {
   let toolManager: ToolManager;

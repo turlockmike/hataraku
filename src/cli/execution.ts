@@ -9,10 +9,11 @@ import { createCLIAgent } from '../core/agents';
 import { createBedrockModel } from '../core/providers/bedrock';
 import { createKnowledgeBaseProvider, KnowledgeBaseConfig } from '../core/providers/knowledge-base';
 import { playAudioTool } from '../core/tools/play-audio';
-import { ConfigLoader, CliOptions } from '../config/ConfigLoader';
+import { ConfigLoader, CliOptions } from '../config/config-loader';
 import { ProfileManager } from '../config/ProfileManager';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { LanguageModelV1, CreateMessage } from 'ai';
+import { Thread } from '../core/thread/thread';
 
 /**
  * Convert a model name to an AWS Bedrock model ARN
@@ -456,18 +457,38 @@ export async function executeWithConfig(task: string, cliOptions: CliOptions, in
 
     if (shouldUseInteractive) {
       // Interactive mode
+      const thread = new Thread();
       async function runInteractiveTask(currentTask?: string) {
         let taskToRun = currentTask;
 
         if (!taskToRun) {
           taskToRun = await input({
-            message: 'Enter your task, or type "exit" to quit:',
+            message: 'Enter your task, or type "/exit" to exit\n\n> ',
             default: task // Use provided task argument as default if available
           });
 
-          if (!taskToRun || taskToRun === 'exit') {
+          if (!taskToRun || taskToRun === '/exit' || taskToRun === '/quit') {
             log.warning('Exiting interactive mode.');
             return 0;
+          }
+        }
+
+        // Handle slash commands
+        if (taskToRun.startsWith('/')) {
+          const command = taskToRun.toLowerCase();
+          switch (command) {
+            case '/cost':
+              const messages = thread.getMessages();
+              const lastMessage = messages[messages.length - 1];
+              const usage = lastMessage.providerOptions;
+              log.system(`\nUsage stats: ${JSON.stringify(usage, null, 2)}`);
+              return runInteractiveTask();
+            default:
+              log.warning(`Unknown command: ${command}`);
+              log.system('Available commands:');
+              log.system('  /cost - Show usage stats for this session');
+              log.system('  /exit - Exit interactive mode (same as "/quit")');
+              return runInteractiveTask();
           }
         }
 
@@ -477,12 +498,14 @@ export async function executeWithConfig(task: string, cliOptions: CliOptions, in
           if (shouldStream) {
             const result = await cliAgent.task(taskToRun, {
               stream: true,
-              verbose: shouldShowVerbose
+              verbose: shouldShowVerbose,
+              thread
             });
             await processStreams(result, options);
           } else {
             const result = await cliAgent.task(taskToRun, {
-              verbose: shouldShowVerbose
+              verbose: shouldShowVerbose,
+              thread
             });
             log.success(result);
           }

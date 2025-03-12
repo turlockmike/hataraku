@@ -8,10 +8,12 @@ if (require.main === module) {
   program.parse();
   
   // If no arguments or a subcommand, don't run main
-  if (program.args.length === 0 || program.commands.some(cmd => cmd.name() === program.args[0])) {
+  if (program.commands.some(cmd => cmd.name() === program.args[0])) {
     // No need to call main() if running a subcommand
   } else {
-    const task = program.args[0];
+    const task = program.args.join(' ');
+    if (task.length === 0)
+      {program.setOptionValue('interactive', true)}
     main(task, program).then((code) => {
       process.exit(code);
     }).catch((error) => {

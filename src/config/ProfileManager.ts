@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getConfigPaths } from './configPaths';
+import { getConfigPaths } from './config-paths';
 import { Profile, ProfilesConfig, ProfilesConfigSchema, DEFAULT_PROFILE } from './profileConfig';
 
 export class ProfileManager {

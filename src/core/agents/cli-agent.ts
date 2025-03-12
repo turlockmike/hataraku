@@ -1,7 +1,7 @@
 import { LanguageModelV1 } from 'ai';
 import { createAgent } from '../agent';
 import { getEnvironmentInfo, getAgentRules } from '../prompts';
-import { TaskHistory } from '../TaskHistory';
+import { TaskHistory } from '../task-history';
 import { ALL_TOOLS } from '../tools';
 import { getMcpTools } from '../mcp/toolWrapper';
 import { ToolManager } from '../../config/ToolManager';
@@ -107,6 +107,7 @@ ${getEnvironmentInfo()}`,
     model,
     taskHistory: new TaskHistory(),
     tools,
-    verbose: verbose
+    verbose: verbose,
+    enableCaching: true // Always enable caching for CLI agent
   });
 } 

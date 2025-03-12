@@ -2,8 +2,8 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { input, select, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
-import { getConfigPaths, createConfigDirectories } from './configPaths';
-import { ConfigLoader } from './ConfigLoader';
+import { getConfigPaths, createConfigDirectories } from './config-paths';
+import { ConfigLoader } from './config-loader';
 import { ProfileManager } from './ProfileManager';
 import { Profile, DEFAULT_PROFILE } from './profileConfig';
 

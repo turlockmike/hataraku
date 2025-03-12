@@ -1,5 +1,5 @@
 // Configuration Paths
-export { getConfigPaths, createConfigDirectories } from './configPaths';
+export { getConfigPaths, createConfigDirectories } from './config-paths';
 
 // Profile Management
 export { ProfileManager } from './ProfileManager';
@@ -18,7 +18,7 @@ export { TaskManager } from './TaskManager';
 export { TaskConfig, TaskTemplate, TaskConfigSchema, TaskTemplateSchema } from './taskConfig';
 
 // Configuration Loader
-export { ConfigLoader, CliOptions } from './ConfigLoader';
+export { ConfigLoader, CliOptions } from './config-loader';
 
 // First Run Manager
 export { FirstRunManager } from './first-run-manager';

@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getConfigPaths, createConfigDirectories } from './configPaths';
+import { getConfigPaths, createConfigDirectories } from './config-paths';
 import { ToolsConfig, ToolsConfigSchema, ToolSetConfig, DEFAULT_AI_TOOLS, DEFAULT_DEV_TOOLS } from './toolConfig';
 import { interpolateEnvVarsInObject } from '../utils/envInterpolation';
 

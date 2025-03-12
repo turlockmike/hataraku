@@ -35,7 +35,9 @@ export const AgentConfigSchema = z.object({
   model: ModelConfigSchema,
   tools: z.array(z.string()).optional(),
   maxSteps: z.number().int().positive().optional(),
-  maxRetries: z.number().int().positive().optional()
+  maxRetries: z.number().int().positive().optional(),
+  verbose: z.boolean().optional(),
+  enableCaching: z.boolean().optional().default(true)
 });
 
 // TypeScript types
@@ -61,7 +63,8 @@ export const DEFAULT_CODE_ASSISTANT: AgentConfig = {
   },
   tools: ["hataraku"], // Includes all built-in Hataraku tools
   maxSteps: 5,
-  maxRetries: 3
+  maxRetries: 3,
+  enableCaching: true
 };
 
 /**

@@ -171,26 +171,47 @@ describe('Thread', () => {
 
   describe('truncate', () => {
     test('should truncate thread to respect max total tokens', () => {
-      // Add messages that total to more than 100 tokens (400 chars)
+      // Add messages that total to more than  400 chars
       thread.addMessage('user', 'A'.repeat(200));
       thread.addMessage('assistant', 'B'.repeat(300));
       thread.addMessage('user', 'C'.repeat(100));
       
-      // Truncate to 100 tokens (400 chars)
+      // Truncate to 400 chars
+      const truncated = thread.truncate(400);
+      const messages = truncated.getMessages();
+
+      expect(messages[0].content).toBe('A'.repeat(200));
+      expect(messages[1].content).toBe('B'.repeat(100));
+      expect(messages[2].content).toBe('C'.repeat(100));
+    });
+    
+    test('should preserve system message during truncation', () => {
+      // Add a system message and several regular messages
+      thread.addSystemMessage('X'.repeat(100));
+      thread.addMessage('user', 'A'.repeat(200));
+      thread.addMessage('assistant', 'B'.repeat(300));
+      thread.addMessage('user', 'C'.repeat(100));
+      
+      // Truncate to a small token limit
       const truncated = thread.truncate(100);
       const messages = truncated.getMessages();
       
-      // Should only keep the most recent messages that fit within token limit
-      expect(messages.length).toBeLessThan(3);
-      expect(messages[messages.length - 1].content).toBe('C'.repeat(100));
+      // System message should be preserved
+      expect(messages[0].role).toBe('system');
+      expect(messages[0].content).toBe('X'.repeat(100));
+      
+      // First message should be preserved
+      expect(messages[1].content).toBe('A'.repeat(100)); // Truncated to 100 chars even though system message is 100 chars
+      expect(messages[2]).toBeUndefined();
+      
     });
 
-    test('should truncate individual messages that exceed maxTokensPerMessage', () => {
-      // Add a message that exceeds 10 tokens (40 chars)
+    test('should truncate individual messages that exceed maxCharsPerMessage', () => {
+      // Add a message that exceeds 40 chars
       thread.addMessage('user', 'A'.repeat(100));
       
-      // Truncate with maxTokensPerMessage = 10
-      const truncated = thread.truncate(1000, 10);
+      // Truncate with maxCharsPerMessage = 40
+      const truncated = thread.truncate(1000, 40);
       const messages = truncated.getMessages();
       
       // Message should be truncated to 40 characters (10 tokens)
@@ -227,16 +248,16 @@ describe('Thread', () => {
       expect(truncated.id).toBe(thread.id);
     });
 
-    test('should use default maxTokensPerMessage when not specified', () => {
-      // Add a message that exceeds default 50k tokens (200k chars)
+    test('should use default maxCharsPerMessage when not specified', () => {
+      // Add a message that exceeds default (50k chars)
       const longMessage = 'A'.repeat(250000);
       thread.addMessage('user', longMessage);
       
-      const truncated = thread.truncate(100000);
+      const truncated = thread.truncate(300000);
       const messages = truncated.getMessages();
       
-      // Message should be truncated to 200k characters (50k tokens)
-      expect(messages[0].content.length).toBe(200000);
+      // Message should be truncated to 50000 chars
+      expect(messages[0].content.length).toBe(50000);
     });
 
     test('should always preserve the first message after truncation', () => {
@@ -245,12 +266,12 @@ describe('Thread', () => {
       thread.addMessage('assistant', 'B'.repeat(300));
       thread.addMessage('user', 'C'.repeat(300));
       
-      // Truncate to a small token limit that would normally exclude all but the most recent message
       const truncated = thread.truncate(50);
       const messages = truncated.getMessages();
       
       // First message should always be present
       expect(messages[0].content).toBe(firstMessage);
+      expect(messages[1].content).toBe('C'.repeat(50 - firstMessage.length));
       expect(messages.length).toBe(2); // First message + most recent that fits
     });
 
@@ -260,7 +281,7 @@ describe('Thread', () => {
       thread.addMessage('assistant', 'Short message');
       
       // Truncate with small maxTokensPerMessage
-      const truncated = thread.truncate(1000, 10); // 10 tokens = 40 chars
+      const truncated = thread.truncate(1000, 40); // 10 tokens = 40 chars
       const messages = truncated.getMessages();
       
       // First message should be truncated but present
@@ -275,12 +296,196 @@ describe('Thread', () => {
       thread.addMessage('assistant', 'Second message');
       
       // Truncate to less tokens than the first message
-      const truncated = thread.truncate(100); // 100 tokens = 400 chars
+      const truncated = thread.truncate(400)
       const messages = truncated.getMessages();
       
       // Should still keep truncated first message
       expect(messages.length).toBe(1);
-      expect(messages[0].content.length).toBe(400);
+      expect(messages[0].content).toBe(longFirstMessage.slice(0, 400));
+    });
+  });
+
+  describe('System Messages', () => {
+    test('should add and retrieve system message', () => {
+      thread.addSystemMessage('You are a helpful assistant');
+      expect(thread.hasSystemMessage()).toBeTruthy();
+      const systemMessage = thread.getSystemMessage();
+      expect(systemMessage).toBeDefined();
+      expect(systemMessage?.content).toBe('You are a helpful assistant');
+      expect(systemMessage?.role).toBe('system');
+    });
+
+    test('should throw error when adding second system message', () => {
+      thread.addSystemMessage('You are a helpful assistant');
+      expect(() => {
+        thread.addSystemMessage('Another system message');
+      }).toThrow('Thread already has a system message');
+    });
+
+    test('should add system message at the beginning of messages array', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addSystemMessage('You are a helpful assistant');
+      const messages = thread.getMessages();
+      expect(messages.length).toBe(2);
+      expect(messages[0].role).toBe('system');
+      expect(messages[1].role).toBe('user');
+    });
+
+    test('should include system message in formatted messages', () => {
+      thread.addSystemMessage('You are a helpful assistant');
+      thread.addMessage('user', 'Hello');
+      const formatted = thread.getFormattedMessages();
+      expect(formatted.length).toBe(2);
+      expect(formatted[0].role).toBe('system');
+      expect(formatted[0].content).toBe('You are a helpful assistant');
+    });
+    
+    test('should respect the one system message rule when merging threads', () => {
+      // Add a system message to the first thread
+      thread.addSystemMessage('System message 1');
+      thread.addMessage('user', 'Hello');
+      
+      // Create another thread with a system message
+      const anotherThread = new Thread();
+      anotherThread.addSystemMessage('System message 2');
+      anotherThread.addMessage('assistant', 'Hi');
+      
+      // Merge the threads
+      thread.merge(anotherThread);
+      
+      // Verify that the original system message is preserved
+      const systemMessage = thread.getSystemMessage();
+      expect(systemMessage).toBeDefined();
+      expect(systemMessage?.content).toBe('System message 1');
+      
+      // Verify that all other messages were merged
+      const messages = thread.getMessages();
+      expect(messages.length).toBe(3); // system + user + assistant
+      expect(messages[0].role).toBe('system');
+      expect(messages[0].content).toBe('System message 1');
+    });
+
+    test('should adopt system message from other thread when merging if none exists', () => {
+      // First thread has no system message
+      thread.addMessage('user', 'Hello');
+      
+      // Create another thread with a system message
+      const anotherThread = new Thread();
+      anotherThread.addSystemMessage('System message from other');
+      anotherThread.addMessage('assistant', 'Hi');
+      
+      // Merge the threads
+      thread.merge(anotherThread);
+      
+      // Verify that the system message from the other thread was adopted
+      const systemMessage = thread.getSystemMessage();
+      expect(systemMessage).toBeDefined();
+      expect(systemMessage?.content).toBe('System message from other');
+      
+      // Verify that all messages were merged properly
+      const messages = thread.getMessages();
+      expect(messages.length).toBe(3); // system + user + assistant
+      expect(messages[0].role).toBe('system');
+      expect(messages[0].content).toBe('System message from other');
+    });
+  });
+
+  describe('Provider Options', () => {
+    test('should add and retrieve provider options with messages', () => {
+      const providerOptions = {
+        anthropic: { cacheControl: { type: 'ephemeral' } }
+      };
+      thread.addMessage('user', 'Hello', providerOptions);
+      const messages = thread.getMessages();
+      expect(messages[0].providerOptions).toEqual(providerOptions);
+    });
+
+    test('should add and retrieve provider options with system message', () => {
+      const providerOptions = {
+        anthropic: { cacheControl: { type: 'ephemeral' } }
+      };
+      thread.addSystemMessage('You are a helpful assistant', providerOptions);
+      const systemMessage = thread.getSystemMessage();
+      expect(systemMessage?.providerOptions).toEqual(providerOptions);
+    });
+
+    test('should include provider options in formatted messages', () => {
+      const providerOptions = {
+        anthropic: { cacheControl: { type: 'ephemeral' } }
+      };
+      thread.addSystemMessage('You are a helpful assistant', providerOptions);
+      const formatted = thread.getFormattedMessages();
+      expect(formatted[0].providerOptions).toEqual(providerOptions);
+    });
+  });
+
+  describe('Cache Control Points', () => {
+    test('should add cache control point to a message', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addCacheControlPoint(0, 'anthropic');
+      const messages = thread.getMessages();
+      expect(messages[0].providerOptions?.anthropic?.cacheControl).toEqual({ type: 'ephemeral' });
+    });
+
+    test('should add cache control point to system message', () => {
+      thread.addSystemMessage('You are a helpful assistant');
+      const result = thread.addCacheControlPointToSystemMessage('anthropic');
+      expect(result).toBeTruthy();
+      const systemMessage = thread.getSystemMessage();
+      expect(systemMessage?.providerOptions?.anthropic?.cacheControl).toEqual({ type: 'ephemeral' });
+    });
+
+    test('should add cache control point to last message', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addMessage('assistant', 'Hi there!');
+      const result = thread.addCacheControlPointToLastMessage('anthropic');
+      expect(result).toBeTruthy();
+      const messages = thread.getMessages();
+      expect(messages[1].providerOptions?.anthropic?.cacheControl).toEqual({ type: 'ephemeral' });
+    });
+
+    test('should return false when adding cache control point to system message that does not exist', () => {
+      const result = thread.addCacheControlPointToSystemMessage('anthropic');
+      expect(result).toBeFalsy();
+    });
+
+    test('should return false when adding cache control point to last message in empty thread', () => {
+      const result = thread.addCacheControlPointToLastMessage('anthropic');
+      expect(result).toBeFalsy();
+    });
+
+    test('should throw error when adding cache control point to out of bounds message index', () => {
+      expect(() => {
+        thread.addCacheControlPoint(5, 'anthropic');
+      }).toThrow('Message index 5 is out of bounds');
+    });
+
+    test('should add bedrock cache control point', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addCacheControlPoint(0, 'bedrock');
+      const messages = thread.getMessages();
+      expect(messages[0].providerOptions?.bedrock?.cachePoints).toBeTruthy();
+    });
+
+    test('should add openrouter cache control point', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addCacheControlPoint(0, 'openrouter');
+      const messages = thread.getMessages();
+      expect(messages[0].providerOptions?.openrouter?.cacheControl).toEqual({ type: 'ephemeral' });
+    });
+
+    test('should add vertex cache control point (same as anthropic)', () => {
+      thread.addMessage('user', 'Hello');
+      thread.addCacheControlPoint(0, 'vertex');
+      const messages = thread.getMessages();
+      expect(messages[0].providerOptions?.anthropic?.cacheControl).toEqual({ type: 'ephemeral' });
+    });
+
+    test('should include cache control points in formatted messages', () => {
+      thread.addSystemMessage('You are a helpful assistant');
+      thread.addCacheControlPointToSystemMessage('anthropic');
+      const formatted = thread.getFormattedMessages();
+      expect(formatted[0].providerOptions?.anthropic?.cacheControl).toEqual({ type: 'ephemeral' });
     });
   });
 }); 

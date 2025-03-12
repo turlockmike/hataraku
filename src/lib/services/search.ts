@@ -4,6 +4,21 @@ import * as util from 'util';
 
 const execAsync = util.promisify(exec);
 
+/**
+ * Searches for files matching a pattern using ripgrep
+ *
+ * @param cwd - The current working directory from which to execute the search
+ * @param searchPath - The path to search within
+ * @param pattern - The regex pattern to search for in files
+ * @param filePattern - Optional glob pattern to filter which files to search
+ * @returns A string containing the search results or 'No matches found' if no results
+ * @throws Will throw an error if the ripgrep command fails for reasons other than no matches
+ * @example
+ * ```typescript
+ * // Search for "function" in all TypeScript files in the src directory
+ * const results = await searchFiles('/path/to/project', 'src', 'function', '*.ts');
+ * ```
+ */
 export async function searchFiles(
     cwd: string,
     searchPath: string,

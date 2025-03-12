@@ -56,10 +56,15 @@ describe('Agent with Thread Integration', () => {
       }));
 
       const threadAgent = createAgent({
-        ...agent,
+        name: 'Test Agent',
+        role: 'You are a test agent',
+        description: 'A test agent',
         model: new MockLanguageModelV1({
           doGenerate: mockDoGenerate
-        })
+        }),
+        tools: {
+          mock_tool: mockTool
+        }
       });
 
       await threadAgent.task('Current task', { thread });
@@ -67,6 +72,10 @@ describe('Agent with Thread Integration', () => {
       // Verify that thread messages were included in the prompt
       expect(mockDoGenerate).toHaveBeenCalledWith(expect.objectContaining({
         prompt: expect.arrayContaining([
+          expect.objectContaining({
+            role: 'system',
+            content: expect.any(String)
+          }),
           expect.objectContaining({
             role: 'user',
             content: expect.arrayContaining([{
@@ -100,16 +109,24 @@ describe('Agent with Thread Integration', () => {
 
       // Verify that the response was added to the thread
       const messages = thread.getMessages();
-      expect(messages[messages.length - 1]).toEqual({
+      expect(messages[messages.length - 1]).toMatchObject({
         role: 'assistant',
         content: 'New response',
-        timestamp: expect.any(Date)
+        timestamp: expect.any(Date),
+        providerOptions: {
+          usage: {
+            tokensIn: 10,
+            tokensOut: 20
+          }
+        }
       });
     });
 
     it('should handle streaming with thread', async () => {
       const streamAgent = createAgent({
-        ...agent,
+        name: 'Test Agent',
+        role: 'You are a test agent',
+        description: 'A test agent',
         model: new MockLanguageModelV1({
           doStream: async () => ({
             stream: new ReadableStream({
@@ -145,10 +162,16 @@ describe('Agent with Thread Integration', () => {
 
       // Verify that the complete response was added to the thread
       const messages = thread.getMessages();
-      expect(messages[messages.length - 1]).toEqual({
+      expect(messages[messages.length - 1]).toMatchObject({
         role: 'assistant',
         content: 'This is streaming',
-        timestamp: expect.any(Date)
+        timestamp: expect.any(Date),
+        providerOptions: {
+          usage: {
+            tokensIn: 10,
+            tokensOut: 20
+          }
+        }
       });
     });
 
@@ -158,7 +181,9 @@ describe('Agent with Thread Integration', () => {
       });
 
       const schemaAgent = createAgent({
-        ...agent,
+        name: 'Test Agent',
+        role: 'You are a test agent',
+        description: 'A test agent',
         model: new MockLanguageModelV1({
           defaultObjectGenerationMode: 'json',
           doGenerate: async () => ({
@@ -179,16 +204,24 @@ describe('Agent with Thread Integration', () => {
 
       // Verify that the JSON response was added to the thread
       const messages = thread.getMessages();
-      expect(messages[messages.length - 1]).toEqual({
+      expect(messages[messages.length - 1]).toMatchObject({
         role: 'assistant',
         content: '{"count":42}',
-        timestamp: expect.any(Date)
+        timestamp: expect.any(Date),
+        providerOptions: {
+          usage: {
+            tokensIn: 10,
+            tokensOut: 20
+          }
+        }
       });
     });
 
     it('should handle tool calls with thread', async () => {
       const toolAgent = createAgent({
-        ...agent,
+        name: 'Test Agent',
+        role: 'You are a test agent',
+        description: 'A test agent',
         model: new MockLanguageModelV1({
           defaultObjectGenerationMode: 'json',
           doGenerate: async (options) => {
@@ -231,12 +264,18 @@ describe('Agent with Thread Integration', () => {
 
       // Verify that both the tool call and final response were added to the thread
       const messages = thread.getMessages();
-      expect(messages[messages.length - 2]).toEqual({
-        role: 'user',
-        content: 'Based on the last response, please create a response that matches the schema provided. It must be valid JSON and match the schema exactly.',
+      expect(messages.length).toBe(3);
+      expect(messages[0]).toMatchObject({
+        role: 'system',
+        content: expect.stringContaining('ROLE:'),
         timestamp: expect.any(Date)
       });
-      expect(messages[messages.length - 1]).toEqual({
+      expect(messages[1]).toMatchObject({
+        role: 'user',
+        content: 'Tool test',
+        timestamp: expect.any(Date)
+      });
+      expect(messages[2]).toMatchObject({
         role: 'assistant',
         content: JSON.stringify({ content: 'Executed mock tool with input: test input' }),
         timestamp: expect.any(Date)
