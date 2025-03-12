@@ -1,4 +1,4 @@
-import { ConfigLoader } from '../ConfigLoader';
+import { ConfigLoader } from '../config-loader';
 import { ProfileManager } from '../ProfileManager';
 import { AgentManager } from '../agent-manager';
 import { TaskManager } from '../TaskManager';

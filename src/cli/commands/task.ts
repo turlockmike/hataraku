@@ -4,7 +4,7 @@ import { input, select } from '@inquirer/prompts';
 import { TaskManager } from '../../config/TaskManager';
 import { ProfileManager } from '../../config/ProfileManager';
 import { AgentManager } from '../../config/agent-manager';
-import { ConfigLoader, CliOptions } from '../../config/ConfigLoader';
+import { ConfigLoader, CliOptions } from '../../config/config-loader';
 import { executeWithConfig } from '../execution';
 import { createCLIAgent } from '../../core/agents';
 import { createBedrockProvider } from '../../core/providers/bedrock';

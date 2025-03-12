@@ -6,7 +6,7 @@ import { Command } from 'commander';
 import { createCLIAgent } from '../core/agents';
 import { createBedrockModel } from '../core/providers/bedrock';
 import { playAudioTool } from '../core/tools/play-audio';
-import { ConfigLoader, CliOptions } from '../config/ConfigLoader';
+import { ConfigLoader, CliOptions } from '../config/config-loader';
 import { ProfileManager } from '../config/ProfileManager';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { LanguageModelV1 } from 'ai';
@@ -139,11 +139,11 @@ export async function executeWithConfig(task: string, cliOptions: CliOptions, in
 
         if (!taskToRun) {
           taskToRun = await input({
-            message: 'Enter your task, or type "exit" to quit:',
+            message: 'Enter your task, or type "/exit" to exit',
             default: task // Use provided task argument as default if available
           });
 
-          if (!taskToRun || taskToRun === 'exit') {
+          if (!taskToRun || taskToRun === '/exit' || taskToRun === '/quit') {
             log.warning('Exiting interactive mode.');
             return 0;
           }
@@ -154,17 +154,16 @@ export async function executeWithConfig(task: string, cliOptions: CliOptions, in
           const command = taskToRun.toLowerCase();
           switch (command) {
             case '/cost':
-              const totalCost = thread.getMessages()
-                .reduce((acc, msg) => {
-                  const usage = msg.providerOptions?.usage;
-                  return acc + (usage?.cost || 0);
-                }, 0);
-              log.system(`\nTotal cost for this session: $${totalCost.toFixed(4)}`);
+              const messages = thread.getMessages();
+              const lastMessage = messages[messages.length - 1];
+              const usage = lastMessage.providerOptions;
+              log.system(`\nUsage stats: ${JSON.stringify(usage, null, 2)}`);
               return runInteractiveTask();
             default:
               log.warning(`Unknown command: ${command}`);
               log.system('Available commands:');
-              log.system('  /cost - Show total cost for this session');
+              log.system('  /cost - Show usage stats for this session');
+              log.system('  /exit - Exit interactive mode (same as "/quit")');
               return runInteractiveTask();
           }
         }

@@ -3,10 +3,10 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ProfileManager } from '../../config/ProfileManager';
 import { Profile, DEFAULT_PROFILE } from '../../config/profileConfig';
-import { getConfigPaths } from '../../config/configPaths';
+import { getConfigPaths } from '../../config/config-paths';
 
 jest.mock('fs/promises');
-jest.mock('../../config/configPaths');
+jest.mock('../../config/config-paths');
 
 describe('ProfileManager', () => {
   const mockFs = fs as jest.Mocked<typeof fs>;

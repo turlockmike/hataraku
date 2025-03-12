@@ -1,16 +1,16 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { FirstRunManager } from '../first-run-manager';
-import { ConfigLoader } from '../ConfigLoader';
+import { ConfigLoader } from '../config-loader';
 import { ProfileManager } from '../ProfileManager';
 import { input, select, confirm } from '@inquirer/prompts';
 
 // Mock dependencies
 jest.mock('fs/promises');
-jest.mock('../ConfigLoader');
+jest.mock('../config-loader');
 jest.mock('../ProfileManager');
 jest.mock('@inquirer/prompts');
-jest.mock('../configPaths', () => ({
+jest.mock('../config-paths', () => ({
   getConfigPaths: jest.fn().mockReturnValue({
     configDir: '/mock/config/dir',
   }),

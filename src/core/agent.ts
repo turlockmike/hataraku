@@ -286,7 +286,7 @@ export class Agent {
                 usage: {
                   tokensIn: 0,
                   tokensOut: 0,
-                  cost: 0
+                  // cost: 0
                 }
               });
               // Add to tool usage for error tracking
@@ -308,7 +308,8 @@ export class Agent {
             thread.addMessage('assistant', result.text, {
               usage: {
                 tokensIn: result.usage?.promptTokens || 0,
-                tokensOut: result.usage?.completionTokens || 0
+                tokensOut: result.usage?.completionTokens || 0,
+                // providerMetadata: result.providerMetadata
               }
             });
             if (this.taskHistory && historyEntry.debug) {
@@ -380,7 +381,8 @@ export class Agent {
         thread.addMessage('assistant', result.text, {
           usage: {
             tokensIn: result.usage?.promptTokens || 0,
-            tokensOut: result.usage?.completionTokens || 0
+            tokensOut: result.usage?.completionTokens || 0,
+            // providerMetadata: result.providerMetadata
           }
         });
         
@@ -397,7 +399,8 @@ export class Agent {
             content: result.text,
             usage: {
               tokensIn: result.usage?.promptTokens || 0,
-              tokensOut: result.usage?.completionTokens || 0
+              tokensOut: result.usage?.completionTokens || 0,
+              // providerMetadata: result.providerMetadata
             }
           });
           historyEntry.tokensIn += result.usage?.promptTokens || 0;
@@ -423,8 +426,9 @@ export class Agent {
         
         thread.addMessage('assistant', JSON.stringify(object), {
           usage: {
-            tokensIn: 0,
-            tokensOut: 0
+            tokensIn: result.usage?.promptTokens || 0,
+            tokensOut: result.usage?.completionTokens || 0,
+            // providerMetadata: result.providerMetadata
           }
         });
         
@@ -438,8 +442,9 @@ export class Agent {
             timestamp: Date.now(),
             content: JSON.stringify(object),
             usage: {
-              tokensIn: 0,
-              tokensOut: 0
+              tokensIn: result.usage?.promptTokens || 0,
+              tokensOut: result.usage?.completionTokens || 0,
+              providerMetadata: result.providerMetadata
             }
           });
           this.taskHistory.saveTask(historyEntry).catch(console.error);
@@ -470,7 +475,8 @@ export class Agent {
         thread.addMessage('assistant', JSON.stringify(result.object), {
           usage: {
             tokensIn: result.usage?.promptTokens || 0,
-            tokensOut: result.usage?.completionTokens || 0
+            tokensOut: result.usage?.completionTokens || 0,
+            // providerMetadata: result.providerMetadata
           }
         });
         
@@ -485,7 +491,8 @@ export class Agent {
             content: JSON.stringify(result.object),
             usage: {
               tokensIn: result.usage?.promptTokens || 0,
-              tokensOut: result.usage?.completionTokens || 0
+              tokensOut: result.usage?.completionTokens || 0,
+              providerMetadata: result.providerMetadata
             }
           });
           historyEntry.tokensIn += result.usage?.promptTokens || 0;
@@ -533,7 +540,8 @@ export class Agent {
       thread.addMessage('assistant', result.text, {
         usage: {
           tokensIn: result.usage?.promptTokens || 0,
-          tokensOut: result.usage?.completionTokens || 0
+          tokensOut: result.usage?.completionTokens || 0,
+          // providerMetadata: result.providerMetadata
         }
       });
       
@@ -548,7 +556,8 @@ export class Agent {
           content: result.text,
           usage: {
             tokensIn: result.usage?.promptTokens || 0,
-            tokensOut: result.usage?.completionTokens || 0
+            tokensOut: result.usage?.completionTokens || 0,
+            providerMetadata: result.providerMetadata
           }
         });
         historyEntry.tokensIn += result.usage?.promptTokens || 0;
@@ -569,7 +578,7 @@ export class Agent {
           usage: {
             tokensIn: 0,
             tokensOut: 0,
-            cost: 0
+            providerMetadata: {}
           }
         });
         // Add to tool usage for error tracking

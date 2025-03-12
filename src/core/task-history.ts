@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-import { getConfigPaths } from '../config/configPaths';
+import { getConfigPaths } from '../config/config-paths';
 
 export interface HistoryEntry {
     taskId: string;
@@ -39,6 +39,7 @@ export interface HistoryEntry {
                 tokensIn: number;
                 tokensOut: number;
                 cost?: number;
+                providerMetadata?: Record<string, any>;
             };
         }>;
         toolUsage: Array<{

@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import * as os from 'os';
 import * as path from 'path';
-import { getConfigPaths, createConfigDirectories } from '../../config/configPaths';
+import { getConfigPaths, createConfigDirectories } from '../../config/config-paths';
 
 jest.mock('os', () => ({
   homedir: jest.fn()
