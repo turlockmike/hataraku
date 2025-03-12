@@ -2,7 +2,7 @@ import {  LanguageModelV1, generateText, generateObject, streamText, ToolSet, Co
 import { z } from 'zod';
 import { AsyncIterableStream } from './types';
 import { Thread } from './thread/thread';
-import { TaskHistory, HistoryEntry } from './TaskHistory';
+import { TaskHistory, HistoryEntry } from './task-history';
 import { v4 as uuid } from 'uuid';
 import { colors, log } from '../utils/colors';
 const DEFAULT_MAX_STEPS = 25;
@@ -45,6 +45,8 @@ export interface AgentConfig {
   taskHistory?: TaskHistory;
   /** Whether to enable verbose logging of agent operations */
   verbose?: boolean;
+  /** Whether to enable prompt caching (defaults to true) */
+  enableCaching?: boolean;
 }
 
 /**
@@ -95,6 +97,8 @@ export class Agent {
   private readonly taskHistory?: TaskHistory;
   /** Whether to enable verbose logging of agent operations */
   private readonly verbose: boolean;
+  /** Whether to enable prompt caching */
+  private readonly enableCaching: boolean;
 
   constructor(config: AgentConfig) {
     if (!config.name || config.name.trim() === '') {
@@ -108,6 +112,7 @@ export class Agent {
     this.role = config.role;
     this.taskHistory = config.taskHistory;
     this.verbose = config.verbose || false;
+    this.enableCaching = config.enableCaching ?? true; // Enable caching by default
   }
 
   /**
@@ -173,7 +178,7 @@ export class Agent {
     
     // Detect provider and add cache control point to system message
     const provider = this.detectProvider(model);
-    if (provider) {
+    if (provider && this.enableCaching) {
       thread.addCacheControlPointToSystemMessage(provider);
     }
     
@@ -300,15 +305,19 @@ export class Agent {
               log.system(`\n✅ Streaming completed: ${result.text.substring(0, 50)}${result.text.length > 50 ? '...' : ''}`);
               log.system(`Tokens: In=${result.usage?.promptTokens || 0}, Out=${result.usage?.completionTokens || 0}`);
             }
-            thread.addMessage('assistant', result.text);
+            thread.addMessage('assistant', result.text, {
+              usage: {
+                tokensIn: result.usage?.promptTokens || 0,
+                tokensOut: result.usage?.completionTokens || 0
+              }
+            });
             if (this.taskHistory && historyEntry.debug) {
               historyEntry.debug.responses.push({
                 timestamp: Date.now(),
                 content: result.text,
                 usage: {
                   tokensIn: result.usage?.promptTokens || 0,
-                  tokensOut: result.usage?.completionTokens || 0,
-                  cost: 0 // Cost calculation would need provider-specific logic
+                  tokensOut: result.usage?.completionTokens || 0
                 }
               });
               historyEntry.tokensIn += result.usage?.promptTokens || 0;
@@ -317,7 +326,7 @@ export class Agent {
             }
 
             // Add cache control point to the last message
-            if (provider) {
+            if (provider && this.enableCaching) {
               thread.addCacheControlPointToLastMessage(provider);
             }
           }
@@ -368,10 +377,15 @@ export class Agent {
           log.system(`Tokens: In=${result.usage?.promptTokens || 0}, Out=${result.usage?.completionTokens || 0}`);
         }
         
-        thread.addMessage('assistant', result.text);
+        thread.addMessage('assistant', result.text, {
+          usage: {
+            tokensIn: result.usage?.promptTokens || 0,
+            tokensOut: result.usage?.completionTokens || 0
+          }
+        });
         
         // Add cache control point to the assistant message
-        if (provider) {
+        if (provider && this.enableCaching) {
           thread.addCacheControlPointToLastMessage(provider);
         }
         
@@ -383,8 +397,7 @@ export class Agent {
             content: result.text,
             usage: {
               tokensIn: result.usage?.promptTokens || 0,
-              tokensOut: result.usage?.completionTokens || 0,
-              cost: 0
+              tokensOut: result.usage?.completionTokens || 0
             }
           });
           historyEntry.tokensIn += result.usage?.promptTokens || 0;
@@ -408,10 +421,15 @@ export class Agent {
           log.system(`\n✅ Object generation completed: ${JSON.stringify(object).substring(0, 50)}${JSON.stringify(object).length > 50 ? '...' : ''}`);
         }
         
-        thread.addMessage('assistant', JSON.stringify(object));
+        thread.addMessage('assistant', JSON.stringify(object), {
+          usage: {
+            tokensIn: 0,
+            tokensOut: 0
+          }
+        });
         
         // Add cache control point to the last message
-        if (provider) {
+        if (provider && this.enableCaching) {
           thread.addCacheControlPointToLastMessage(provider);
         }
         
@@ -421,8 +439,7 @@ export class Agent {
             content: JSON.stringify(object),
             usage: {
               tokensIn: 0,
-              tokensOut: 0,
-              cost: 0
+              tokensOut: 0
             }
           });
           this.taskHistory.saveTask(historyEntry).catch(console.error);
@@ -450,10 +467,15 @@ export class Agent {
           log.system(`Tokens: In=${result.usage?.promptTokens || 0}, Out=${result.usage?.completionTokens || 0}`);
         }
         
-        thread.addMessage('assistant', JSON.stringify(result.object));
+        thread.addMessage('assistant', JSON.stringify(result.object), {
+          usage: {
+            tokensIn: result.usage?.promptTokens || 0,
+            tokensOut: result.usage?.completionTokens || 0
+          }
+        });
         
         // Add cache control point to the last message
-        if (provider) {
+        if (provider && this.enableCaching) {
           thread.addCacheControlPointToLastMessage(provider);
         }
         
@@ -463,8 +485,7 @@ export class Agent {
             content: JSON.stringify(result.object),
             usage: {
               tokensIn: result.usage?.promptTokens || 0,
-              tokensOut: result.usage?.completionTokens || 0,
-              cost: 0
+              tokensOut: result.usage?.completionTokens || 0
             }
           });
           historyEntry.tokensIn += result.usage?.promptTokens || 0;
@@ -509,10 +530,15 @@ export class Agent {
         log.system(`Tokens: In=${result.usage?.promptTokens || 0}, Out=${result.usage?.completionTokens || 0}`);
       }
         
-      thread.addMessage('assistant', result.text);
+      thread.addMessage('assistant', result.text, {
+        usage: {
+          tokensIn: result.usage?.promptTokens || 0,
+          tokensOut: result.usage?.completionTokens || 0
+        }
+      });
       
       // Add cache control point to the last message
-      if (provider) {
+      if (provider && this.enableCaching) {
         thread.addCacheControlPointToLastMessage(provider);
       }
       
@@ -522,8 +548,7 @@ export class Agent {
           content: result.text,
           usage: {
             tokensIn: result.usage?.promptTokens || 0,
-            tokensOut: result.usage?.completionTokens || 0,
-            cost: 0
+            tokensOut: result.usage?.completionTokens || 0
           }
         });
         historyEntry.tokensIn += result.usage?.promptTokens || 0;

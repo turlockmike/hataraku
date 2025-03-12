@@ -149,6 +149,26 @@ export async function executeWithConfig(task: string, cliOptions: CliOptions, in
           }
         }
 
+        // Handle slash commands
+        if (taskToRun.startsWith('/')) {
+          const command = taskToRun.toLowerCase();
+          switch (command) {
+            case '/cost':
+              const totalCost = thread.getMessages()
+                .reduce((acc, msg) => {
+                  const usage = msg.providerOptions?.usage;
+                  return acc + (usage?.cost || 0);
+                }, 0);
+              log.system(`\nTotal cost for this session: $${totalCost.toFixed(4)}`);
+              return runInteractiveTask();
+            default:
+              log.warning(`Unknown command: ${command}`);
+              log.system('Available commands:');
+              log.system('  /cost - Show total cost for this session');
+              return runInteractiveTask();
+          }
+        }
+
         log.system(`\nExecuting task: ${taskToRun}`);
         
         try {

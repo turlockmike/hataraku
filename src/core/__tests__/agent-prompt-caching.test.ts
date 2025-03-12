@@ -253,4 +253,87 @@ describe('Agent Prompt Caching', () => {
       expect(hasSystemMessage).toBeTruthy();
     });
   });
+
+  describe('Caching Control', () => {
+    it('should enable caching by default', async () => {
+      const mockDoGenerate = jest.fn().mockImplementation(async () => ({
+        text: 'Test response',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+        rawCall: { rawPrompt: null, rawSettings: {} }
+      }));
+
+      // Mock Anthropic model
+      class MockAnthropicModel extends MockLanguageModelV1 {
+        constructor(options: any) {
+          super(options);
+        }
+      }
+      Object.defineProperty(MockAnthropicModel.prototype, 'constructor', {
+        value: { name: 'AnthropicLanguageModel' }
+      });
+
+      const agent = createAgent({
+        name: 'Test Agent',
+        role: 'You are a test agent',
+        description: 'A test agent',
+        model: new MockAnthropicModel({
+          defaultObjectGenerationMode: 'json',
+          doGenerate: mockDoGenerate
+        })
+      });
+
+      const thread = new Thread();
+      await agent.task('Test task', { thread });
+
+      // Verify that cache control points were added
+      const systemMessage = thread.getSystemMessage();
+      expect(systemMessage?.providerOptions?.anthropic?.cacheControl).toEqual({ type: 'ephemeral' });
+      
+      const messages = thread.getMessages();
+      const lastMessage = messages[messages.length - 1];
+      expect(lastMessage.providerOptions?.anthropic?.cacheControl).toEqual({ type: 'ephemeral' });
+    });
+
+    it('should not add cache control points when caching is disabled', async () => {
+      const mockDoGenerate = jest.fn().mockImplementation(async () => ({
+        text: 'Test response',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+        rawCall: { rawPrompt: null, rawSettings: {} }
+      }));
+
+      // Mock Anthropic model
+      class MockAnthropicModel extends MockLanguageModelV1 {
+        constructor(options: any) {
+          super(options);
+        }
+      }
+      Object.defineProperty(MockAnthropicModel.prototype, 'constructor', {
+        value: { name: 'AnthropicLanguageModel' }
+      });
+
+      const agent = createAgent({
+        name: 'Test Agent',
+        role: 'You are a test agent',
+        description: 'A test agent',
+        model: new MockAnthropicModel({
+          defaultObjectGenerationMode: 'json',
+          doGenerate: mockDoGenerate
+        }),
+        enableCaching: false
+      });
+
+      const thread = new Thread();
+      await agent.task('Test task', { thread });
+
+      // Verify that no cache control points were added
+      const systemMessage = thread.getSystemMessage();
+      expect(systemMessage?.providerOptions?.anthropic?.cacheControl).toBeUndefined();
+      
+      const messages = thread.getMessages();
+      const lastMessage = messages[messages.length - 1];
+      expect(lastMessage.providerOptions?.anthropic?.cacheControl).toBeUndefined();
+    });
+  });
 }); 

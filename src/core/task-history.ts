@@ -38,7 +38,7 @@ export interface HistoryEntry {
             usage?: {
                 tokensIn: number;
                 tokensOut: number;
-                cost: number;
+                cost?: number;
             };
         }>;
         toolUsage: Array<{
