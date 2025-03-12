@@ -1,5 +1,11 @@
 # hataraku
 
+## 0.7.0
+
+### Minor Changes
+
+-   Added lots of functionality
+
 ## 0.6.5
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "hataraku",
-  "version": "0.6.5",
+  "version": "0.7.0",
   "description": "An autonomous coding agent for building AI-powered development tools. The name \"Hataraku\" (働く) means \"to work\" in Japanese.",
   "author": {
     "name": "Michael Darmousseh"
