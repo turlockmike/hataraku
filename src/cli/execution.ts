@@ -139,7 +139,7 @@ export async function executeWithConfig(task: string, cliOptions: CliOptions, in
 
         if (!taskToRun) {
           taskToRun = await input({
-            message: 'Enter your task, or type "/exit" to exit',
+            message: 'Enter your task, or type "/exit" to exit\n\n> ',
             default: task // Use provided task argument as default if available
           });
 
