@@ -1,10 +1,10 @@
-import os from "os"
-import osName from "os-name"
-import * as process from 'node:process';
-import { getDefaultShell } from '../../lib/utils/shell';
+import os from 'os'
+import osName from 'os-name'
+import * as process from 'node:process'
+import { getDefaultShell } from '../../lib/utils/shell'
 
 export function getSystemInfoSection(cwd: string): string {
-    return `
+  return `
 Operating System: ${osName()}
 Default Shell: ${getDefaultShell()}
 Home Directory: ${os.homedir().toPosix()}

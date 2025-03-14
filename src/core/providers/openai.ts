@@ -1,5 +1,5 @@
-import { createOpenAI } from '@ai-sdk/openai';
-import { LanguageModelV1 } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai'
+import { LanguageModelV1 } from 'ai'
 
 /**
  * Create an OpenAI provider with the given API key
@@ -7,13 +7,13 @@ import { LanguageModelV1 } from 'ai';
  * @returns OpenAI provider
  */
 export async function createOpenAIProvider(apiKey?: string) {
-    const key = apiKey || process.env.OPENAI_API_KEY;
-    if (!key) {
-        throw new Error('OPENAI_API_KEY is not set');
-    }
-    return createOpenAI({
-        apiKey: key
-    });
+  const key = apiKey || process.env.OPENAI_API_KEY
+  if (!key) {
+    throw new Error('OPENAI_API_KEY is not set')
+  }
+  return createOpenAI({
+    apiKey: key,
+  })
 }
 
 /**
@@ -23,6 +23,6 @@ export async function createOpenAIProvider(apiKey?: string) {
  * @returns OpenAI model
  */
 export async function createOpenAIModel(model: string = 'gpt-4o', apiKey?: string): Promise<LanguageModelV1> {
-    const openai = await createOpenAIProvider(apiKey);
-    return openai(model);
+  const openai = await createOpenAIProvider(apiKey)
+  return openai(model)
 }

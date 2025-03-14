@@ -1,6 +1,7 @@
 # AWS Bedrock Knowledge Base Provider
 
-Hataraku provides integration with AWS Bedrock Knowledge Base, allowing you to query your knowledge bases using natural language. This feature enables Retrieval-Augmented Generation (RAG) applications by leveraging your own data sources.
+Hataraku provides integration with AWS Bedrock Knowledge Base, allowing you to query your knowledge bases using natural
+language. This feature enables Retrieval-Augmented Generation (RAG) applications by leveraging your own data sources.
 
 ## Prerequisites
 
@@ -24,34 +25,34 @@ npm install hataraku
 ### SDK Usage
 
 ```typescript
-import { BedrockAgentRuntimeClient } from '@aws-sdk/client-bedrock-agent-runtime';
-import { fromIni } from '@aws-sdk/credential-providers';
-import { createKnowledgeBaseProvider } from 'hataraku';
+import { BedrockAgentRuntimeClient } from '@aws-sdk/client-bedrock-agent-runtime'
+import { fromIni } from '@aws-sdk/credential-providers'
+import { createKnowledgeBaseProvider } from 'hataraku'
 
 // Create the AWS Bedrock client
-const client = new BedrockAgentRuntimeClient({ 
+const client = new BedrockAgentRuntimeClient({
   region: 'us-east-1',
-  credentials: await fromIni({ profile: 'default' })()
-});
+  credentials: await fromIni({ profile: 'default' })(),
+})
 
 // Create a knowledge base provider instance
 const kbProvider = await createKnowledgeBaseProvider(client, {
   knowledgeBaseId: 'your-knowledge-base-id', // REQUIRED
   modelArn: 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0', // Optional
-  region: 'us-east-1' // Optional
-});
+  region: 'us-east-1', // Optional
+})
 
 // Query the knowledge base
-const response = await kbProvider('What is the purpose of the contracts service?');
+const response = await kbProvider('What is the purpose of the contracts service?')
 
 // Access the response content
-console.log('Response:', response.content);
+console.log('Response:', response.content)
 
 // Access sources and metadata
 if (response.sources && response.sources.length > 0) {
-  console.log('Sources:', response.sources);
+  console.log('Sources:', response.sources)
 }
-console.log('Metadata:', response.metadata);
+console.log('Metadata:', response.metadata)
 ```
 
 ### CLI Usage
@@ -85,6 +86,7 @@ npm run cli -- profile set-kb your-profile
 ```
 
 This will prompt you for:
+
 - Knowledge Base ID (required)
 - Model ARN (optional)
 - AWS Region (optional)
@@ -99,12 +101,12 @@ npm run cli -- --profile your-profile --provider knowledge-base "Your query here
 
 The knowledge base provider accepts the following configuration options:
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `knowledgeBaseId` | string | Yes | The ID of your AWS Bedrock knowledge base |
-| `modelArn` | string | No | The ARN of the model to use for generation (defaults to Claude 3.5 Sonnet) |
-| `region` | string | No | The AWS region where your knowledge base is located (defaults to us-east-1) |
-| `profile` | string | No | The AWS profile to use for credentials |
+| Option            | Type   | Required | Description                                                                 |
+| ----------------- | ------ | -------- | --------------------------------------------------------------------------- |
+| `knowledgeBaseId` | string | Yes      | The ID of your AWS Bedrock knowledge base                                   |
+| `modelArn`        | string | No       | The ARN of the model to use for generation (defaults to Claude 3.5 Sonnet)  |
+| `region`          | string | No       | The AWS region where your knowledge base is located (defaults to us-east-1) |
+| `profile`         | string | No       | The AWS profile to use for credentials                                      |
 
 ## Response Format
 
@@ -112,15 +114,16 @@ The knowledge base provider returns responses in the following format:
 
 ```typescript
 interface KnowledgeBaseResponse {
-  content: string;           // The generated response text
-  metadata?: Record<string, unknown>; // Metadata about the response
-  sources?: Array<{          // Sources used to generate the response
-    url?: string;            // URL of the source
-    title?: string;          // Title of the source
-    content?: string;        // Content snippet from the source
-    metadata?: Record<string, unknown>; // Additional metadata about the source
-    sourceType?: string;     // Type of source (e.g., WEB, S3)
-  }>;
+  content: string // The generated response text
+  metadata?: Record<string, unknown> // Metadata about the response
+  sources?: Array<{
+    // Sources used to generate the response
+    url?: string // URL of the source
+    title?: string // Title of the source
+    content?: string // Content snippet from the source
+    metadata?: Record<string, unknown> // Additional metadata about the source
+    sourceType?: string // Type of source (e.g., WEB, S3)
+  }>
 }
 ```
 
@@ -130,14 +133,15 @@ The knowledge base provider includes comprehensive error handling for common iss
 
 ```typescript
 try {
-  const response = await kbProvider('What is the capital of France?');
-  console.log(response.content);
+  const response = await kbProvider('What is the capital of France?')
+  console.log(response.content)
 } catch (error) {
-  console.error('Error:', error);
+  console.error('Error:', error)
 }
 ```
 
 Common errors include:
+
 - Missing knowledge base ID
 - Invalid knowledge base ID
 - AWS credentials issues
@@ -150,7 +154,8 @@ See the [knowledge-base.ts](../examples/knowledge-base.ts) example for a complet
 
 ## Best Practices
 
-1. **Always provide a knowledge base ID**: This is required and must be provided via CLI, environment variable, or profile configuration.
+1. **Always provide a knowledge base ID**: This is required and must be provided via CLI, environment variable, or
+   profile configuration.
 
 2. **Use AWS profiles for credential management**: This is more secure than hardcoding credentials.
 
@@ -165,12 +170,15 @@ See the [knowledge-base.ts](../examples/knowledge-base.ts) example for a complet
 ### Common Issues
 
 1. **"Knowledge Base ID is required" error**:
+
    - Ensure you've provided a knowledge base ID via CLI, environment variable, or profile configuration.
 
 2. **"ExpiredTokenException" error**:
+
    - Your AWS credentials have expired. Refresh them using your AWS authentication method.
 
 3. **"ResourceNotFoundException" error**:
+
    - The knowledge base ID you provided doesn't exist or isn't accessible with your credentials.
 
 4. **"AccessDenied" error**:
@@ -179,5 +187,6 @@ See the [knowledge-base.ts](../examples/knowledge-base.ts) example for a complet
 ### Getting Help
 
 If you encounter issues not covered here, please:
+
 - Check the [AWS Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html)
-- File an issue on the [Hataraku GitHub repository](https://github.com/turlockmike/hataraku/issues) 
+- File an issue on the [Hataraku GitHub repository](https://github.com/turlockmike/hataraku/issues)

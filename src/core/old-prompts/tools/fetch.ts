@@ -1,5 +1,5 @@
 export function getFetchDescription(): string {
-    return `## fetch
+  return `## fetch
 Description: Fetch content from a URL in various formats (HTML, JSON, text, or markdown).
 Parameters:
 - url: (required) The URL to fetch content from
@@ -17,5 +17,5 @@ Example: Requesting to fetch JSON data from an API
 <url>https://api.example.com/data</url>
 <format>json</format>
 <headers>{"Authorization": "Bearer token123"}</headers>
-</fetch>`;
+</fetch>`
 }

@@ -1,6 +1,6 @@
-import { MessageRole } from '../../lib/types';
-import { randomUUID as uuid} from 'node:crypto';
-import { CoreMessage } from 'ai';
+import { MessageRole } from '../../lib/types'
+import { randomUUID as uuid } from 'node:crypto'
+import { CoreMessage } from 'ai'
 
 /**
  * Represents a message within a thread.
@@ -8,13 +8,13 @@ import { CoreMessage } from 'ai';
  */
 export interface ThreadMessage {
   /** The role of the message sender (e.g., 'user', 'assistant') */
-  role: MessageRole;
+  role: MessageRole
   /** The text content of the message */
-  content: string;
+  content: string
   /** The timestamp when the message was created */
-  timestamp: Date;
+  timestamp: Date
   /** Provider-specific options for the message (e.g., cache control) */
-  providerOptions?: Record<string, any>;
+  providerOptions?: Record<string, any>
 }
 
 /**
@@ -24,13 +24,13 @@ export interface ThreadMessage {
  */
 export interface ThreadContext {
   /** Unique identifier for the context item */
-  key: string;
+  key: string
   /** The value of the context item */
-  value: any;
+  value: any
   /** Optional metadata associated with this context item */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, any>
   /** Optional type identifier for the context item */
-  type?: string;
+  type?: string
 }
 
 /**
@@ -41,16 +41,16 @@ export interface ThreadContext {
  */
 export interface FileContext extends ThreadContext {
   /** Type identifier specifying this is a file context */
-  type: 'file';
+  type: 'file'
   /** The file data and metadata */
   value: {
     /** The binary content of the file */
-    content: Buffer;
+    content: Buffer
     /** The name of the file */
-    filename: string;
+    filename: string
     /** The MIME type of the file */
-    mimeType: string;
-  };
+    mimeType: string
+  }
 }
 
 /**
@@ -60,19 +60,19 @@ export interface FileContext extends ThreadContext {
  */
 export interface ThreadState {
   /** Unique identifier for the thread */
-  id: string;
+  id: string
   /** Array of messages in the thread */
-  messages: ThreadMessage[];
+  messages: ThreadMessage[]
   /** Optional system message for the thread */
-  systemMessage?: ThreadMessage;
+  systemMessage?: ThreadMessage
   /** Map of context items associated with the thread */
-  contexts: Map<string, ThreadContext>;
+  contexts: Map<string, ThreadContext>
   /** Additional metadata associated with the thread */
-  metadata: Record<string, any>;
+  metadata: Record<string, any>
   /** Timestamp when the thread was created */
-  created: Date;
+  created: Date
   /** Timestamp when the thread was last updated */
-  updated: Date;
+  updated: Date
 }
 
 /**
@@ -81,15 +81,15 @@ export interface ThreadState {
  */
 export interface FileContextOptions {
   /** Unique identifier for the file context */
-  key: string;
+  key: string
   /** The binary content of the file */
-  content: Buffer;
+  content: Buffer
   /** The name of the file */
-  filename: string;
+  filename: string
   /** The MIME type of the file */
-  mimeType: string;
+  mimeType: string
   /** Optional metadata associated with this file */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, any>
 }
 
 /**
@@ -103,7 +103,7 @@ export interface ThreadStorage {
    * @param state The thread state to save
    * @returns A promise that resolves when the save operation is complete
    */
-  save(state: ThreadState): Promise<void>;
+  save(state: ThreadState): Promise<void>
 }
 
 /**
@@ -111,8 +111,8 @@ export interface ThreadStorage {
  * Provides methods for managing messages, contexts, and thread state.
  */
 export class Thread {
-  private state: ThreadState;
-  private storage?: ThreadStorage;
+  private state: ThreadState
+  private storage?: ThreadStorage
 
   /**
    * Creates a new Thread instance
@@ -121,11 +121,7 @@ export class Thread {
    * @param options.storage Optional storage mechanism for persisting thread state
    * @param options.state Optional initial state for the thread
    */
-  constructor(options?: {
-    id?: string;
-    storage?: ThreadStorage;
-    state?: Partial<ThreadState>;
-  }) {
+  constructor(options?: { id?: string; storage?: ThreadStorage; state?: Partial<ThreadState> }) {
     this.state = {
       id: options?.id || options?.state?.id || uuid(),
       messages: options?.state?.messages || [],
@@ -133,9 +129,9 @@ export class Thread {
       contexts: options?.state?.contexts || new Map<string, ThreadContext>(),
       metadata: options?.state?.metadata || {},
       created: options?.state?.created || new Date(),
-      updated: options?.state?.updated || new Date()
-    };
-    this.storage = options?.storage;
+      updated: options?.state?.updated || new Date(),
+    }
+    this.storage = options?.storage
   }
 
   /**
@@ -143,7 +139,7 @@ export class Thread {
    * @returns The thread's unique ID
    */
   get id(): string {
-    return this.state.id;
+    return this.state.id
   }
 
   // Message Management
@@ -158,10 +154,10 @@ export class Thread {
       role,
       content,
       timestamp: new Date(),
-      providerOptions
-    };
-    this.state.messages.push(message);
-    this.state.updated = new Date();
+      providerOptions,
+    }
+    this.state.messages.push(message)
+    this.state.updated = new Date()
   }
 
   /**
@@ -169,7 +165,7 @@ export class Thread {
    * @returns True if the thread has a system message, false otherwise
    */
   hasSystemMessage(): boolean {
-    return !!this.state.systemMessage;
+    return !!this.state.systemMessage
   }
 
   /**
@@ -180,16 +176,16 @@ export class Thread {
    */
   addSystemMessage(content: string, providerOptions?: Record<string, any>): void {
     if (this.hasSystemMessage()) {
-      throw new Error('Thread already has a system message. Only one system message is allowed per thread.');
+      throw new Error('Thread already has a system message. Only one system message is allowed per thread.')
     }
-    
+
     this.state.systemMessage = {
       role: 'system',
       content,
       timestamp: new Date(),
-      providerOptions
-    };
-    this.state.updated = new Date();
+      providerOptions,
+    }
+    this.state.updated = new Date()
   }
 
   /**
@@ -197,7 +193,7 @@ export class Thread {
    * @returns The system message if it exists, undefined otherwise
    */
   getSystemMessage(): ThreadMessage | undefined {
-    return this.state.systemMessage;
+    return this.state.systemMessage
   }
 
   /**
@@ -205,11 +201,11 @@ export class Thread {
    * @returns Array of thread messages in chronological order, with system message first if it exists
    */
   getMessages(): ThreadMessage[] {
-    const messages = [...this.state.messages];
+    const messages = [...this.state.messages]
     if (this.state.systemMessage) {
-      messages.unshift(this.state.systemMessage);
+      messages.unshift(this.state.systemMessage)
     }
-    return messages;
+    return messages
   }
 
   /**
@@ -217,36 +213,38 @@ export class Thread {
    * @param includeContext Whether to include context messages at the start
    */
   getFormattedMessages(includeContext: boolean = true): CoreMessage[] {
-    const messages: CoreMessage[] = [];
-    
+    const messages: CoreMessage[] = []
+
     // Add system message first if it exists
     if (this.state.systemMessage) {
       messages.push({
         role: this.state.systemMessage.role,
         content: this.state.systemMessage.content,
-        providerOptions: this.state.systemMessage.providerOptions
-      });
+        providerOptions: this.state.systemMessage.providerOptions,
+      })
     }
 
     // Add context messages next if requested
     if (includeContext) {
-      const contexts = this.getAllContexts();
+      const contexts = this.getAllContexts()
       for (const [key, value] of contexts) {
         messages.push({
           role: 'user',
-          content: `Context ${key}: ${JSON.stringify(value)}`
-        });
+          content: `Context ${key}: ${JSON.stringify(value)}`,
+        })
       }
     }
 
     // Add regular thread messages
-    messages.push(...this.state.messages.map(msg => ({
-      role: msg.role,
-      content: msg.content,
-      providerOptions: msg.providerOptions
-    })));
+    messages.push(
+      ...this.state.messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        providerOptions: msg.providerOptions,
+      })),
+    )
 
-    return messages;
+    return messages
   }
 
   /**
@@ -254,9 +252,9 @@ export class Thread {
    * @returns void
    */
   clearMessages(): void {
-    this.state.messages = [];
-    this.state.systemMessage = undefined;
-    this.state.updated = new Date();
+    this.state.messages = []
+    this.state.systemMessage = undefined
+    this.state.updated = new Date()
   }
 
   // Context Management
@@ -271,9 +269,9 @@ export class Thread {
     this.state.contexts.set(key, {
       key,
       value,
-      metadata
-    });
-    this.state.updated = new Date();
+      metadata,
+    })
+    this.state.updated = new Date()
   }
 
   /**
@@ -282,7 +280,7 @@ export class Thread {
    * @returns The context item if found, undefined otherwise
    */
   getContext(key: string): ThreadContext | undefined {
-    return this.state.contexts.get(key);
+    return this.state.contexts.get(key)
   }
 
   /**
@@ -291,7 +289,7 @@ export class Thread {
    * @returns True if the context exists, false otherwise
    */
   hasContext(key: string): boolean {
-    return this.state.contexts.has(key);
+    return this.state.contexts.has(key)
   }
 
   /**
@@ -300,11 +298,11 @@ export class Thread {
    * @returns True if the context was found and removed, false otherwise
    */
   removeContext(key: string): boolean {
-    const result = this.state.contexts.delete(key);
+    const result = this.state.contexts.delete(key)
     if (result) {
-      this.state.updated = new Date();
+      this.state.updated = new Date()
     }
-    return result;
+    return result
   }
 
   /**
@@ -312,7 +310,7 @@ export class Thread {
    * @returns A new Map containing all context items (to prevent direct modification)
    */
   getAllContexts(): Map<string, ThreadContext> {
-    return new Map(this.state.contexts);
+    return new Map(this.state.contexts)
   }
 
   /**
@@ -320,8 +318,8 @@ export class Thread {
    * @returns void
    */
   clearContexts(): void {
-    this.state.contexts.clear();
-    this.state.updated = new Date();
+    this.state.contexts.clear()
+    this.state.updated = new Date()
   }
 
   // File Context Support
@@ -337,12 +335,12 @@ export class Thread {
       value: {
         content: options.content,
         filename: options.filename,
-        mimeType: options.mimeType
+        mimeType: options.mimeType,
       },
-      metadata: options.metadata
-    };
-    this.state.contexts.set(options.key, fileContext);
-    this.state.updated = new Date();
+      metadata: options.metadata,
+    }
+    this.state.contexts.set(options.key, fileContext)
+    this.state.updated = new Date()
   }
 
   // Utilities
@@ -351,46 +349,46 @@ export class Thread {
    * @returns A new Thread instance with the same messages, contexts, and metadata
    */
   clone(): Thread {
-    const clonedThread = new Thread();
-    
+    const clonedThread = new Thread()
+
     // Clone messages
     clonedThread.state.messages = this.state.messages.map(msg => ({
       ...msg,
-      timestamp: new Date(msg.timestamp)
-    }));
+      timestamp: new Date(msg.timestamp),
+    }))
 
     // Clone system message if it exists
     if (this.state.systemMessage) {
       clonedThread.state.systemMessage = {
         ...this.state.systemMessage,
-        timestamp: new Date(this.state.systemMessage.timestamp)
-      };
+        timestamp: new Date(this.state.systemMessage.timestamp),
+      }
     }
 
     // Clone contexts (deep copy)
     this.state.contexts.forEach((context, key) => {
       if (context.type === 'file') {
-        const fileContext = context as FileContext;
+        const fileContext = context as FileContext
         clonedThread.addFileContext({
           key: fileContext.key,
           content: Buffer.from(fileContext.value.content),
           filename: fileContext.value.filename,
           mimeType: fileContext.value.mimeType,
-          metadata: fileContext.metadata ? { ...fileContext.metadata } : undefined
-        });
+          metadata: fileContext.metadata ? { ...fileContext.metadata } : undefined,
+        })
       } else {
         clonedThread.addContext(
           context.key,
           JSON.parse(JSON.stringify(context.value)),
-          context.metadata ? { ...context.metadata } : undefined
-        );
+          context.metadata ? { ...context.metadata } : undefined,
+        )
       }
-    });
+    })
 
     // Clone metadata
-    clonedThread.state.metadata = { ...this.state.metadata };
-    
-    return clonedThread;
+    clonedThread.state.metadata = { ...this.state.metadata }
+
+    return clonedThread
   }
 
   /**
@@ -406,65 +404,62 @@ export class Thread {
    */
   merge(other: Thread): void {
     // Merge messages (maintaining chronological order)
-    const allMessages = [...this.state.messages, ...other.state.messages];
-    this.state.messages = allMessages.sort((a, b) =>
-      a.timestamp.getTime() - b.timestamp.getTime()
-    );
+    const allMessages = [...this.state.messages, ...other.state.messages]
+    this.state.messages = allMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
 
     // Merge system message (other thread's system message takes precedence)
     if (other.state.systemMessage && !this.state.systemMessage) {
       this.state.systemMessage = {
         ...other.state.systemMessage,
-        timestamp: new Date(other.state.systemMessage.timestamp)
-      };
+        timestamp: new Date(other.state.systemMessage.timestamp),
+      }
     }
 
     // Merge contexts (other thread's contexts take precedence on conflict)
     other.getAllContexts().forEach((context, key) => {
       if (context.type === 'file') {
-        const fileContext = context as FileContext;
+        const fileContext = context as FileContext
         this.addFileContext({
           key: fileContext.key,
           content: Buffer.from(fileContext.value.content),
           filename: fileContext.value.filename,
           mimeType: fileContext.value.mimeType,
-          metadata: fileContext.metadata
-        });
+          metadata: fileContext.metadata,
+        })
       } else {
-        this.addContext(context.key, context.value, context.metadata);
+        this.addContext(context.key, context.value, context.metadata)
       }
-    });
+    })
 
     // Merge metadata
     this.state.metadata = {
       ...this.state.metadata,
-      ...other.state.metadata
-    };
+      ...other.state.metadata,
+    }
 
-    this.state.updated = new Date();
+    this.state.updated = new Date()
   }
 
   toJSON(): ThreadState {
     return {
       ...this.state,
-      contexts: new Map(this.state.contexts)
-    };
+      contexts: new Map(this.state.contexts),
+    }
   }
 
   async save(): Promise<void> {
     if (!this.storage) {
-      throw new Error('No storage mechanism configured');
+      throw new Error('No storage mechanism configured')
     }
-    await this.storage.save(this.state);
+    await this.storage.save(this.state)
   }
 
-
   private truncateMessage(message: ThreadMessage, maxChars: number): ThreadMessage {
-    const truncatedMessage = { ...message };
+    const truncatedMessage = { ...message }
     if (message.content.length > maxChars) {
-      truncatedMessage.content = message.content.slice(0, maxChars);
+      truncatedMessage.content = message.content.slice(0, maxChars)
     }
-    return truncatedMessage;
+    return truncatedMessage
   }
   /**
    * Returns a truncated version of this thread, containing only the most recent messages such that
@@ -474,19 +469,18 @@ export class Thread {
    * @param maxTokensPerMessage Optional maximum number of tokens per individual message (defaults to 50000)
    */
   public truncate(maxChars: number = 100_000, maxCharsPerMessage: number = 50000): Thread {
+    const realMaxCharsPerMessage = Math.min(maxCharsPerMessage, maxChars)
 
-    const realMaxCharsPerMessage = Math.min(maxCharsPerMessage, maxChars);
+    let totalChars = 0
+    const truncatedMessages: ThreadMessage[] = []
 
-    let totalChars = 0;
-    const truncatedMessages: ThreadMessage[] = [];
-
-    const { systemMessage, messages } = this.state;
+    const { systemMessage, messages } = this.state
 
     // System message should NEVER be truncated.
-    const truncatedSystemMessage = systemMessage ? { ...systemMessage } : undefined;
+    const truncatedSystemMessage = systemMessage ? { ...systemMessage } : undefined
 
     if (truncatedSystemMessage) {
-      totalChars += truncatedSystemMessage.content.length;
+      totalChars += truncatedSystemMessage.content.length
     }
 
     if (messages.length === 0) {
@@ -495,38 +489,37 @@ export class Thread {
           ...this.state,
           systemMessage: truncatedSystemMessage,
           messages: [],
-        }
-      });
+        },
+      })
     }
 
     // First message always included
-    const firstMessage = this.truncateMessage(messages[0], realMaxCharsPerMessage);
-    totalChars += firstMessage.content.length;
+    const firstMessage = this.truncateMessage(messages[0], realMaxCharsPerMessage)
+    totalChars += firstMessage.content.length
 
     // Prepare messages in priority order (last, second last, third last, etc.)
-    const intermediateMessages: ThreadMessage[] = [];
+    const intermediateMessages: ThreadMessage[] = []
     for (let i = messages.length - 1; i > 0; i--) {
-      const remainingChars = maxChars - totalChars;
+      const remainingChars = maxChars - totalChars
       if (remainingChars <= 0) {
-        break;
+        break
       }
-      const msg = this.truncateMessage(messages[i], Math.min(realMaxCharsPerMessage, remainingChars));
-      intermediateMessages.unshift(msg);
-      totalChars += msg.content.length;
+      const msg = this.truncateMessage(messages[i], Math.min(realMaxCharsPerMessage, remainingChars))
+      intermediateMessages.unshift(msg)
+      totalChars += msg.content.length
     }
 
     // Add messages preserving order
-    truncatedMessages.push(firstMessage);
-    truncatedMessages.push(...intermediateMessages);
-
+    truncatedMessages.push(firstMessage)
+    truncatedMessages.push(...intermediateMessages)
 
     return new Thread({
       state: {
         ...this.state,
         systemMessage: truncatedSystemMessage,
         messages: truncatedMessages,
-      }
-    });
+      },
+    })
   }
 
   /**
@@ -537,34 +530,34 @@ export class Thread {
    */
   addCacheControlPoint(messageIndex: number, provider: string): void {
     if (messageIndex < 0 || messageIndex >= this.state.messages.length) {
-      throw new Error(`Message index ${messageIndex} is out of bounds`);
+      throw new Error(`Message index ${messageIndex} is out of bounds`)
     }
-    
-    const message = this.state.messages[messageIndex];
+
+    const message = this.state.messages[messageIndex]
     if (!message.providerOptions) {
-      message.providerOptions = {};
+      message.providerOptions = {}
     }
-    
+
     // Add provider-specific cache control
     if (provider === 'anthropic' || provider === 'vertex') {
       message.providerOptions.anthropic = {
         ...(message.providerOptions.anthropic || {}),
-        cacheControl: { type: 'ephemeral' }
-      };
+        cacheControl: { type: 'ephemeral' },
+      }
     } else if (provider === 'bedrock') {
       message.providerOptions.bedrock = {
         ...(message.providerOptions.bedrock || {}),
-        cachePoints: true
-      };
+        cachePoints: true,
+      }
     } else if (provider === 'openrouter') {
       // OpenRouter follows Anthropic's pattern
       message.providerOptions.openrouter = {
         ...(message.providerOptions.openrouter || {}),
-        cacheControl: { type: 'ephemeral' }
-      };
+        cacheControl: { type: 'ephemeral' },
+      }
     }
-    
-    this.state.updated = new Date();
+
+    this.state.updated = new Date()
   }
 
   /**
@@ -574,34 +567,34 @@ export class Thread {
    */
   addCacheControlPointToSystemMessage(provider: string): boolean {
     if (!this.state.systemMessage) {
-      return false;
+      return false
     }
-    
+
     if (!this.state.systemMessage.providerOptions) {
-      this.state.systemMessage.providerOptions = {};
+      this.state.systemMessage.providerOptions = {}
     }
-    
+
     // Add provider-specific cache control
     if (provider === 'anthropic' || provider === 'vertex') {
       this.state.systemMessage.providerOptions.anthropic = {
         ...(this.state.systemMessage.providerOptions.anthropic || {}),
-        cacheControl: { type: 'ephemeral' }
-      };
+        cacheControl: { type: 'ephemeral' },
+      }
     } else if (provider === 'bedrock') {
       this.state.systemMessage.providerOptions.bedrock = {
         ...(this.state.systemMessage.providerOptions.bedrock || {}),
-        cachePoints: true
-      };
+        cachePoints: true,
+      }
     } else if (provider === 'openrouter') {
       // OpenRouter follows Anthropic's pattern
       this.state.systemMessage.providerOptions.openrouter = {
         ...(this.state.systemMessage.providerOptions.openrouter || {}),
-        cacheControl: { type: 'ephemeral' }
-      };
+        cacheControl: { type: 'ephemeral' },
+      }
     }
-    
-    this.state.updated = new Date();
-    return true;
+
+    this.state.updated = new Date()
+    return true
   }
 
   /**
@@ -611,10 +604,10 @@ export class Thread {
    */
   addCacheControlPointToLastMessage(provider: string): boolean {
     if (this.state.messages.length === 0) {
-      return false;
+      return false
     }
-    
-    this.addCacheControlPoint(this.state.messages.length - 1, provider);
-    return true;
+
+    this.addCacheControlPoint(this.state.messages.length - 1, provider)
+    return true
   }
-} 
+}

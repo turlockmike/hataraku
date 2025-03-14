@@ -1,9 +1,8 @@
-import { createTask, createAgent, createBedrockModel, searchReplaceV2Tool } from 'hataraku';
-import { z } from 'zod';
-import { readFileTool, executeCommandTool } from 'hataraku';
+import { createTask, createAgent, createBedrockModel, searchReplaceV2Tool } from 'hataraku'
+import { z } from 'zod'
+import { readFileTool, executeCommandTool } from 'hataraku'
 
-
-const model = createBedrockModel(); //Defaults to sonnet 3.7
+const model = createBedrockModel() //Defaults to sonnet 3.7
 const jsdocAgent = createAgent({
   name: 'JSDoc Generator',
   description: 'An agent that analyzes code and adds JSDoc comments to exported functions',
@@ -12,41 +11,45 @@ const jsdocAgent = createAgent({
   tools: {
     read_file: readFileTool,
     search_and_replace: searchReplaceV2Tool,
-    execute_command: executeCommandTool
-  }
-});
+    execute_command: executeCommandTool,
+  },
+})
 
 export const analyzeFileTask = createTask({
   name: 'Analyze and Update File',
   description: 'Analyzes a file to identify exported functions that need JSDoc comments and updates the file',
   agent: jsdocAgent,
-  inputSchema: z.object({ 
+  inputSchema: z.object({
     filePath: z.string(),
-    exportedFunctions: z.array(z.object({
-      name: z.string(),
-      filePath: z.string(),
-      originalSource: z.string().optional(),
-      originalName: z.string().optional(),
-      documentation: z.string().optional(),
-      isDefault: z.boolean().optional()
-    })).optional()
+    exportedFunctions: z
+      .array(
+        z.object({
+          name: z.string(),
+          filePath: z.string(),
+          originalSource: z.string().optional(),
+          originalName: z.string().optional(),
+          documentation: z.string().optional(),
+          isDefault: z.boolean().optional(),
+        }),
+      )
+      .optional(),
   }),
-  task: (input) => {
+  task: input => {
     // Get unique file paths from exported functions
-    const filePaths = new Set<string>();
+    const filePaths = new Set<string>()
     if (input.exportedFunctions) {
       input.exportedFunctions.forEach(exp => {
         if (exp.filePath) {
-          filePaths.add(exp.filePath);
+          filePaths.add(exp.filePath)
         }
-      });
+      })
     }
-    
+
     // Add the input file path if not already included
-    filePaths.add(input.filePath);
-    
-    const filePathsArray = Array.from(filePaths);
-    
+    filePaths.add(input.filePath)
+
+    const filePathsArray = Array.from(filePaths)
+
     return `I will analyze and document the following files:
 ${filePathsArray.map(path => `- ${path}`).join('\n')}
 
@@ -80,6 +83,5 @@ Follow these JSDoc guidelines:
    c. If lint errors are found, revert the change and try a different approach
 
 You don't need to return any data, just update the files if needed. Otherwise finish the task.`
-  }
-});
-  
+  },
+})

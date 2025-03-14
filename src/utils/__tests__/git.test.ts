@@ -5,14 +5,14 @@ import { ExecException } from 'child_process'
 type ExecFunction = (
   command: string,
   options: { cwd?: string },
-  callback: (error: ExecException | null, result?: { stdout: string; stderr: string }) => void
+  callback: (error: ExecException | null, result?: { stdout: string; stderr: string }) => void,
 ) => void
 
 type PromisifiedExec = (command: string, options?: { cwd?: string }) => Promise<{ stdout: string; stderr: string }>
 
 // Mock child_process.exec
 jest.mock('child_process', () => ({
-  exec: jest.fn()
+  exec: jest.fn(),
 }))
 
 // Mock util.promisify to return our own mock function
@@ -30,9 +30,8 @@ jest.mock('util', () => ({
         })
       })
     }
-  })
+  }),
 }))
-
 
 describe('git utils', () => {
   // Get the mock with proper typing
@@ -54,7 +53,7 @@ describe('git utils', () => {
       'def456',
       'feat: new feature',
       'Jane Smith',
-      '2024-01-05'
+      '2024-01-05',
     ].join('\n')
 
     it('should return commits when git is installed and repo exists', async () => {
@@ -62,7 +61,10 @@ describe('git utils', () => {
       const responses = new Map([
         ['git --version', { stdout: 'git version 2.39.2', stderr: '' }],
         ['git rev-parse --git-dir', { stdout: '.git', stderr: '' }],
-        ['git log -n 10 --format="%H%n%h%n%s%n%an%n%ad" --date=short --grep="test" --regexp-ignore-case', { stdout: mockCommitData, stderr: '' }]
+        [
+          'git log -n 10 --format="%H%n%h%n%s%n%an%n%ad" --date=short --grep="test" --regexp-ignore-case',
+          { stdout: mockCommitData, stderr: '' },
+        ],
       ])
 
       exec.mockImplementation((command: string, options: { cwd?: string }, callback: Function) => {
@@ -85,24 +87,16 @@ describe('git utils', () => {
         shortHash: 'abc123',
         subject: 'fix: test commit',
         author: 'John Doe',
-        date: '2024-01-06'
+        date: '2024-01-06',
       })
 
       // Then verify all commands were called correctly
-      expect(exec).toHaveBeenCalledWith(
-        'git --version',
-        {},
-        expect.any(Function)
-      )
-      expect(exec).toHaveBeenCalledWith(
-        'git rev-parse --git-dir',
-        { cwd },
-        expect.any(Function)
-      )
+      expect(exec).toHaveBeenCalledWith('git --version', {}, expect.any(Function))
+      expect(exec).toHaveBeenCalledWith('git rev-parse --git-dir', { cwd }, expect.any(Function))
       expect(exec).toHaveBeenCalledWith(
         'git log -n 10 --format="%H%n%h%n%s%n%an%n%ad" --date=short --grep="test" --regexp-ignore-case',
         { cwd },
-        expect.any(Function)
+        expect.any(Function),
       )
     }, 20000)
 
@@ -123,7 +117,7 @@ describe('git utils', () => {
     it('should return empty array when not in a git repository', async () => {
       const responses = new Map([
         ['git --version', { stdout: 'git version 2.39.2', stderr: '' }],
-        ['git rev-parse --git-dir', null] // null indicates error should be called
+        ['git rev-parse --git-dir', null], // null indicates error should be called
       ])
 
       exec.mockImplementation((command: string, options: { cwd?: string }, callback: Function) => {
@@ -147,8 +141,14 @@ describe('git utils', () => {
       const responses = new Map([
         ['git --version', { stdout: 'git version 2.39.2', stderr: '' }],
         ['git rev-parse --git-dir', { stdout: '.git', stderr: '' }],
-        ['git log -n 10 --format="%H%n%h%n%s%n%an%n%ad" --date=short --grep="abc123" --regexp-ignore-case', { stdout: '', stderr: '' }],
-        ['git log -n 10 --format="%H%n%h%n%s%n%an%n%ad" --date=short --author-date-order abc123', { stdout: mockCommitData, stderr: '' }]
+        [
+          'git log -n 10 --format="%H%n%h%n%s%n%an%n%ad" --date=short --grep="abc123" --regexp-ignore-case',
+          { stdout: '', stderr: '' },
+        ],
+        [
+          'git log -n 10 --format="%H%n%h%n%s%n%an%n%ad" --date=short --author-date-order abc123',
+          { stdout: mockCommitData, stderr: '' },
+        ],
       ])
 
       exec.mockImplementation((command: string, options: { cwd?: string }, callback: Function) => {
@@ -168,7 +168,7 @@ describe('git utils', () => {
         shortHash: 'abc123',
         subject: 'fix: test commit',
         author: 'John Doe',
-        date: '2024-01-06'
+        date: '2024-01-06',
       })
     })
   })
@@ -180,7 +180,7 @@ describe('git utils', () => {
       'fix: test commit',
       'John Doe',
       '2024-01-06',
-      'Detailed description'
+      'Detailed description',
     ].join('\n')
     const mockStats = '1 file changed, 2 insertions(+), 1 deletion(-)'
     const mockDiff = '@@ -1,1 +1,2 @@\n-old line\n+new line'
@@ -191,7 +191,7 @@ describe('git utils', () => {
         ['git rev-parse --git-dir', { stdout: '.git', stderr: '' }],
         ['git show --format="%H%n%h%n%s%n%an%n%ad%n%b" --no-patch abc123', { stdout: mockCommitInfo, stderr: '' }],
         ['git show --stat --format="" abc123', { stdout: mockStats, stderr: '' }],
-        ['git show --format="" abc123', { stdout: mockDiff, stderr: '' }]
+        ['git show --format="" abc123', { stdout: mockDiff, stderr: '' }],
       ])
 
       exec.mockImplementation((command: string, options: { cwd?: string }, callback: Function) => {
@@ -227,7 +227,7 @@ describe('git utils', () => {
     it('should return error message when not in a git repository', async () => {
       const responses = new Map([
         ['git --version', { stdout: 'git version 2.39.2', stderr: '' }],
-        ['git rev-parse --git-dir', null] // null indicates error should be called
+        ['git rev-parse --git-dir', null], // null indicates error should be called
       ])
 
       exec.mockImplementation((command: string, options: { cwd?: string }, callback: Function) => {
@@ -255,7 +255,7 @@ describe('git utils', () => {
         ['git --version', { stdout: 'git version 2.39.2', stderr: '' }],
         ['git rev-parse --git-dir', { stdout: '.git', stderr: '' }],
         ['git status --short', { stdout: mockStatus, stderr: '' }],
-        ['git diff HEAD', { stdout: mockDiff, stderr: '' }]
+        ['git diff HEAD', { stdout: mockDiff, stderr: '' }],
       ])
 
       exec.mockImplementation((command: string, options: { cwd?: string }, callback: Function) => {
@@ -278,7 +278,7 @@ describe('git utils', () => {
       const responses = new Map([
         ['git --version', { stdout: 'git version 2.39.2', stderr: '' }],
         ['git rev-parse --git-dir', { stdout: '.git', stderr: '' }],
-        ['git status --short', { stdout: '', stderr: '' }]
+        ['git status --short', { stdout: '', stderr: '' }],
       ])
 
       exec.mockImplementation((command: string, options: { cwd?: string }, callback: Function) => {
@@ -311,7 +311,7 @@ describe('git utils', () => {
     it('should return error message when not in a git repository', async () => {
       const responses = new Map([
         ['git --version', { stdout: 'git version 2.39.2', stderr: '' }],
-        ['git rev-parse --git-dir', null] // null indicates error should be called
+        ['git rev-parse --git-dir', null], // null indicates error should be called
       ])
 
       exec.mockImplementation((command: string, options: { cwd?: string }, callback: Function) => {

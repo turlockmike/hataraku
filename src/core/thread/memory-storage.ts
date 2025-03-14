@@ -1,7 +1,5 @@
-import { Thread, ThreadState } from './thread';
-import { ThreadStorage } from './thread';
-
-
+import { Thread, ThreadState } from './thread'
+import { ThreadStorage } from './thread'
 
 /**
  * In-memory implementation of ThreadStorage interface.
@@ -12,7 +10,7 @@ export class MemoryThreadStorage implements ThreadStorage {
    * Internal storage for thread states, keyed by thread ID.
    * @private
    */
-  private threads = new Map<string, ThreadState>();
+  private threads = new Map<string, ThreadState>()
 
   /**
    * Creates a new instance of MemoryThreadStorage.
@@ -25,7 +23,7 @@ export class MemoryThreadStorage implements ThreadStorage {
    * @returns A promise that resolves when the state has been saved
    */
   async save(state: ThreadState): Promise<void> {
-    this.threads.set(state.id, state);
+    this.threads.set(state.id, state)
   }
 
   /**
@@ -34,7 +32,7 @@ export class MemoryThreadStorage implements ThreadStorage {
    * @returns A new Thread instance
    */
   create(threadId?: string): Thread {
-    return new Thread({ storage: this, id: threadId });
+    return new Thread({ storage: this, id: threadId })
   }
 
   /**
@@ -44,14 +42,14 @@ export class MemoryThreadStorage implements ThreadStorage {
    * @throws Error if the thread with the specified ID is not found
    */
   load(threadId: string): Thread {
-    const state = this.threads.get(threadId);
+    const state = this.threads.get(threadId)
     if (!state) {
-      throw new Error(`Thread not found: ${threadId}`);
+      throw new Error(`Thread not found: ${threadId}`)
     }
     return new Thread({
       storage: this,
-      state
-    });
+      state,
+    })
   }
 
   /**
@@ -60,14 +58,14 @@ export class MemoryThreadStorage implements ThreadStorage {
    * @returns true if the thread was found and deleted, false otherwise
    */
   delete(threadId: string): boolean {
-    return this.threads.delete(threadId);
+    return this.threads.delete(threadId)
   }
 
   /**
    * Removes all threads from memory storage.
    */
   clear(): void {
-    this.threads.clear();
+    this.threads.clear()
   }
 
   /**
@@ -75,6 +73,6 @@ export class MemoryThreadStorage implements ThreadStorage {
    * @returns An array of thread IDs
    */
   list(): string[] {
-    return Array.from(this.threads.keys());
+    return Array.from(this.threads.keys())
   }
 }

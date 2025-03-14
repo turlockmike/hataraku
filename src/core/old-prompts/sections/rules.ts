@@ -1,11 +1,9 @@
-import { DiffStrategy } from "../../../core/diff/DiffStrategy"
+import { DiffStrategy } from '../../../core/diff/diff-strategy'
 // Import path utils to get access to toPosix string extension
-import "../../../utils/path"
+import '../../../utils/path'
 
-export function getRulesSection(
-    cwd: string,
-): string {
-    return `
+export function getRulesSection(cwd: string): string {
+  return `
 - You have access to various tools to help accomplish tasks. The specific instructions for using each tool will be provided in other sections of your instructions.
 - When you've completed your task, you MUST use the attempt_completion tool to present the result to the user. The result must be wrapped in only <attempt_completion> tags. The user may provide feedback, which you can use to make improvements and try again.
 - NEVER end attempt_completion result with a question or request to engage in further conversation! Formulate the end of your result in a way that is final and does not require further input from the user.

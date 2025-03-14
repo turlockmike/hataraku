@@ -1,5 +1,5 @@
 export function getToGraphDescription(): string {
-    return `## to_graph
+  return `## to_graph
 Description: Generate an HTML page with a graph visualization of the provided data using Chart.js. Accepts CSV or JSON formatted data.
 Parameters:
 - data: (required) The data to graph in CSV or JSON format
@@ -29,5 +29,5 @@ April,1500
 <title>Monthly Sales</title>
 <xLabel>Month</xLabel>
 <yLabel>Sales ($)</yLabel>
-</to_graph>`;
+</to_graph>`
 }

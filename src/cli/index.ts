@@ -1,17 +1,17 @@
-import { Command } from 'commander';
-import chalk from 'chalk';
-import { version } from '../../package.json';
-import { FirstRunManager } from '../config/first-run-manager';
+import { Command } from 'commander'
+import chalk from 'chalk'
+import { version } from '../../package.json'
+import { FirstRunManager } from '../config/first-run-manager'
 
-// Import command registration 
-import { registerAllCommands } from './commands';
+// Import command registration
+import { registerAllCommands } from './commands'
 
 // Import execution functions
-import { main, runCLI } from './execution';
+import { main, runCLI } from './execution'
 
 // Create the main program and register all commands
-const program = new Command();
-registerAllCommands(program);
+const program = new Command()
+registerAllCommands(program)
 
 // Configure the main program
 program
@@ -31,7 +31,9 @@ program
   .option('--kb-id <id>', 'Knowledge Base ID when using knowledge-base provider (REQUIRED, can also use KB_ID env var)')
   .arguments('[task...]')
   .version(version)
-  .addHelpText('after', `
+  .addHelpText(
+    'after',
+    `
 Examples:
   $ hataraku "create a hello world html file"                                # Uses default model (claude-3.5-sonnet)
   $ hataraku --model deepseek/deepseek-chat "explain this code"             # Uses different model
@@ -58,19 +60,20 @@ Environment Variables:
   OPENAI_API_KEY        - API key for OpenAI
   AWS_ACCESS_KEY_ID     - AWS access key ID for Bedrock
   AWS_SECRET_ACCESS_KEY - AWS secret access key for Bedrock
-  AWS_REGION           - AWS region for Bedrock (defaults to us-east-1)`)
-  .action(async (task) => {
+  AWS_REGION           - AWS region for Bedrock (defaults to us-east-1)`,
+  )
+  .action(async task => {
     // Check if this is the first run
-    const firstRunManager = new FirstRunManager();
-    const isFirstRun = await firstRunManager.isFirstRun();
-    
+    const firstRunManager = new FirstRunManager()
+    const isFirstRun = await firstRunManager.isFirstRun()
+
     if (isFirstRun) {
-      console.log(chalk.yellow('\nFirst run detected. Initializing default configuration...'));
-      await firstRunManager.initializeDefaults();
+      console.log(chalk.yellow('\nFirst run detected. Initializing default configuration...'))
+      await firstRunManager.initializeDefaults()
     }
-    
+
     // The task will be handled by main() after parsing
-  });
+  })
 
 // Export program and functions
-export { program, main, runCLI };
+export { program, main, runCLI }

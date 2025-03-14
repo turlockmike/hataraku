@@ -3,6 +3,7 @@
 This document provides a comprehensive list of example commands to test various features of the Hataraku CLI.
 
 ## Profile Management
+
 ```bash
 # List all profiles
 hataraku profile list
@@ -27,6 +28,7 @@ hataraku profile set-kb <name>
 ```
 
 ## File Operations
+
 ```bash
 # Create a new file
 hataraku "create a new file called hello.txt with the text 'Hello, World!'"
@@ -42,6 +44,7 @@ hataraku "create a basic React component structure with index.js, styles.css, an
 ```
 
 ## Code Analysis
+
 ```bash
 # List code definitions
 hataraku "show me all the function definitions in src/cli.ts"
@@ -54,6 +57,7 @@ hataraku "find all console.log statements and replace them with console.debug"
 ```
 
 ## System Commands
+
 ```bash
 # Execute git commands
 hataraku "initialize a git repository and create an initial commit"
@@ -66,6 +70,7 @@ hataraku "install the lodash package and add it to package.json"
 ```
 
 ## Interactive Mode Examples
+
 ```bash
 # Start interactive mode
 hataraku -i
@@ -75,6 +80,7 @@ hataraku -i "create a new project structure"
 ```
 
 ## Different Models/Providers
+
 ```bash
 # Use different models
 hataraku --model anthropic/claude-3.7-sonnet "explain this codebase"
@@ -86,6 +92,7 @@ hataraku --provider openai "debug this code"
 ```
 
 ## Special Features
+
 ```bash
 # Disable streaming for precise output
 hataraku --no-stream "generate a JSON configuration"
@@ -101,6 +108,7 @@ hataraku serve --port 3000
 ```
 
 ## Complex Tasks
+
 ```bash
 # Multi-step operations
 hataraku "create a full Express.js API endpoint with route, controller, and tests"
@@ -113,6 +121,7 @@ hataraku "analyze this project's structure and suggest improvements"
 ```
 
 ## Tool-Specific Tasks
+
 ```bash
 # Image operations
 hataraku "show me a diagram of the current project structure"
@@ -132,7 +141,6 @@ Before running these commands, ensure you have:
    ```bash
    export OPENROUTER_API_KEY=your_key_here
    ```
-   
 2. Are in the project directory
 3. Have necessary permissions for file operations
 
@@ -148,4 +156,4 @@ The CLI has access to the following tool categories:
 - **Code Analysis Tools**: list_code_definitions
 - **Media Tools**: play_audio, show_image, text-to-speech (Kokoro TTS)
 
-Each command above demonstrates the use of one or more of these tools to accomplish various tasks. 
+Each command above demonstrates the use of one or more of these tools to accomplish various tasks.

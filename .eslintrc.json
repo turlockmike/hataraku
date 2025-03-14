@@ -1,26 +1,26 @@
 {
-	"root": true,
-	"parser": "@typescript-eslint/parser",
-	"parserOptions": {
-		"ecmaVersion": 6,
-		"sourceType": "module"
-	},
-	"plugins": ["@typescript-eslint", "filenames"],
-	"rules": {
-		"filenames/match-regex": ["warn", "^[a-z0-9]+(-[a-z0-9]+)*$", { "ignorePatterns": ["\\.test\\.ts$"] }],
-		"@typescript-eslint/naming-convention": [
-			"warn",
-			{
-				"selector": "import",
-				"format": ["camelCase", "PascalCase"]
-			}
-		],
-		"@typescript-eslint/semi": "off",
-		"curly": "warn",
-		"eqeqeq": "warn",
-		"no-throw-literal": "warn",
-		"semi": "off",
-		"react-hooks/exhaustive-deps": "off"
-	},
-	"ignorePatterns": ["out", "dist", "**/*.d.ts", "**/__tests__/**"]
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 6,
+    "sourceType": "module"
+  },
+  "plugins": ["@typescript-eslint", "filenames"],
+  "rules": {
+    "filenames/match-regex": ["warn", "^[a-z0-9]+(-[a-z0-9]+)*$", { "ignorePatterns": ["\\.test\\.ts$"] }],
+    "@typescript-eslint/naming-convention": [
+      "warn",
+      {
+        "selector": "import",
+        "format": ["camelCase", "PascalCase"]
+      }
+    ],
+    "@typescript-eslint/semi": "off",
+    "curly": "warn",
+    "eqeqeq": "warn",
+    "no-throw-literal": "warn",
+    "semi": "off",
+    "react-hooks/exhaustive-deps": "off"
+  },
+  "ignorePatterns": ["out", "dist", "**/*.d.ts", "**/__tests__/**"]
 }

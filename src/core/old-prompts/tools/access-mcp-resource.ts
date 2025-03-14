@@ -1,5 +1,5 @@
 export function getAccessMcpResourceDescription(): string {
-    return `## access_mcp_resource
+  return `## access_mcp_resource
 Description: Request to access a resource provided by a connected MCP server. Resources represent data sources that can be used as context, such as files, API responses, or system information.
 Parameters:
 - server_name: (required) The name of the MCP server providing the resource

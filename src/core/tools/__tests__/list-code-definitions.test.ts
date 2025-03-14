@@ -1,29 +1,29 @@
-import { Tool, ToolExecutionOptions } from 'ai';
-import { listCodeDefinitionsTool } from '../list-code-definitions';
-import * as path from 'path';
-import { parseSourceCodeForDefinitionsTopLevel } from '../../../services/tree-sitter';
+import { Tool, ToolExecutionOptions } from 'ai'
+import { listCodeDefinitionsTool } from '../list-code-definitions'
+import * as path from 'path'
+import { parseSourceCodeForDefinitionsTopLevel } from '../../../services/tree-sitter'
 
 // Mock dependencies
-jest.mock('path');
-jest.mock('../../../services/tree-sitter');
+jest.mock('path')
+jest.mock('../../../services/tree-sitter')
 
 describe('listCodeDefinitionsTool', () => {
   const mockOptions: ToolExecutionOptions = {
     toolCallId: 'test-call-id',
-    messages: []
-  };
+    messages: [],
+  }
 
   // Cast tool to ensure execute method is available
-  const tool = listCodeDefinitionsTool as Required<Tool>;
+  const tool = listCodeDefinitionsTool as Required<Tool>
 
   // Mock implementations
-  const mockPath = path as jest.Mocked<typeof path>;
-  const mockTreeSitter = parseSourceCodeForDefinitionsTopLevel as jest.Mock;
+  const mockPath = path as jest.Mocked<typeof path>
+  const mockTreeSitter = parseSourceCodeForDefinitionsTopLevel as jest.Mock
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockPath.resolve.mockImplementation((_, filePath) => `/mock/path/${filePath}`);
-  });
+    jest.clearAllMocks()
+    mockPath.resolve.mockImplementation((_, filePath) => `/mock/path/${filePath}`)
+  })
 
   it('should list code definitions successfully', async () => {
     const mockDefinitions = `
@@ -40,53 +40,65 @@ Classes:
 Interfaces:
 - IDataConfig
 - IProcessResult
-`;
+`
 
-    mockTreeSitter.mockResolvedValue(mockDefinitions);
+    mockTreeSitter.mockResolvedValue(mockDefinitions)
 
-    const result = await tool.execute({
-      path: 'src/code'
-    }, mockOptions);
+    const result = await tool.execute(
+      {
+        path: 'src/code',
+      },
+      mockOptions,
+    )
 
-    expect(result.isError).toBeUndefined();
-    expect(result.content[0].text).toBe(mockDefinitions);
-    expect(mockPath.resolve).toHaveBeenCalledWith(process.cwd(), 'src/code');
-    expect(mockTreeSitter).toHaveBeenCalledWith('/mock/path/src/code');
-  });
+    expect(result.isError).toBeUndefined()
+    expect(result.content[0].text).toBe(mockDefinitions)
+    expect(mockPath.resolve).toHaveBeenCalledWith(process.cwd(), 'src/code')
+    expect(mockTreeSitter).toHaveBeenCalledWith('/mock/path/src/code')
+  })
 
   it('should handle empty definitions', async () => {
-    mockTreeSitter.mockResolvedValue('');
+    mockTreeSitter.mockResolvedValue('')
 
-    const result = await tool.execute({
-      path: 'src/empty'
-    }, mockOptions);
+    const result = await tool.execute(
+      {
+        path: 'src/empty',
+      },
+      mockOptions,
+    )
 
-    expect(result.isError).toBeUndefined();
-    expect(result.content[0].text).toBe('No code definitions found in src/empty');
-  });
+    expect(result.isError).toBeUndefined()
+    expect(result.content[0].text).toBe('No code definitions found in src/empty')
+  })
 
   it('should handle whitespace-only definitions', async () => {
-    mockTreeSitter.mockResolvedValue('   \n  \t  ');
+    mockTreeSitter.mockResolvedValue('   \n  \t  ')
 
-    const result = await tool.execute({
-      path: 'src/whitespace'
-    }, mockOptions);
+    const result = await tool.execute(
+      {
+        path: 'src/whitespace',
+      },
+      mockOptions,
+    )
 
-    expect(result.isError).toBeUndefined();
-    expect(result.content[0].text).toBe('No code definitions found in src/whitespace');
-  });
+    expect(result.isError).toBeUndefined()
+    expect(result.content[0].text).toBe('No code definitions found in src/whitespace')
+  })
 
   it('should handle parsing errors', async () => {
-    const errorMessage = 'Failed to parse source code';
-    mockTreeSitter.mockRejectedValue(new Error(errorMessage));
+    const errorMessage = 'Failed to parse source code'
+    mockTreeSitter.mockRejectedValue(new Error(errorMessage))
 
-    const result = await tool.execute({
-      path: 'src/error'
-    }, mockOptions);
+    const result = await tool.execute(
+      {
+        path: 'src/error',
+      },
+      mockOptions,
+    )
 
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toBe(`Error listing code definitions: ${errorMessage}`);
-  });
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toBe(`Error listing code definitions: ${errorMessage}`)
+  })
 
   it('should handle complex code definitions', async () => {
     const mockDefinitions = `
@@ -115,26 +127,32 @@ Functions:
 Constants:
 - DEFAULT_USER_ROLE
 - PASSWORD_REGEX
-`;
+`
 
-    mockTreeSitter.mockResolvedValue(mockDefinitions);
+    mockTreeSitter.mockResolvedValue(mockDefinitions)
 
-    const result = await tool.execute({
-      path: 'src/users'
-    }, mockOptions);
+    const result = await tool.execute(
+      {
+        path: 'src/users',
+      },
+      mockOptions,
+    )
 
-    expect(result.isError).toBeUndefined();
-    expect(result.content[0].text).toBe(mockDefinitions);
-  });
+    expect(result.isError).toBeUndefined()
+    expect(result.content[0].text).toBe(mockDefinitions)
+  })
 
   it('should handle non-string error messages', async () => {
-    mockTreeSitter.mockRejectedValue({ code: 'PARSE_ERROR' });
+    mockTreeSitter.mockRejectedValue({ code: 'PARSE_ERROR' })
 
-    const result = await tool.execute({
-      path: 'src/error'
-    }, mockOptions);
+    const result = await tool.execute(
+      {
+        path: 'src/error',
+      },
+      mockOptions,
+    )
 
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toBe('Error listing code definitions: [object Object]');
-  });
-});
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toBe('Error listing code definitions: [object Object]')
+  })
+})

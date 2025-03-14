@@ -4,7 +4,8 @@ This document provides an overview of Hataraku's architecture, design patterns, 
 
 ## System Architecture
 
-Hataraku is structured as a modular toolkit for building AI-powered development tools and autonomous coding agents. The architecture follows these core principles:
+Hataraku is structured as a modular toolkit for building AI-powered development tools and autonomous coding agents. The
+architecture follows these core principles:
 
 1. **Modularity**: Components are designed to be used independently or together
 2. **Extensibility**: Easy to extend with custom tools, providers, and workflows
@@ -42,9 +43,11 @@ Hataraku is structured as a modular toolkit for building AI-powered development 
 
 ### 1. Agent
 
-The `Agent` class serves as the primary interface for interacting with AI models. It orchestrates the execution of tasks and manages tool interactions.
+The `Agent` class serves as the primary interface for interacting with AI models. It orchestrates the execution of tasks
+and manages tool interactions.
 
 **Key Responsibilities:**
+
 - Task execution
 - Tool coordination
 - Response processing
@@ -55,21 +58,26 @@ The `Agent` class serves as the primary interface for interacting with AI models
 
 ### 2. Task
 
-The `Task` class represents a single unit of work for an AI model to complete. Tasks are the fundamental building blocks for AI interactions.
+The `Task` class represents a single unit of work for an AI model to complete. Tasks are the fundamental building blocks
+for AI interactions.
 
 **Key Responsibilities:**
+
 - Describing the work to be done
 - Configuring model parameters
 - Handling execution modes (streaming, schema validation)
 - Processing results
 
-**Design Pattern:** Command - encapsulates a request as an object, allowing for parameterization and queueing of requests.
+**Design Pattern:** Command - encapsulates a request as an object, allowing for parameterization and queueing of
+requests.
 
 ### 3. Workflow
 
-The `Workflow` system orchestrates multi-step operations, managing the flow of data between steps and handling dependencies.
+The `Workflow` system orchestrates multi-step operations, managing the flow of data between steps and handling
+dependencies.
 
 **Key Responsibilities:**
+
 - Step sequencing
 - Parallel execution
 - Data passing between steps
@@ -82,6 +90,7 @@ The `Workflow` system orchestrates multi-step operations, managing the flow of d
 The `Thread` class manages conversation history for context-aware AI interactions.
 
 **Key Responsibilities:**
+
 - Storing conversation history
 - Managing context window limits
 - Providing context for follow-up tasks
@@ -90,9 +99,11 @@ The `Thread` class manages conversation history for context-aware AI interaction
 
 ### 5. Provider Interface
 
-The provider interface abstracts away the specific details of different AI model providers, allowing for seamless switching between providers.
+The provider interface abstracts away the specific details of different AI model providers, allowing for seamless
+switching between providers.
 
 **Key Responsibilities:**
+
 - Unified interface for all providers
 - Model configuration
 - Request/response handling
@@ -116,7 +127,8 @@ The provider interface abstracts away the specific details of different AI model
                    └───────────┘                        └───────────┘
 ```
 
-1. **Request Flow**: 
+1. **Request Flow**:
+
    - User code creates an Agent or Task
    - Configured with a model, tools, and schema
    - Request processed through provider interface
@@ -138,17 +150,17 @@ Used for creating instances of Agents, Tasks, and Providers:
 ```typescript
 // Agent factory
 export function createAgent(config: AgentConfig): Agent {
-  return new Agent(config);
+  return new Agent(config)
 }
 
 // Task factory
 export function createTask(config: TaskConfig): Task {
-  return new Task(config);
+  return new Task(config)
 }
 
 // Provider factory
 export function createAnthropicProvider(config: AnthropicConfig): ProviderV1 {
-  return new AnthropicProvider(config);
+  return new AnthropicProvider(config)
 }
 ```
 
@@ -158,7 +170,7 @@ Used for selecting different model providers:
 
 ```typescript
 interface ProviderV1 {
-  getModel(modelId: string): LanguageModelV1;
+  getModel(modelId: string): LanguageModelV1
 }
 
 class AnthropicProvider implements ProviderV1 {
@@ -182,13 +194,13 @@ Used for enhancing tools with additional functionality:
 function withLogging(tool: Tool): Tool {
   return {
     ...tool,
-    execute: async (params) => {
-      console.log('Tool execution started:', tool.name, params);
-      const result = await tool.execute(params);
-      console.log('Tool execution completed:', tool.name, result);
-      return result;
-    }
-  };
+    execute: async params => {
+      console.log('Tool execution started:', tool.name, params)
+      const result = await tool.execute(params)
+      console.log('Tool execution completed:', tool.name, result)
+      return result
+    },
+  }
 }
 ```
 
@@ -204,7 +216,7 @@ async execute(prompt: string, options?: CallOptions): Promise<AsyncIterableStrea
     stream: true,
     // other options
   });
-  
+
   // Observers can consume the stream
   return stream;
 }
@@ -260,4 +272,4 @@ Security is a priority in Hataraku's design:
 2. **API Key Management**: Secure handling of API keys
 3. **Permissions**: Tools with system access have customizable permission boundaries
 4. **Error Handling**: Errors are handled gracefully without exposing sensitive information
-5. **Rate Limiting**: Prevents abuse of external APIs 
+5. **Rate Limiting**: Prevents abuse of external APIs
