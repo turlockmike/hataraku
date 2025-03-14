@@ -1,4 +1,4 @@
-import { loadRequiredLanguageParsers } from '../languageParser'
+import { loadRequiredLanguageParsers } from '../language-parser'
 import Parser from 'web-tree-sitter'
 
 // Mock web-tree-sitter

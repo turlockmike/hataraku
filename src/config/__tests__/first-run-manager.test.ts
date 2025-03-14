@@ -2,13 +2,13 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { FirstRunManager } from '../first-run-manager'
 import { ConfigLoader } from '../config-loader'
-import { ProfileManager } from '../ProfileManager'
+import { ProfileManager } from '../profile-manager'
 import { input, select, confirm } from '@inquirer/prompts'
 
 // Mock dependencies
 jest.mock('fs/promises')
 jest.mock('../config-loader')
-jest.mock('../ProfileManager')
+jest.mock('../profile-manager')
 jest.mock('@inquirer/prompts')
 jest.mock('../config-paths', () => ({
   getConfigPaths: jest.fn().mockReturnValue({
@@ -101,18 +101,30 @@ describe('FirstRunManager', () => {
     it('should create a profile with user inputs', async () => {
       // Setup mock implementations
       ;(input as jest.Mock).mockImplementation(options => {
-        if (options.message.includes('Profile name')) return 'test-profile'
-        if (options.message.includes('description')) return 'Test profile description'
+        if (options.message.includes('Profile name')) {
+          return 'test-profile'
+        }
+        if (options.message.includes('description')) {
+          return 'Test profile description'
+        }
         return 'other-value'
       })
       ;(select as jest.Mock).mockImplementation(options => {
-        if (options.message.includes('provider')) return 'anthropic'
-        if (options.message.includes('model')) return 'claude-3-7-sonnet-20250219'
+        if (options.message.includes('provider')) {
+          return 'anthropic'
+        }
+        if (options.message.includes('model')) {
+          return 'claude-3-7-sonnet-20250219'
+        }
         return 'other-selection'
       })
       ;(confirm as jest.Mock).mockImplementation(options => {
-        if (options.message.includes('streaming')) return true
-        if (options.message.includes('sound')) return false
+        if (options.message.includes('streaming')) {
+          return true
+        }
+        if (options.message.includes('sound')) {
+          return false
+        }
         return false
       })
 

@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { getConfigPaths, createConfigDirectories } from './config-paths'
-import { TaskConfig, TaskConfigSchema, DEFAULT_CODE_REVIEW_TASK, DEFAULT_CODE_EXPLANATION_TASK } from './taskConfig'
+import { TaskConfig, TaskConfigSchema, DEFAULT_CODE_REVIEW_TASK, DEFAULT_CODE_EXPLANATION_TASK } from './task-config'
 import { AgentManager } from './agent-manager'
 
 /**

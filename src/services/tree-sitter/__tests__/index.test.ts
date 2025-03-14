@@ -1,13 +1,13 @@
 import { parseSourceCodeForDefinitionsTopLevel } from '../index'
 import { listFiles } from '../../glob/list-files'
-import { loadRequiredLanguageParsers } from '../languageParser'
+import { loadRequiredLanguageParsers } from '../language-parser'
 import { fileExistsAtPath } from '../../../utils/fs'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 
 // Mock dependencies
 jest.mock('../../glob/list-files')
-jest.mock('../languageParser')
+jest.mock('../language-parser')
 jest.mock('../../../utils/fs')
 jest.mock('fs/promises')
 

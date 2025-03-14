@@ -1,10 +1,10 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
-import { ToolManager } from '../../config/ToolManager'
+import { ToolManager } from '../../config/tool-manager'
 import { input, select, confirm } from '@inquirer/prompts'
-import { ToolsConfig } from '../../config/toolConfig'
+import { ToolsConfig } from '../../config/tool-config'
 import { McpClient } from '../../core/mcp/mcp-client'
-import { getMcpTools } from '../../core/mcp/toolWrapper'
+import { getMcpTools } from '../../core/mcp/tool-wrapper'
 
 export function registerToolCommands(program: Command): Command {
   const toolCommand = program.command('tools').description('Manage MCP tool configurations')

@@ -1,2 +1,2 @@
 export * from './server'
-export * from './toolWrapper'
+export * from './tool-wrapper'

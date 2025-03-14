@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { getConfigPaths } from './config-paths'
-import { Profile, ProfilesConfig, ProfilesConfigSchema, DEFAULT_PROFILE } from './profileConfig'
+import { Profile, ProfilesConfig, ProfilesConfigSchema, DEFAULT_PROFILE } from './profile-config'
 
 export class ProfileManager {
   private configPath: string

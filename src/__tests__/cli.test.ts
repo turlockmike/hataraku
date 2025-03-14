@@ -1,6 +1,6 @@
 import { program, main } from '../cli' // adjust the path as needed
 import { ConfigLoader } from '../config/config-loader'
-import { ProfileManager } from '../config/ProfileManager'
+import { ProfileManager } from '../config/profile-manager'
 
 // Create mock function for ConfigLoader
 const mockGetEffectiveConfig = jest.fn().mockResolvedValue({
@@ -31,7 +31,7 @@ jest.mock('../config/config-loader', () => {
   }
 })
 
-jest.mock('../config/ProfileManager', () => {
+jest.mock('../config/profile-manager', () => {
   return {
     ProfileManager: jest.fn().mockImplementation(() => {
       return {

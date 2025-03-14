@@ -1,4 +1,4 @@
-import { DiffStrategy } from '../../../core/diff/DiffStrategy'
+import { DiffStrategy } from '../../../core/diff/diff-strategy'
 // Import path utils to get access to toPosix string extension
 import '../../../utils/path'
 

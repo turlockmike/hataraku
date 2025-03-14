@@ -1,4 +1,4 @@
-import { interpolateEnvVars, interpolateEnvVarsInObject } from '../envInterpolation'
+import { interpolateEnvVars, interpolateEnvVarsInObject } from '../env-interpolation'
 
 describe('Environment Variable Interpolation', () => {
   const originalEnv = process.env

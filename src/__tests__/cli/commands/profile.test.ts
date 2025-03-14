@@ -1,11 +1,11 @@
 import { jest } from '@jest/globals'
 import { Command } from 'commander'
 import { confirm } from '@inquirer/prompts'
-import { ProfileManager } from '../../../config/ProfileManager'
+import { ProfileManager } from '../../../config/profile-manager'
 import { registerProfileCommands } from '../../../cli/commands/profile'
 
 jest.mock('@inquirer/prompts')
-jest.mock('../../../config/ProfileManager')
+jest.mock('../../../config/profile-manager')
 
 describe('profile commands', () => {
   let program: Command

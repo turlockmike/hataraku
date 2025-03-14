@@ -4,8 +4,8 @@ import { input, select, confirm } from '@inquirer/prompts'
 import chalk from 'chalk'
 import { getConfigPaths, createConfigDirectories } from './config-paths'
 import { ConfigLoader } from './config-loader'
-import { ProfileManager } from './ProfileManager'
-import { Profile, DEFAULT_PROFILE } from './profileConfig'
+import { ProfileManager } from './profile-manager'
+import { Profile, DEFAULT_PROFILE } from './profile-config'
 
 /**
  * First Run Manager

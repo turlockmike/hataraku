@@ -1,11 +1,12 @@
+import { getConfigPaths, createConfigDirectories } from './config-paths'
+import { ProfileManager } from './profile-manager'
+import { TaskManager } from './task-manager'
+import { ToolManager } from './tool-manager'
 import { AgentManager } from './agent-manager'
-import { ProfileManager } from './ProfileManager'
-import { TaskManager } from './TaskManager'
-import { ToolManager } from './ToolManager'
-import { Profile } from './profileConfig'
+import { Profile } from './profile-config'
 import { AgentConfig } from './agent-config'
-import { TaskConfig } from './taskConfig'
-import { ToolsConfig } from './toolConfig'
+import { TaskConfig } from './task-config'
+import { ToolsConfig } from './tool-config'
 
 /**
  * CLI options interface for configuration overrides

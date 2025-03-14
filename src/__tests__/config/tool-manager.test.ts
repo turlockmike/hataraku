@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { ToolManager } from '../../config/ToolManager'
-import { ToolsConfig, DEFAULT_AI_TOOLS } from '../../config/toolConfig'
+import { ToolManager } from '../../config/tool-manager'
+import { ToolsConfig, DEFAULT_AI_TOOLS } from '../../config/tool-config'
 import { getConfigPaths } from '../../config/config-paths'
 
 // Mock fs and path modules

@@ -1,8 +1,8 @@
 import { jest } from '@jest/globals'
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { ProfileManager } from '../../config/ProfileManager'
-import { Profile, DEFAULT_PROFILE } from '../../config/profileConfig'
+import { ProfileManager } from '../../config/profile-manager'
+import { Profile, DEFAULT_PROFILE } from '../../config/profile-config'
 import { getConfigPaths } from '../../config/config-paths'
 
 jest.mock('fs/promises')

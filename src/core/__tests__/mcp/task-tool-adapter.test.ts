@@ -62,7 +62,7 @@ describe('TaskToolAdapter', () => {
         name: 'number-task',
         description: 'Task with number input',
         agent: mockAgent,
-        task: 'test',
+        task: (input: number) => `test ${input}`,
         inputSchema: z.number(),
       })
 
@@ -82,7 +82,7 @@ describe('TaskToolAdapter', () => {
         name: 'boolean-task',
         description: 'Task with boolean input',
         agent: mockAgent,
-        task: 'test',
+        task: (input: boolean) => `test ${input}`,
         inputSchema: z.boolean(),
       })
 
@@ -102,7 +102,7 @@ describe('TaskToolAdapter', () => {
         name: 'array-task',
         description: 'Task with array input',
         agent: mockAgent,
-        task: 'test',
+        task: (input: string[]) => `test ${input.join(', ')}`,
         inputSchema: z.array(z.string()),
       })
 
@@ -148,12 +148,12 @@ describe('TaskToolAdapter', () => {
         isActive: z.boolean(),
       })
 
-      const task = new Task<z.infer<typeof inputSchema>>({
+      const task = new Task<{ name?: string; age?: number; isActive?: boolean }>({
         name: 'object-task',
         description: 'Task with object input',
         agent: mockAgent,
-        task: 'test',
-        inputSchema,
+        task: input => `test ${JSON.stringify(input)}`,
+        inputSchema: inputSchema,
       })
 
       const adapter = new TaskToolAdapter()
@@ -182,7 +182,7 @@ describe('TaskToolAdapter', () => {
         name: 'described-params-task',
         description: 'Task with described parameters',
         agent: mockAgent,
-        task: 'test',
+        task: input => `test ${JSON.stringify(input)}`,
         inputSchema,
       })
 
@@ -236,7 +236,7 @@ describe('TaskToolAdapter', () => {
         name: 'nested-object-task',
         description: 'Task with nested object input',
         agent: mockAgent,
-        task: 'test',
+        task: input => `test ${JSON.stringify(input)}`,
         inputSchema,
       })
 
@@ -387,12 +387,16 @@ describe('TaskToolAdapter', () => {
 
     mockAgentTask.mockResolvedValueOnce(mockOutput)
 
-    const task = new Task<unknown, z.infer<typeof outputSchema>>({
+    const task = new Task<unknown, { timestamp?: number; result?: string }>({
       name: 'output-schema-task',
       description: 'Task with output schema',
       agent: mockAgent,
-      task: 'test output schema',
-      outputSchema: outputSchema,
+      task: (input: unknown) => `test output schema ${JSON.stringify(input)}`,
+      inputSchema: z.unknown(),
+      outputSchema: z.object({
+        timestamp: z.number().optional(),
+        result: z.string().optional(),
+      }),
     })
 
     const adapter = new TaskToolAdapter()

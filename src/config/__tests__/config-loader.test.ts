@@ -1,16 +1,16 @@
 import { ConfigLoader } from '../config-loader'
-import { ProfileManager } from '../ProfileManager'
+import { ProfileManager } from '../profile-manager'
 import { AgentManager } from '../agent-manager'
-import { TaskManager } from '../TaskManager'
-import { ToolManager } from '../ToolManager'
-import { Profile } from '../profileConfig'
+import { TaskManager } from '../task-manager'
+import { ToolManager } from '../tool-manager'
+import { Profile } from '../profile-config'
 import { AgentConfig } from '../agent-config'
 
 // Mock the managers
-jest.mock('../ProfileManager')
+jest.mock('../profile-manager')
 jest.mock('../agent-manager')
-jest.mock('../TaskManager')
-jest.mock('../ToolManager')
+jest.mock('../task-manager')
+jest.mock('../tool-manager')
 
 describe('ConfigLoader', () => {
   let configLoader: ConfigLoader
@@ -88,7 +88,9 @@ describe('ConfigLoader', () => {
         options: {
           stream: true,
           sound: true,
-          interactive: false,
+          verbose: false,
+          maxRetries: 3,
+          maxSteps: 50,
         },
       }
 
@@ -136,7 +138,9 @@ describe('ConfigLoader', () => {
         options: {
           stream: true,
           sound: true,
-          interactive: false,
+          verbose: false,
+          maxRetries: 3,
+          maxSteps: 50,
         },
       }
 

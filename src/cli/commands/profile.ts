@@ -1,9 +1,9 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
 import { input, select, confirm } from '@inquirer/prompts'
-import { ProfileManager } from '../../config/ProfileManager'
+import { ProfileManager } from '../../config/profile-manager'
 import { FirstRunManager } from '../../config/first-run-manager'
-import { Profile } from '../../config/profileConfig'
+import { Profile } from '../../config/profile-config'
 
 export function registerProfileCommands(program: Command): Command {
   const profileCommand = program.command('profile').description('Manage profiles')

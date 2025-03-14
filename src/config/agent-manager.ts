@@ -2,7 +2,7 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { getConfigPaths, createConfigDirectories } from './config-paths'
 import { AgentConfig, AgentConfigSchema, DEFAULT_CODE_ASSISTANT, DEFAULT_CODE_REVIEWER } from './agent-config'
-import { ToolManager } from './ToolManager'
+import { ToolManager } from './tool-manager'
 import { ALL_TOOLS } from '../core/tools'
 
 /**

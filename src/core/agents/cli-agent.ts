@@ -3,8 +3,8 @@ import { createAgent } from '../agent'
 import { getEnvironmentInfo, getAgentRules } from '../prompts'
 import { TaskHistory } from '../task-history'
 import { ALL_TOOLS } from '../tools'
-import { getMcpTools } from '../mcp/toolWrapper'
-import { ToolManager } from '../../config/ToolManager'
+import { getMcpTools } from '../mcp/tool-wrapper'
+import { ToolManager } from '../../config/tool-manager'
 import { colors, log } from '../../utils/colors'
 
 /**

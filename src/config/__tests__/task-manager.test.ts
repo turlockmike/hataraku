@@ -1,8 +1,8 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { TaskManager } from '../TaskManager'
+import { TaskManager } from '../task-manager'
 import { AgentManager } from '../agent-manager'
-import { TaskConfig } from '../taskConfig'
+import { TaskConfig } from '../task-config'
 
 // Mock fs and AgentManager
 jest.mock('fs/promises')

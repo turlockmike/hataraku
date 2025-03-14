@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { getMcpTools } from '../src/core/mcp/toolWrapper'
+import { getMcpTools } from '../src/core/mcp/tool-wrapper'
 import { JiraGetTicketTool } from '../src/core/mcp/types'
 
 async function main() {
