@@ -225,11 +225,21 @@ export function findAllExportsInFile(filePath: string): ExportedItem[] {
 
   // Helper function to get node kind as string
   const getNodeKindName = (node: ts.Node): string => {
-    if (ts.isFunctionDeclaration(node)) return 'function'
-    if (ts.isClassDeclaration(node)) return 'class'
-    if (ts.isInterfaceDeclaration(node)) return 'interface'
-    if (ts.isTypeAliasDeclaration(node)) return 'type'
-    if (ts.isEnumDeclaration(node)) return 'enum'
+    if (ts.isFunctionDeclaration(node)) {
+      return 'function'
+    }
+    if (ts.isClassDeclaration(node)) {
+      return 'class'
+    }
+    if (ts.isInterfaceDeclaration(node)) {
+      return 'interface'
+    }
+    if (ts.isTypeAliasDeclaration(node)) {
+      return 'type'
+    }
+    if (ts.isEnumDeclaration(node)) {
+      return 'enum'
+    }
     if (ts.isVariableDeclaration(node)) {
       if (node.initializer) {
         if (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer)) {
@@ -638,8 +648,12 @@ export async function findNestedExports(
   maxDepth = 10,
   visited = new Set<string>(),
 ): Promise<NestedExportedItem[]> {
-  if (maxDepth <= 0) return []
-  if (visited.has(filePath)) return [] // Prevent circular dependencies
+  if (maxDepth <= 0) {
+    return []
+  }
+  if (visited.has(filePath)) {
+    return []
+  } // Prevent circular dependencies
 
   visited.add(filePath)
   const baseDir = path.dirname(filePath)

@@ -13,7 +13,9 @@ export class ProfileManager {
   }
 
   private async loadConfig(): Promise<ProfilesConfig> {
-    if (this.config) return this.config
+    if (this.config) {
+      return this.config
+    }
 
     try {
       const data = await fs.readFile(this.configPath, 'utf-8')
@@ -33,7 +35,9 @@ export class ProfileManager {
   }
 
   private async saveConfig(): Promise<void> {
-    if (!this.config) throw new Error('No configuration loaded')
+    if (!this.config) {
+      throw new Error('No configuration loaded')
+    }
     // Format JSON with no whitespace to match test expectations
     await fs.writeFile(this.configPath, JSON.stringify(this.config))
   }
@@ -46,7 +50,9 @@ export class ProfileManager {
   async getProfile(name: string): Promise<Profile> {
     const config = await this.loadConfig()
     const profile = config.profiles.find(p => p.name === name)
-    if (!profile) throw new Error(`Profile '${name}' not found`)
+    if (!profile) {
+      throw new Error(`Profile '${name}' not found`)
+    }
     return profile
   }
 
@@ -63,7 +69,9 @@ export class ProfileManager {
   async updateProfile(name: string, updates: Partial<Profile>): Promise<void> {
     const config = await this.loadConfig()
     const index = config.profiles.findIndex(p => p.name === name)
-    if (index === -1) throw new Error(`Profile '${name}' not found`)
+    if (index === -1) {
+      throw new Error(`Profile '${name}' not found`)
+    }
 
     // Don't allow changing the name through updates
     if (updates.name && updates.name !== name) {
@@ -80,11 +88,17 @@ export class ProfileManager {
 
   async deleteProfile(name: string): Promise<void> {
     const config = await this.loadConfig()
-    if (name === 'default') throw new Error('Cannot delete default profile')
-    if (name === config.activeProfile) throw new Error('Cannot delete active profile')
+    if (name === 'default') {
+      throw new Error('Cannot delete default profile')
+    }
+    if (name === config.activeProfile) {
+      throw new Error('Cannot delete active profile')
+    }
 
     const index = config.profiles.findIndex(p => p.name === name)
-    if (index === -1) throw new Error(`Profile '${name}' not found`)
+    if (index === -1) {
+      throw new Error(`Profile '${name}' not found`)
+    }
 
     config.profiles.splice(index, 1)
     await this.saveConfig()

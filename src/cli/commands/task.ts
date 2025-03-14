@@ -124,7 +124,9 @@ export function registerTaskCommands(program: Command): Command {
           if (schema.properties) {
             for (const [key, prop] of Object.entries<any>(schema.properties)) {
               // Skip if already provided via command line
-              if (inputData[key] !== undefined) continue
+              if (inputData[key] !== undefined) {
+                continue
+              }
 
               const isRequired = schema.required && schema.required.includes(key)
               const promptMessage = `${prop.description || key}${isRequired ? ' (required)' : ''}:`
@@ -133,7 +135,9 @@ export function registerTaskCommands(program: Command): Command {
                 const items = await input({
                   message: promptMessage,
                   validate: value => {
-                    if (isRequired && !value) return 'This field is required'
+                    if (isRequired && !value) {
+                      return 'This field is required'
+                    }
                     return true
                   },
                 })
@@ -151,7 +155,9 @@ export function registerTaskCommands(program: Command): Command {
                 inputData[key] = await input({
                   message: promptMessage,
                   validate: value => {
-                    if (isRequired && !value) return 'This field is required'
+                    if (isRequired && !value) {
+                      return 'This field is required'
+                    }
                     return true
                   },
                 })

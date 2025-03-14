@@ -291,7 +291,9 @@ export async function executeWithConfig(task: string, cliOptions: CliOptions, in
                             break
                           }
                         }
-                        if (userQuery) break
+                        if (userQuery) {
+                          break
+                        }
                       }
                     }
                   }
@@ -314,7 +316,9 @@ export async function executeWithConfig(task: string, cliOptions: CliOptions, in
                           break
                         }
                       }
-                      if (userQuery) break
+                      if (userQuery) {
+                        break
+                      }
                     }
                   }
                 }

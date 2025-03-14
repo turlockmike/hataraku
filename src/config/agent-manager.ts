@@ -157,7 +157,9 @@ export class AgentManager {
 
     for (const tool of tools) {
       // Skip validation for built-in tools
-      if (tool === 'hataraku') continue
+      if (tool === 'hataraku') {
+        continue
+      }
 
       if (!availableTools.includes(tool)) {
         throw new Error(`Referenced tool '${tool}' not found`)

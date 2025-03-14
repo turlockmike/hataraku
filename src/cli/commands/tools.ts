@@ -365,7 +365,9 @@ function formatToolDescription(description: string): string {
     .map(line => {
       // Simple word wrapping at ~80 chars
       const MAX_LINE_LENGTH = 80
-      if (line.length <= MAX_LINE_LENGTH) return line
+      if (line.length <= MAX_LINE_LENGTH) {
+        return line
+      }
 
       // For longer lines, try to wrap at spaces
       const words = line.split(' ')
