@@ -391,7 +391,7 @@ describe('TaskToolAdapter', () => {
       name: 'output-schema-task',
       description: 'Task with output schema',
       agent: mockAgent,
-      task: (input: unknown) => `test output schema ${JSON.stringify(input)}`,
+      task: () => 'test output schema',
       inputSchema: z.unknown(),
       outputSchema: z.object({
         timestamp: z.number().optional(),
@@ -402,7 +402,7 @@ describe('TaskToolAdapter', () => {
     const adapter = new TaskToolAdapter()
     const tool = adapter.convertToMcpTool(task)
 
-    const result = await tool.execute({})
+    const result = await tool.execute({ content: '' })
     expect(result.raw.content[0].text).toBe(JSON.stringify(mockOutput))
     expect(result.data).toEqual(mockOutput)
   })
