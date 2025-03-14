@@ -1,5 +1,5 @@
 export function getObjectiveSection(): string {
-    return `
+  return `
 You will be given a task in a <task></task> tag. You will also be optionally given an output schema in a <output_schema></output_schema> tag.
 You accomplish a given task iteratively, breaking it down into clear steps and working through them methodically.
 
@@ -10,5 +10,5 @@ You accomplish a given task iteratively, breaking it down into clear steps and w
 5. The user may provide feedback, which you can use to make improvements and try again. But DO NOT continue in pointless back and forth conversations, i.e. don't end your responses with questions or offers for further assistance.
 6. !CRITICAL! You MUST use the attempt_completion tool to present the result of the task to the user. This is the most important step. 
 7. ALL responses must be wrapped in xml tags. By default only <thinking></thinking> and <attempt_completion></attempt_completion> tags are available, but you may use other tags as needed if they are provided in the system instructions.
-`;
+`
 }

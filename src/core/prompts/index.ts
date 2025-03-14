@@ -1,2 +1,2 @@
-export { getEnvironmentInfo } from './environment';
-export { getAgentRules } from './rules'; 
+export { getEnvironmentInfo } from './environment'
+export { getAgentRules } from './rules'

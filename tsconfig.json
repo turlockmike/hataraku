@@ -1,24 +1,24 @@
 {
-	"compilerOptions": {
-		"target": "ES2022",
-		"module": "NodeNext",
-		"lib": ["ES2022", "DOM"],
-		"declaration": false,
-		"sourceMap": true,
-		"outDir": "dist/esm",
-		"rootDir": "./src",
-		"strict": false,
-		"moduleResolution": "nodenext",
-		"baseUrl": "./",
-		"esModuleInterop": true,
-		"experimentalDecorators": true,
-		"emitDecoratorMetadata": true,
-		"skipLibCheck": true,
-		"forceConsistentCasingInFileNames": true,
-		"resolveJsonModule": true,
-		"useUnknownInCatchVariables": false,
-		"noImplicitAny": false
-	},
-	"include": ["src/**/*", "examples"],
-	"exclude": ["node_modules", "dist", "src/__mocks__", "examples"]
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "lib": ["ES2022", "DOM"],
+    "declaration": false,
+    "sourceMap": true,
+    "outDir": "dist/esm",
+    "rootDir": "./src",
+    "strict": false,
+    "moduleResolution": "nodenext",
+    "baseUrl": "./",
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "useUnknownInCatchVariables": false,
+    "noImplicitAny": false
+  },
+  "include": ["src/**/*", "examples"],
+  "exclude": ["node_modules", "dist", "src/__mocks__", "examples"]
 }

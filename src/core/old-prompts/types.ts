@@ -1,6 +1,6 @@
-import { Mode } from '../../shared/modes';
+import { Mode } from '../../shared/modes'
 
-export type { Mode };
+export type { Mode }
 
 export type ToolName =
   | 'execute_command'
@@ -14,7 +14,7 @@ export type ToolName =
   | 'use_mcp_tool'
   | 'access_mcp_resource'
   | 'ask_followup_question'
-  | 'attempt_completion';
+  | 'attempt_completion'
 
 export const CODE_TOOLS: ToolName[] = [
   'execute_command',
@@ -28,8 +28,8 @@ export const CODE_TOOLS: ToolName[] = [
   'use_mcp_tool',
   'access_mcp_resource',
   'ask_followup_question',
-  'attempt_completion'
-];
+  'attempt_completion',
+]
 
 export const ARCHITECT_TOOLS: ToolName[] = [
   'read_file',
@@ -37,8 +37,8 @@ export const ARCHITECT_TOOLS: ToolName[] = [
   'list_files',
   'list_code_definition_names',
   'ask_followup_question',
-  'attempt_completion'
-];
+  'attempt_completion',
+]
 
 export const ASK_TOOLS: ToolName[] = [
   'read_file',
@@ -48,5 +48,5 @@ export const ASK_TOOLS: ToolName[] = [
   'use_mcp_tool',
   'access_mcp_resource',
   'ask_followup_question',
-  'attempt_completion'
-];
+  'attempt_completion',
+]

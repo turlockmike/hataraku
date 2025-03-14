@@ -1,7 +1,7 @@
-import fg from "fast-glob"
-import os from "os"
-import * as path from "path"
-import { arePathsEqual } from "../../utils/path"
+import fg from 'fast-glob'
+import os from 'os'
+import * as path from 'path'
+import { arePathsEqual } from '../../utils/path'
 
 /**
  * Lists files in a directory with safety checks for root and home directories.
@@ -22,50 +22,50 @@ import { arePathsEqual } from "../../utils/path"
  * ```
  */
 export async function listFiles(dirPath: string, recursive: boolean, limit: number): Promise<[string[], boolean]> {
-	const absolutePath = path.resolve(dirPath)
-	// Do not allow listing files in root or home directory, which cline tends to want to do when the user's prompt is vague.
-	const root = process.platform === "win32" ? path.parse(absolutePath).root : "/"
-	const isRoot = arePathsEqual(absolutePath, root)
-	if (isRoot) {
-		return [[root], false]
-	}
-	const homeDir = os.homedir()
-	const isHomeDir = arePathsEqual(absolutePath, homeDir)
-	if (isHomeDir) {
-		return [[homeDir], false]
-	}
+  const absolutePath = path.resolve(dirPath)
+  // Do not allow listing files in root or home directory, which cline tends to want to do when the user's prompt is vague.
+  const root = process.platform === 'win32' ? path.parse(absolutePath).root : '/'
+  const isRoot = arePathsEqual(absolutePath, root)
+  if (isRoot) {
+    return [[root], false]
+  }
+  const homeDir = os.homedir()
+  const isHomeDir = arePathsEqual(absolutePath, homeDir)
+  if (isHomeDir) {
+    return [[homeDir], false]
+  }
 
-	const dirsToIgnore = [
-		"node_modules",
-		"__pycache__",
-		"env",
-		"venv",
-		"target/dependency",
-		"build/dependencies",
-		"dist",
-		"out",
-		"bundle",
-		"vendor",
-		"tmp",
-		"temp",
-		"deps",
-		"pkg",
-		"Pods",
-		".*", // '!**/.*' excludes hidden directories, while '!**/.*/**' excludes only their contents. This way we are at least aware of the existence of hidden directories.
-	].map((dir) => `**/${dir}/**`)
+  const dirsToIgnore = [
+    'node_modules',
+    '__pycache__',
+    'env',
+    'venv',
+    'target/dependency',
+    'build/dependencies',
+    'dist',
+    'out',
+    'bundle',
+    'vendor',
+    'tmp',
+    'temp',
+    'deps',
+    'pkg',
+    'Pods',
+    '.*', // '!**/.*' excludes hidden directories, while '!**/.*/**' excludes only their contents. This way we are at least aware of the existence of hidden directories.
+  ].map(dir => `**/${dir}/**`)
 
-	const options = {
-		cwd: dirPath,
-		dot: true, // do not ignore hidden files/directories
-		absolute: true,
-		markDirectories: true, // Append a / on any directories matched (/ is used on windows as well, so dont use path.sep)
-		gitignore: recursive, // fast-glob also supports gitignore
-		ignore: recursive ? dirsToIgnore : undefined, // just in case there is no gitignore, we ignore sensible defaults
-		onlyFiles: false, // true by default, false means it will list directories on their own too
-	}
-	// * globs all files in one dir, ** globs files in nested directories
-	const files = recursive ? await globbyLevelByLevel(limit, options) : (await fg("*", options)).slice(0, limit)
-	return [files, files.length >= limit]
+  const options = {
+    cwd: dirPath,
+    dot: true, // do not ignore hidden files/directories
+    absolute: true,
+    markDirectories: true, // Append a / on any directories matched (/ is used on windows as well, so dont use path.sep)
+    gitignore: recursive, // fast-glob also supports gitignore
+    ignore: recursive ? dirsToIgnore : undefined, // just in case there is no gitignore, we ignore sensible defaults
+    onlyFiles: false, // true by default, false means it will list directories on their own too
+  }
+  // * globs all files in one dir, ** globs files in nested directories
+  const files = recursive ? await globbyLevelByLevel(limit, options) : (await fg('*', options)).slice(0, limit)
+  return [files, files.length >= limit]
 }
 
 /**
@@ -88,35 +88,35 @@ export async function listFiles(dirPath: string, recursive: boolean, limit: numb
  * - Timeout mechanism prevents infinite loops
  */
 async function globbyLevelByLevel(limit: number, options?: fg.Options) {
-	let results: Set<string> = new Set()
-	let queue: string[] = ["*"]
+  let results: Set<string> = new Set()
+  let queue: string[] = ['*']
 
-	const globbingProcess = async () => {
-		while (queue.length > 0 && results.size < limit) {
-			const pattern = queue.shift()!
-			const filesAtLevel = await fg(pattern, options)
+  const globbingProcess = async () => {
+    while (queue.length > 0 && results.size < limit) {
+      const pattern = queue.shift()!
+      const filesAtLevel = await fg(pattern, options)
 
-			for (const file of filesAtLevel) {
-				if (results.size >= limit) {
-					break
-				}
-				results.add(file)
-				if (file.endsWith("/")) {
-					queue.push(`${file}*`)
-				}
-			}
-		}
-		return Array.from(results).slice(0, limit)
-	}
+      for (const file of filesAtLevel) {
+        if (results.size >= limit) {
+          break
+        }
+        results.add(file)
+        if (file.endsWith('/')) {
+          queue.push(`${file}*`)
+        }
+      }
+    }
+    return Array.from(results).slice(0, limit)
+  }
 
-	// Timeout after 10 seconds and return partial results
-	const timeoutPromise = new Promise<string[]>((_, reject) => {
-		setTimeout(() => reject(new Error("Globbing timeout")), 10_000)
-	})
-	try {
-		return await Promise.race([globbingProcess(), timeoutPromise])
-	} catch (error) {
-		console.warn("Globbing timed out, returning partial results")
-		return Array.from(results)
-	}
+  // Timeout after 10 seconds and return partial results
+  const timeoutPromise = new Promise<string[]>((_, reject) => {
+    setTimeout(() => reject(new Error('Globbing timeout')), 10_000)
+  })
+  try {
+    return await Promise.race([globbingProcess(), timeoutPromise])
+  } catch (error) {
+    console.warn('Globbing timed out, returning partial results')
+    return Array.from(results)
+  }
 }

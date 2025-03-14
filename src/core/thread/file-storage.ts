@@ -1,16 +1,14 @@
-import { Thread, ThreadState } from './thread';
-import fs from 'fs/promises';
-import { existsSync } from 'fs';
-import { ThreadStorage } from './thread';
+import { Thread, ThreadState } from './thread'
+import fs from 'fs/promises'
+import { existsSync } from 'fs'
+import { ThreadStorage } from './thread'
 
 /**
  * A storage implementation that persists thread state to the file system.
  * Implements the ThreadStorage interface for saving and loading thread state.
  */
 export class FileSystemStorage implements ThreadStorage {
-  private constructor(
-    private filePath: string,
-  ) {}
+  private constructor(private filePath: string) {}
 
   /**
    * Creates a new Thread with FileSystemStorage at the specified path.
@@ -21,11 +19,11 @@ export class FileSystemStorage implements ThreadStorage {
    */
   static async create(filePath: string): Promise<Thread> {
     // Check if file exists
-    if(existsSync(filePath)) {
-      throw new Error(`thread already exists: ${filePath}`);
+    if (existsSync(filePath)) {
+      throw new Error(`thread already exists: ${filePath}`)
     }
 
-    return new Thread({ storage: new FileSystemStorage(filePath) });
+    return new Thread({ storage: new FileSystemStorage(filePath) })
   }
 
   /**
@@ -37,26 +35,26 @@ export class FileSystemStorage implements ThreadStorage {
    * @throws Error if the file cannot be read or contains invalid JSON
    */
   static async load(filePath: string): Promise<Thread> {
-    const data = await fs.readFile(filePath, 'utf8');
+    const data = await fs.readFile(filePath, 'utf8')
     const state = JSON.parse(data, (key, value) => {
       if (Array.isArray(value) && value.every(item => Array.isArray(item) && item.length === 2)) {
-        return new Map(value);
+        return new Map(value)
       }
       if (value && typeof value === 'object') {
         if (value.type === 'Buffer') {
-          return Buffer.from(value.data, 'base64');
+          return Buffer.from(value.data, 'base64')
         }
         if (value.type === 'Date') {
-          return new Date(value.value);
+          return new Date(value.value)
         }
       }
-      return value;
-    });
+      return value
+    })
 
-    return new Thread({ 
-      storage: new FileSystemStorage(filePath), 
-      state 
-    });
+    return new Thread({
+      storage: new FileSystemStorage(filePath),
+      state,
+    })
   }
 
   /**
@@ -68,43 +66,43 @@ export class FileSystemStorage implements ThreadStorage {
    * @throws Error if the file cannot be written
    */
   async save(state: ThreadState): Promise<void> {
-    const dirPath = this.filePath.split('/').slice(0, -1).join('/');
+    const dirPath = this.filePath.split('/').slice(0, -1).join('/')
     if (dirPath) {
-      await fs.mkdir(dirPath, { recursive: true });
+      await fs.mkdir(dirPath, { recursive: true })
     }
 
     const serializedState = JSON.stringify(state, (key, value) => {
       if (value instanceof Map) {
-        return Array.from(value.entries());
+        return Array.from(value.entries())
       }
       if (value instanceof Buffer) {
         return {
           type: 'Buffer',
-          data: value.toString('base64')
-        };
+          data: value.toString('base64'),
+        }
       }
       if (value instanceof Date) {
         return {
           type: 'Date',
-          value: value.toISOString()
-        };
+          value: value.toISOString(),
+        }
       }
       // Deep traverse objects to find and convert Date objects
       if (value && typeof value === 'object' && !Array.isArray(value)) {
-        const converted = { ...value };
+        const converted = { ...value }
         for (const [k, v] of Object.entries(value)) {
           if (v instanceof Date) {
             converted[k] = {
               type: 'Date',
-              value: v.toISOString()
-            };
+              value: v.toISOString(),
+            }
           }
         }
-        return converted;
+        return converted
       }
-      return value;
-    });
+      return value
+    })
 
-    await fs.writeFile(this.filePath, serializedState, 'utf8');
+    await fs.writeFile(this.filePath, serializedState, 'utf8')
   }
-} 
+}

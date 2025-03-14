@@ -5,9 +5,11 @@
 Hataraku uses a comprehensive set of npm scripts for development:
 
 ### Core Build Commands
+
 - `npm run build` - Build all components (cleans, builds CJS, ESM, CLI, and copies audio files)
 
 ### Development Commands
+
 - `npm run dev` - Run the CLI in development mode with OpenRouter API key from .env
 - `npm run cli` - Run the CLI directly using tsx
 - `npm run cli:prod` - Run CLI in production mode
@@ -15,19 +17,22 @@ Hataraku uses a comprehensive set of npm scripts for development:
 - `npm start` - Run the built CLI
 
 ### Quality Assurance
+
 - `npm run typecheck` - Run all type checks
 - `npm run lint` - Run ESLint on source files
 - `npm test` - Run Jest tests
 - `npm run test src/path/to/test.test.ts` - Run single test
 
 ### Release Process
+
 - `npm run changeset` - Create a new changeset for version management
 - `npm run version-packages` - Update versions based on changesets
 - `npm run release` - Publish to npm
 - `npm run prepublishOnly` - Clean and build before publishing
 
 ## Other Commands
- - Check package.json for all commands not listed above.
+
+- Check package.json for all commands not listed above.
 
 ## Testing
 
@@ -38,6 +43,7 @@ npm test
 ```
 
 Additional testing commands:
+
 - Run single test: `npm run test src/path/to/test.test.ts`
 - Run tests with pattern: `npm run test -t "test name pattern"`
 
@@ -53,6 +59,7 @@ Additional testing commands:
 - Add JSDoc for public APIs
 
 **ESLint Rules:**
+
 - **Import Names**: Use camelCase or PascalCase for imports
 - **Code Style**:
   - Always use curly braces for control statements
@@ -80,6 +87,7 @@ Hataraku is organized as follows:
 Hataraku uses several key dependencies:
 
 - **AI and LLM Integration**
+
   - `ai`: Core AI SDK for text generation
   - `@anthropic-ai/sdk`: Anthropic Claude integration
   - `@openrouter/ai-sdk-provider`: OpenRouter integration
@@ -87,6 +95,7 @@ Hataraku uses several key dependencies:
   - `@modelcontextprotocol/sdk`: MCP protocol support
 
 - **CLI and User Interface**
+
   - `commander`: Command-line interface framework
   - `@inquirer/prompts`: Interactive command-line prompts
   - `chalk`: Terminal text styling

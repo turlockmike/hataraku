@@ -1,4 +1,4 @@
-import { McpConfigSchema, isMcpConfig, parseMcpConfig, interpolateEnvVars } from '../../mcp/config';
+import { McpConfigSchema, isMcpConfig, parseMcpConfig, interpolateEnvVars } from '../../mcp/config'
 
 describe('MCP Config Validation', () => {
   describe('Schema Validation', () => {
@@ -10,10 +10,10 @@ describe('MCP Config Validation', () => {
             args: [],
           },
         },
-      };
-      const result = McpConfigSchema.safeParse(config);
-      expect(result.success).toBe(true);
-    });
+      }
+      const result = McpConfigSchema.safeParse(config)
+      expect(result.success).toBe(true)
+    })
 
     it('validates a complete valid config', () => {
       const config = {
@@ -27,10 +27,10 @@ describe('MCP Config Validation', () => {
             disabledTools: ['tool1', 'tool2'],
           },
         },
-      };
-      const result = McpConfigSchema.safeParse(config);
-      expect(result.success).toBe(true);
-    });
+      }
+      const result = McpConfigSchema.safeParse(config)
+      expect(result.success).toBe(true)
+    })
 
     it('rejects config with missing required fields', () => {
       const config = {
@@ -40,10 +40,10 @@ describe('MCP Config Validation', () => {
             args: [],
           },
         },
-      };
-      const result = McpConfigSchema.safeParse(config);
-      expect(result.success).toBe(false);
-    });
+      }
+      const result = McpConfigSchema.safeParse(config)
+      expect(result.success).toBe(false)
+    })
 
     it('rejects config with invalid types', () => {
       const config = {
@@ -53,11 +53,11 @@ describe('MCP Config Validation', () => {
             args: ['test'],
           },
         },
-      };
-      const result = McpConfigSchema.safeParse(config);
-      expect(result.success).toBe(false);
-    });
-  });
+      }
+      const result = McpConfigSchema.safeParse(config)
+      expect(result.success).toBe(false)
+    })
+  })
 
   describe('Type Guard', () => {
     it('returns true for valid config', () => {
@@ -68,9 +68,9 @@ describe('MCP Config Validation', () => {
             args: [],
           },
         },
-      };
-      expect(isMcpConfig(config)).toBe(true);
-    });
+      }
+      expect(isMcpConfig(config)).toBe(true)
+    })
 
     it('returns false for invalid config', () => {
       const config = {
@@ -79,45 +79,43 @@ describe('MCP Config Validation', () => {
             args: [],
           },
         },
-      };
-      expect(isMcpConfig(config)).toBe(false);
-    });
+      }
+      expect(isMcpConfig(config)).toBe(false)
+    })
 
     it('returns false for non-object values', () => {
-      expect(isMcpConfig(null)).toBe(false);
-      expect(isMcpConfig(undefined)).toBe(false);
-      expect(isMcpConfig('string')).toBe(false);
-      expect(isMcpConfig(123)).toBe(false);
-    });
-  });
+      expect(isMcpConfig(null)).toBe(false)
+      expect(isMcpConfig(undefined)).toBe(false)
+      expect(isMcpConfig('string')).toBe(false)
+      expect(isMcpConfig(123)).toBe(false)
+    })
+  })
 
   describe('Environment Variable Interpolation', () => {
     beforeEach(() => {
       // Clear and set test environment variables
-      process.env.TEST_VAR = 'test-value';
-      process.env.MCP_API_KEY = 'secret-key';
-    });
+      process.env.TEST_VAR = 'test-value'
+      process.env.MCP_API_KEY = 'secret-key'
+    })
 
     afterEach(() => {
       // Clean up test environment variables
-      delete process.env.TEST_VAR;
-      delete process.env.MCP_API_KEY;
-    });
+      delete process.env.TEST_VAR
+      delete process.env.MCP_API_KEY
+    })
 
     it('interpolates environment variables in strings', () => {
-      expect(interpolateEnvVars('value-${TEST_VAR}')).toBe('value-test-value');
-      expect(interpolateEnvVars('${MCP_API_KEY}')).toBe('secret-key');
-    });
+      expect(interpolateEnvVars('value-${TEST_VAR}')).toBe('value-test-value')
+      expect(interpolateEnvVars('${MCP_API_KEY}')).toBe('secret-key')
+    })
 
     it('interpolates multiple environment variables in one string', () => {
-      expect(interpolateEnvVars('${TEST_VAR}-${MCP_API_KEY}'))
-        .toBe('test-value-secret-key');
-    });
+      expect(interpolateEnvVars('${TEST_VAR}-${MCP_API_KEY}')).toBe('test-value-secret-key')
+    })
 
     it('throws error for undefined environment variables', () => {
-      expect(() => interpolateEnvVars('${UNDEFINED_VAR}'))
-        .toThrow('Environment variable UNDEFINED_VAR is not set');
-    });
+      expect(() => interpolateEnvVars('${UNDEFINED_VAR}')).toThrow('Environment variable UNDEFINED_VAR is not set')
+    })
 
     it('validates and interpolates environment variables in config', () => {
       const config = {
@@ -130,13 +128,13 @@ describe('MCP Config Validation', () => {
             },
           },
         },
-      };
+      }
 
-      const result = parseMcpConfig(config);
-      expect(result.mcpServers['test-server'].command).toBe('test-test-value');
-      expect(result.mcpServers['test-server'].args[0]).toBe('arg-secret-key');
-      expect(result.mcpServers['test-server'].env?.KEY).toBe('value-test-value');
-    });
+      const result = parseMcpConfig(config)
+      expect(result.mcpServers['test-server'].command).toBe('test-test-value')
+      expect(result.mcpServers['test-server'].args[0]).toBe('arg-secret-key')
+      expect(result.mcpServers['test-server'].env?.KEY).toBe('value-test-value')
+    })
 
     it('throws error for invalid config with undefined environment variables', () => {
       const config = {
@@ -146,10 +144,9 @@ describe('MCP Config Validation', () => {
             args: ['${UNDEFINED_VAR}'],
           },
         },
-      };
+      }
 
-      expect(() => parseMcpConfig(config))
-        .toThrow('Environment variable UNDEFINED_VAR is not set');
-    });
-  });
-});
+      expect(() => parseMcpConfig(config)).toThrow('Environment variable UNDEFINED_VAR is not set')
+    })
+  })
+})

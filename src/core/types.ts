@@ -1,3 +1,3 @@
-import { z } from 'zod';
+import { z } from 'zod'
 
-export type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>;
+export type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>

@@ -1,5 +1,5 @@
-import { createAgent, createBedrockModel } from 'hataraku';
-import { LanguageModelV1 } from 'ai';
+import { createAgent, createBedrockModel } from 'hataraku'
+import { LanguageModelV1 } from 'ai'
 
 // Common agent roles
 export const ROLES = {
@@ -9,8 +9,8 @@ export const ROLES = {
   WORKFLOW: 'You are a workflow orchestrator that coordinates and executes multi-step processes efficiently.',
   POET: 'You are a creative poet that writes engaging and metaphorical poems.',
   CALCULATOR: 'You are a calculator that performs mathematical operations and converts numbers to words.',
-  ASSISTANT: 'You are a helpful assistant that answers questions clearly and concisely.'
-};
+  ASSISTANT: 'You are a helpful assistant that answers questions clearly and concisely.',
+}
 
 // Common agent descriptions
 export const DESCRIPTIONS = {
@@ -20,8 +20,8 @@ export const DESCRIPTIONS = {
   WORKFLOW: 'An agent that manages complex workflows',
   POET: 'An agent that writes creative poems',
   CALCULATOR: 'An agent that performs calculations and number conversions',
-  ASSISTANT: 'An agent that provides helpful responses to questions'
-};
+  ASSISTANT: 'An agent that provides helpful responses to questions',
+}
 
 /**
  * Creates a base agent with the specified configuration.
@@ -43,18 +43,18 @@ export const DESCRIPTIONS = {
  * });
  */
 export function createBaseAgent(config: {
-  name: string;
-  description: string;
-  role: string;
-  tools?: Record<string, any>;
-  model?: LanguageModelV1 | Promise<LanguageModelV1>;
-  profile?: string;
+  name: string
+  description: string
+  role: string
+  tools?: Record<string, any>
+  model?: LanguageModelV1 | Promise<LanguageModelV1>
+  profile?: string
 }) {
   return createAgent({
     name: config.name,
     description: config.description,
     role: config.role,
     model: config.model || createBedrockModel(config.profile),
-    tools: config.tools
-  });
+    tools: config.tools,
+  })
 }

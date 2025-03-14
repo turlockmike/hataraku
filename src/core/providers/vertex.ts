@@ -1,5 +1,5 @@
-import { createVertex } from '@ai-sdk/google-vertex';
-import { LanguageModelV1 } from 'ai';
+import { createVertex } from '@ai-sdk/google-vertex'
+import { LanguageModelV1 } from 'ai'
 
 /**
  * Create a Google Vertex AI provider with the given configuration
@@ -8,14 +8,14 @@ import { LanguageModelV1 } from 'ai';
  * @returns Google Vertex AI provider
  */
 export async function createVertexProvider(project?: string, location: string = 'us-central1') {
-    const projectId = project || process.env.GOOGLE_CLOUD_PROJECT;
-    if (!projectId) {
-        throw new Error('GOOGLE_CLOUD_PROJECT is not set');
-    }
-    return createVertex({
-        project: projectId,
-        location
-    });
+  const projectId = project || process.env.GOOGLE_CLOUD_PROJECT
+  if (!projectId) {
+    throw new Error('GOOGLE_CLOUD_PROJECT is not set')
+  }
+  return createVertex({
+    project: projectId,
+    location,
+  })
 }
 
 /**
@@ -26,10 +26,10 @@ export async function createVertexProvider(project?: string, location: string = 
  * @returns Google Vertex AI model
  */
 export async function createVertexModel(
-    model: string = 'gemini-1.5-flash',
-    project?: string,
-    location: string = 'us-central1'
+  model: string = 'gemini-1.5-flash',
+  project?: string,
+  location: string = 'us-central1',
 ): Promise<LanguageModelV1> {
-    const vertex = await createVertexProvider(project, location);
-    return vertex(model);
+  const vertex = await createVertexProvider(project, location)
+  return vertex(model)
 }

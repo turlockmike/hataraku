@@ -1,13 +1,15 @@
 # Hataraku
 
-An autonomous coding agent and SDK for building AI-powered  tools. The name "Hataraku" (働く) means "to work" in Japanese.
+An autonomous coding agent and SDK for building AI-powered tools. The name "Hataraku" (働く) means "to work" in
+Japanese.
 
 [![npm version](https://badge.fury.io/js/hataraku.svg)](https://badge.fury.io/js/hataraku)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Description
 
-Hataraku is a powerful toolkit that enables the creation of AI-powered development tools and autonomous coding agents. It provides a flexible SDK and CLI for building intelligent development workflows, code analysis, and automation tasks.
+Hataraku is a powerful toolkit that enables the creation of AI-powered development tools and autonomous coding agents.
+It provides a flexible SDK and CLI for building intelligent development workflows, code analysis, and automation tasks.
 
 ## Key Features
 
@@ -40,28 +42,28 @@ pnpm global add hataraku
 
 ```typescript
 // Import the SDK
-import { createAgent, createTask } from 'hataraku';
-import { z } from 'zod';
+import { createAgent, createTask } from 'hataraku'
+import { z } from 'zod'
 
 // Bring in any ai-sdk provider https://sdk.vercel.ai/providers/ai-sdk-providers
-import { createOpenRouter } from "@openrouter/ai-sdk-provider"; 
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 
 // Create an agent using Claude via OpenRouter
 // You can pass API key directly or use environment variable
 const openrouter = createOpenRouter({
   apiKey: 'YOUR_OPENROUTER_API_KEY',
-});
-const model = openrouter.chatModel('anthropic/claude-3.5-sonnet');
+})
+const model = openrouter.chatModel('anthropic/claude-3.5-sonnet')
 
 const agent = createAgent({
   name: 'MyAgent',
   description: 'A helpful assistant',
   role: 'You are a helpful assistant that provides accurate information.',
-  model: model
-});
+  model: model,
+})
 
 // Run a one-off task
-const result = await agent.task('Create a hello world function');
+const result = await agent.task('Create a hello world function')
 
 // Create a simple reusable task with schema validation
 const task = createTask({
@@ -69,12 +71,12 @@ const task = createTask({
   description: 'Say Hello to the user',
   agent: agent,
   inputSchema: z.object({ name: z.string() }),
-  task: ({name}) => `Say hello to ${name} in a friendly manner`
-});
+  task: ({ name }) => `Say hello to ${name} in a friendly manner`,
+})
 
 // Execute the task
-const result = await task.run({name: 'Hataraku'});
-console.log(result);
+const result = await task.run({ name: 'Hataraku' })
+console.log(result)
 ```
 
 ### CLI Usage
@@ -117,7 +119,8 @@ hataraku --help
 
 ### Enhancing Output with Glow
 
-Hataraku's output can be enhanced using [Glow](https://github.com/charmbracelet/glow), a terminal-based markdown viewer that makes the output more readable and visually appealing.
+Hataraku's output can be enhanced using [Glow](https://github.com/charmbracelet/glow), a terminal-based markdown viewer
+that makes the output more readable and visually appealing.
 
 #### Installing Glow
 
@@ -185,7 +188,8 @@ The package includes various examples in the `/examples` directory demonstrating
 - Tool integration
 - Thread management
 
-These examples are available for reference in the repository and can be examined to understand different use cases and implementation patterns.
+These examples are available for reference in the repository and can be examined to understand different use cases and
+implementation patterns.
 
 See the [examples README](examples/README.md) for more details.
 
@@ -201,4 +205,3 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 
 - GitHub Issues: [Report bugs or request features](https://github.com/turlockmike/hataraku/issues)
 - Documentation: See the [docs](./docs) directory for detailed guides
-

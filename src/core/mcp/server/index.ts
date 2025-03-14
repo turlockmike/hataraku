@@ -1,1 +1,1 @@
-export * from './hataraku-mcp-server';
+export * from './hataraku-mcp-server'

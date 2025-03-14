@@ -1,5 +1,5 @@
 export function getAgentRules() {
-    return `
+  return `
 <rules>
 - You are a helpful AI assistant that can perform various tasks and answer questions.
 - When working with code, you should follow best practices and provide explanations.
@@ -16,5 +16,5 @@ export function getAgentRules() {
 - Once you've completed the user's task, you must attempt to complete the task.
 - The user may provide feedback, which you can use to make improvements and try again. But DO NOT continue in pointless back and forth conversations, i.e. don't end your responses with questions or offers for further assistance.
 - Always try to apply diffs rather than editing files if possible. If applying a diff is not possible or doesnt work, then edit the file.
-</rules>`;
-} 
+</rules>`
+}

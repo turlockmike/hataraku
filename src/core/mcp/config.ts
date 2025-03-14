@@ -1,17 +1,17 @@
-import { z } from 'zod';
+import { z } from 'zod'
 
 /**
  * Configuration for an MCP server
  */
 export interface McpServerConfig {
   /** Command to run the server */
-  command: string;
+  command: string
   /** Arguments to pass to the command */
-  args?: string[];
+  args?: string[]
   /** Environment variables to set when running the server */
-  env?: Record<string, string>;
+  env?: Record<string, string>
   /** List of tool names to disable from this server */
-  disabledTools?: string[];
+  disabledTools?: string[]
 }
 
 /**
@@ -19,7 +19,7 @@ export interface McpServerConfig {
  */
 export interface McpConfig {
   /** Map of server names to their configurations */
-  mcpServers: Record<string, McpServerConfig>;
+  mcpServers: Record<string, McpServerConfig>
 }
 
 /**
@@ -28,58 +28,68 @@ export interface McpConfig {
  */
 export function interpolateEnvVars(value: string): string {
   return value.replace(/\${([^}]+)}/g, (_, varName) => {
-    const envValue = process.env[varName];
+    const envValue = process.env[varName]
     if (envValue === undefined) {
-      throw new Error(`Environment variable ${varName} is not set`);
+      throw new Error(`Environment variable ${varName} is not set`)
     }
-    return envValue;
-  });
+    return envValue
+  })
 }
 
 /**
  * Transform a string by interpolating environment variables
  */
-const envString = z.string().transform((str) => interpolateEnvVars(str));
+const envString = z.string().transform(str => interpolateEnvVars(str))
 
 /**
  * Transform an array of strings by interpolating environment variables
  */
-const envStringArray = z.array(envString);
+const envStringArray = z.array(envString)
 
 /**
  * Transform a record of strings by interpolating environment variables
  */
-const envStringRecord = z.record(envString);
+const envStringRecord = z.record(envString)
 
 /**
  * Zod schema for validating MCP server configuration
  */
-export const McpServerConfigSchema = z.object({
-  command: envString,
-  args: envStringArray.optional(),
-  env: envStringRecord.optional(),
-  disabledTools: z.array(z.string()).optional(),
-}).strict().transform((data): McpServerConfig => ({
-  command: data.command,
-  args: data.args || [],
-  env: data.env,
-  disabledTools: data.disabledTools
-}));
+export const McpServerConfigSchema = z
+  .object({
+    command: envString,
+    args: envStringArray.optional(),
+    env: envStringRecord.optional(),
+    disabledTools: z.array(z.string()).optional(),
+  })
+  .strict()
+  .transform(
+    (data): McpServerConfig => ({
+      command: data.command,
+      args: data.args || [],
+      env: data.env,
+      disabledTools: data.disabledTools,
+    }),
+  )
 
 /**
  * Zod schema for validating complete MCP configuration
  */
-export const McpConfigSchema = z.object({
-  mcpServers: z.record(McpServerConfigSchema),
-}).strict().transform((data): McpConfig => ({
-  mcpServers: data.mcpServers
-}));
+export const McpConfigSchema = z
+  .object({
+    mcpServers: z.record(McpServerConfigSchema),
+  })
+  .strict()
+  .transform(
+    (data): McpConfig => ({
+      mcpServers: data.mcpServers,
+    }),
+  )
 
 /**
  * Type guard to check if a value is a valid MCP configuration
  */
 export function isMcpConfig(value: unknown): value is McpConfig {
-  return McpConfigSchema.safeParse(value).success;
+  return McpConfigSchema.safeParse(value).success
 }
 
 /**
@@ -87,9 +97,9 @@ export function isMcpConfig(value: unknown): value is McpConfig {
  * @throws {Error} if validation fails or required environment variables are missing
  */
 export function parseMcpConfig(value: unknown): McpConfig {
-  const result = McpConfigSchema.safeParse(value);
+  const result = McpConfigSchema.safeParse(value)
   if (!result.success) {
-    throw new Error(`Invalid MCP configuration: ${result.error.message}`);
+    throw new Error(`Invalid MCP configuration: ${result.error.message}`)
   }
-  return result.data;
+  return result.data
 }

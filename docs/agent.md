@@ -2,7 +2,9 @@
 
 ## Overview
 
-The Agent component is a powerful abstraction for AI-powered task execution that provides a flexible and type-safe way to interact with language models. It supports various interaction patterns including streaming responses, schema validation, and tool integration.
+The Agent component is a powerful abstraction for AI-powered task execution that provides a flexible and type-safe way
+to interact with language models. It supports various interaction patterns including streaming responses, schema
+validation, and tool integration.
 
 ## Key Features
 
@@ -21,14 +23,14 @@ Configuration interface for creating an Agent instance.
 
 ```typescript
 interface AgentConfig {
-  name: string;              // Name of the agent
-  description: string;       // Description of the agent's purpose
-  role: string;             // System instructions for the agent
-  model: LanguageModelV1;   // Language model to use
-  tools?: ToolSet;          // Optional set of tools the agent can use
-  callSettings?: CallSettings; // Optional model call settings
-  taskHistory?: TaskHistory; // Optional task history tracker
-  verbose?: boolean;        // Optional verbose logging flag
+  name: string // Name of the agent
+  description: string // Description of the agent's purpose
+  role: string // System instructions for the agent
+  model: LanguageModelV1 // Language model to use
+  tools?: ToolSet // Optional set of tools the agent can use
+  callSettings?: CallSettings // Optional model call settings
+  taskHistory?: TaskHistory // Optional task history tracker
+  verbose?: boolean // Optional verbose logging flag
 }
 ```
 
@@ -38,10 +40,10 @@ Generic interface for task input configuration.
 
 ```typescript
 interface TaskInput<T = unknown> {
-  thread?: Thread;           // Optional conversation thread
-  schema?: z.ZodType<T>;    // Optional Zod schema for response validation
-  stream?: boolean;         // Enable streaming response
-  verbose?: boolean;        // Optional verbose logging flag
+  thread?: Thread // Optional conversation thread
+  schema?: z.ZodType<T> // Optional Zod schema for response validation
+  stream?: boolean // Enable streaming response
+  verbose?: boolean // Optional verbose logging flag
 }
 ```
 
@@ -51,7 +53,7 @@ Interface for streaming task results.
 
 ```typescript
 interface StreamingTaskResult {
-  stream: AsyncGenerator<string>;
+  stream: AsyncGenerator<string>
 }
 ```
 
@@ -95,7 +97,7 @@ function createAgent(config: AgentConfig): Agent
 ### Basic Usage
 
 ```typescript
-import { Agent, createAgent } from './core/agent';
+import { Agent, createAgent } from './core/agent'
 
 // Create an agent using the factory function
 const agent = createAgent({
@@ -103,22 +105,22 @@ const agent = createAgent({
   description: 'A helpful assistant for various tasks',
   role: 'You are a helpful assistant that provides clear and concise responses',
   model: 'gpt-4',
-});
+})
 
 // Execute a simple task
-const response = await agent.task('What is the capital of France?');
+const response = await agent.task('What is the capital of France?')
 ```
 
 ### Streaming Response
 
 ```typescript
 // Get a streaming response
-const stream = await agent.task('Explain quantum computing', { 
-  stream: true 
-});
+const stream = await agent.task('Explain quantum computing', {
+  stream: true,
+})
 
 for await (const chunk of stream) {
-  console.log(chunk); // Process each chunk of the response
+  console.log(chunk) // Process each chunk of the response
 }
 ```
 
@@ -152,25 +154,25 @@ const agent = createAgent({
   tools: {
     calculator: {
       description: 'Performs calculations',
-      execute: (input: string) => eval(input)
-    }
-  }
-});
+      execute: (input: string) => eval(input),
+    },
+  },
+})
 
-const result = await agent.task('Calculate 2 + 2');
+const result = await agent.task('Calculate 2 + 2')
 ```
 
 ### Thread Management
 
 ```typescript
-import { Thread } from './core/thread/thread';
+import { Thread } from './core/thread/thread'
 
 // Create a thread for conversation context
-const thread = new Thread();
+const thread = new Thread()
 
 // Use the thread in multiple interactions
-const response1 = await agent.task('What is your name?', { thread });
-const response2 = await agent.task('What did I just ask you?', { thread });
+const response1 = await agent.task('What is your name?', { thread })
+const response2 = await agent.task('What did I just ask you?', { thread })
 ```
 
 ## Configuration Options
@@ -179,19 +181,19 @@ The `CallSettings` interface provides various options to customize the model's b
 
 ```typescript
 interface CallSettings {
-  maxTokens?: number;           // Maximum tokens in the response
-  temperature?: number;         // Response randomness (0-1)
-  topP?: number;               // Nucleus sampling parameter
-  topK?: number;               // Top-k sampling parameter
-  presencePenalty?: number;    // Penalty for token presence
-  frequencyPenalty?: number;   // Penalty for token frequency
-  stopSequences?: string[];    // Sequences to stop generation
-  seed?: number;               // Random seed for reproducibility
-  maxRetries?: number;         // Maximum retry attempts
-  abortSignal?: AbortSignal;   // Signal to abort the request
-  headers?: Record<string, string | undefined>; // Custom headers
-  maxSteps?: number;           // Maximum number of steps
-  toolChoice?: 'auto' | 'none' | 'required'; // Tool usage preference
+  maxTokens?: number // Maximum tokens in the response
+  temperature?: number // Response randomness (0-1)
+  topP?: number // Nucleus sampling parameter
+  topK?: number // Top-k sampling parameter
+  presencePenalty?: number // Penalty for token presence
+  frequencyPenalty?: number // Penalty for token frequency
+  stopSequences?: string[] // Sequences to stop generation
+  seed?: number // Random seed for reproducibility
+  maxRetries?: number // Maximum retry attempts
+  abortSignal?: AbortSignal // Signal to abort the request
+  headers?: Record<string, string | undefined> // Custom headers
+  maxSteps?: number // Maximum number of steps
+  toolChoice?: 'auto' | 'none' | 'required' // Tool usage preference
 }
 ```
 

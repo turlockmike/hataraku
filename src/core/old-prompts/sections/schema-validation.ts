@@ -1,5 +1,5 @@
 export function getSchemaValidationSection(): string {
-    return `
+  return `
 # Schema Validation and Output Formatting
 
 When a task includes an output schema:
@@ -27,4 +27,4 @@ Remember:
 - Arrays and objects should use proper JSON syntax
 - Do not include any markdown formatting or code blocks around the JSON
 - The entire response should be valid JSON, with no other text before or after`
-} 
+}

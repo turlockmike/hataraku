@@ -4,7 +4,9 @@ This document describes the configuration system for Hataraku, an autonomous cod
 
 ## Overview
 
-Hataraku uses a persistent configuration system that follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html). This allows for:
+Hataraku uses a persistent configuration system that follows the
+[XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html). This
+allows for:
 
 - **Profiles**: Different configurations for different use cases
 - **Tasks**: Saved task definitions with templating support
@@ -41,7 +43,8 @@ $XDG_DATA_HOME/hataraku/           # (~/.local/share/hataraku/)
 
 ## Profile Configuration
 
-A profile is a set of preferences for Hataraku, including which provider and model to use, which tools to load, and other options.
+A profile is a set of preferences for Hataraku, including which provider and model to use, which tools to load, and
+other options.
 
 ### Example Profile
 
@@ -97,9 +100,7 @@ An agent defines the role, model, and tools used for a specific task.
       "maxTokens": 4000
     }
   },
-  "tools": [
-    "hataraku",
-  ]
+  "tools": ["hataraku"]
 }
 ```
 
@@ -193,7 +194,8 @@ Tools define external MCP servers with environment variables.
 
 ## Environment Variable Interpolation
 
-Environment variables in tool configurations are interpolated at runtime. For example, `${GITHUB_TOKEN}` will be replaced with the value of the `GITHUB_TOKEN` environment variable.
+Environment variables in tool configurations are interpolated at runtime. For example, `${GITHUB_TOKEN}` will be
+replaced with the value of the `GITHUB_TOKEN` environment variable.
 
 ## CLI Options
 
@@ -263,10 +265,12 @@ You can configure custom providers by setting the provider and model in a profil
 ### Available Models
 
 #### Anthropic
+
 - `claude-3-7-sonnet-20250219` - Recommended for most tasks
 - `claude-3-5-sonnet-20241022` - Fast and efficient
 
 #### OpenRouter
+
 - `anthropic/claude-3.7-sonnet` - Anthropic's Claude 3.7 Sonnet
 - `anthropic/claude-3.5-sonnet` - Anthropic's Claude 3.5 Sonnet
 - `google/gemini-2.0-flash-001` - Google's Gemini 2.0 Flash
@@ -275,6 +279,7 @@ You can configure custom providers by setting the provider and model in a profil
 - `openai/gpt-4o-mini` - OpenAI GPT-4o Mini
 
 #### Bedrock
+
 - `us.anthropic.claude-3-7-sonnet-20250219-v1:0` - Claude 3.7 Sonnet
 - `us.anthropic.claude-3-5-sonnet-20241022-v2:0` - Claude 3.5 Sonnet
 
@@ -289,7 +294,8 @@ Tasks can use templates with parameter substitution:
 }
 ```
 
-The template supports JavaScript expressions within the `${}` placeholders, allowing for conditional logic and string operations. Parameters are specified as a comma-separated string.
+The template supports JavaScript expressions within the `${}` placeholders, allowing for conditional logic and string
+operations. Parameters are specified as a comma-separated string.
 
 ### Bedrock Integration
 
@@ -310,7 +316,8 @@ Make sure your AWS credentials are properly configured.
 
 ## Best Practices
 
-1. **Create Specialized Profiles**: Create different profiles for different tasks, such as coding, documentation, or data analysis.
+1. **Create Specialized Profiles**: Create different profiles for different tasks, such as coding, documentation, or
+   data analysis.
 
 2. **Use Task Templates**: Define templates for common tasks to save time and ensure consistency.
 

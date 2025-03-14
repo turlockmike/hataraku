@@ -1,6 +1,7 @@
 # Hataraku Documentation
 
-Welcome to the Hataraku documentation. This guide will help you get started with using Hataraku to build AI-powered development tools and autonomous coding agents.
+Welcome to the Hataraku documentation. This guide will help you get started with using Hataraku to build AI-powered
+development tools and autonomous coding agents.
 
 ## Getting Started
 
@@ -40,16 +41,16 @@ Welcome to the Hataraku documentation. This guide will help you get started with
 The Agent API provides a high-level interface for interacting with AI models:
 
 ```typescript
-import { Agent, createAgent } from 'hataraku';
+import { Agent, createAgent } from 'hataraku'
 
 const agent = createAgent({
   name: 'CodeAgent',
   description: 'Helps with coding tasks',
   role: 'You are a helpful coding assistant',
-  model: 'openrouter/anthropic/claude-3.7-sonnet'
-});
+  model: 'openrouter/anthropic/claude-3.7-sonnet',
+})
 
-const result = await agent.task('Write a function to sort an array');
+const result = await agent.task('Write a function to sort an array')
 ```
 
 [Learn more about the Agent API](./agent.md)
@@ -59,14 +60,14 @@ const result = await agent.task('Write a function to sort an array');
 The Task API allows for simple, one-off interactions with AI models:
 
 ```typescript
-import { Task, createTask } from 'hataraku';
+import { Task, createTask } from 'hataraku'
 
 const task = createTask({
   description: 'Generate a JSON schema',
-  model: 'openrouter/anthropic/claude-3.7-sonnet'
-});
+  model: 'openrouter/anthropic/claude-3.7-sonnet',
+})
 
-const result = await task.execute();
+const result = await task.execute()
 ```
 
 [Learn more about the Task API](./api-reference.md#task)
@@ -76,16 +77,16 @@ const result = await task.execute();
 The Provider API enables integration with various AI model providers:
 
 ```typescript
-import { createAnthropicProvider } from 'hataraku';
+import { createAnthropicProvider } from 'hataraku'
 
 const provider = createAnthropicProvider({
-  apiKey: process.env.ANTHROPIC_API_KEY
-});
+  apiKey: process.env.ANTHROPIC_API_KEY,
+})
 
 const task = createTask({
   description: 'Generate code',
-  model: provider.getModel('claude-3-sonnet')
-});
+  model: provider.getModel('claude-3-sonnet'),
+})
 ```
 
 [Learn more about the Provider API](./providers.md)
@@ -95,7 +96,7 @@ const task = createTask({
 The Tools API extends AI capabilities with external functionality:
 
 ```typescript
-import { Agent, createAgent } from 'hataraku';
+import { Agent, createAgent } from 'hataraku'
 
 const agent = createAgent({
   name: 'MathAgent',
@@ -105,10 +106,10 @@ const agent = createAgent({
   tools: {
     calculator: {
       description: 'Performs calculations',
-      execute: (input) => eval(input)
-    }
-  }
-});
+      execute: input => eval(input),
+    },
+  },
+})
 ```
 
 [Learn more about the Tools API](./tools.md)
@@ -118,25 +119,25 @@ const agent = createAgent({
 The Workflow API orchestrates complex multi-step operations:
 
 ```typescript
-import { Workflow } from 'hataraku';
+import { Workflow } from 'hataraku'
 
 const workflow = new Workflow({
   name: 'CodeGenerator',
-  description: 'Generates and tests code'
-});
+  description: 'Generates and tests code',
+})
 
 workflow.addStep({
   name: 'GenerateCode',
-  task: 'Write a function to sort an array'
-});
+  task: 'Write a function to sort an array',
+})
 
 workflow.addStep({
   name: 'GenerateTests',
   task: 'Write tests for the sorting function',
-  depends: ['GenerateCode']
-});
+  depends: ['GenerateCode'],
+})
 
-const results = await workflow.execute();
+const results = await workflow.execute()
 ```
 
 [Learn more about the Workflow API](./workflow-proposal.md)
@@ -150,4 +151,5 @@ const results = await workflow.execute();
 
 ## Feedback and Support
 
-If you have any questions, feedback, or encounter issues, please [open an issue](https://github.com/turlockmike/hataraku/issues) on the GitHub repository. 
+If you have any questions, feedback, or encounter issues, please
+[open an issue](https://github.com/turlockmike/hataraku/issues) on the GitHub repository.

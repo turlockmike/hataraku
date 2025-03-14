@@ -1,12 +1,12 @@
-import { Tool } from 'ai';
-import { z } from 'zod';
-import * as path from 'path';
-import * as fs from 'fs/promises';
-import { platform } from 'os';
-import { exec } from 'child_process';
+import { Tool } from 'ai'
+import { z } from 'zod'
+import * as path from 'path'
+import * as fs from 'fs/promises'
+import { platform } from 'os'
+import { exec } from 'child_process'
 
 // Supported image formats
-const SUPPORTED_FORMATS = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'];
+const SUPPORTED_FORMATS = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp']
 
 // Platform-specific open command
 /**
@@ -19,13 +19,13 @@ const SUPPORTED_FORMATS = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'];
 function getOpenCommand(imagePath: string): string {
   switch (platform()) {
     case 'win32':
-      return `start "" "${imagePath}"`;
+      return `start "" "${imagePath}"`
     case 'darwin':
-      return `open "${imagePath}"`;
+      return `open "${imagePath}"`
     case 'linux':
-      return `xdg-open "${imagePath}"`;
+      return `xdg-open "${imagePath}"`
     default:
-      throw new Error(`Unsupported platform: ${platform()}`);
+      throw new Error(`Unsupported platform: ${platform()}`)
   }
 }
 
@@ -44,69 +44,79 @@ function getOpenCommand(imagePath: string): string {
 export const showImageTool: Tool = {
   description: "Display an image file using the system's default image viewer.",
   parameters: z.object({
-    path: z.string().describe('The path to the image file to display')
+    path: z.string().describe('The path to the image file to display'),
   }),
   execute: async ({ path: imagePath }) => {
     try {
-      const absolutePath = path.resolve(process.cwd(), imagePath);
-      
+      const absolutePath = path.resolve(process.cwd(), imagePath)
+
       // Check if file exists
       try {
-        await fs.access(absolutePath);
+        await fs.access(absolutePath)
       } catch {
         return {
           isError: true,
-          content: [{
-            type: "text",
-            text: `Image file not found at path: ${imagePath}`
-          }]
-        };
+          content: [
+            {
+              type: 'text',
+              text: `Image file not found at path: ${imagePath}`,
+            },
+          ],
+        }
       }
 
       // Check file format
-      const ext = path.extname(absolutePath).toLowerCase();
+      const ext = path.extname(absolutePath).toLowerCase()
       if (!SUPPORTED_FORMATS.includes(ext)) {
         return {
           isError: true,
-          content: [{
-            type: "text",
-            text: `Unsupported image format: ${ext}. Supported formats: ${SUPPORTED_FORMATS.join(', ')}`
-          }]
-        };
+          content: [
+            {
+              type: 'text',
+              text: `Unsupported image format: ${ext}. Supported formats: ${SUPPORTED_FORMATS.join(', ')}`,
+            },
+          ],
+        }
       }
 
       // Get the platform-specific open command
-      const command = getOpenCommand(absolutePath);
+      const command = getOpenCommand(absolutePath)
 
       // Execute the command
-      return new Promise((resolve) => {
-        exec(command, (error) => {
+      return new Promise(resolve => {
+        exec(command, error => {
           if (error) {
             resolve({
               isError: true,
-              content: [{
-                type: "text",
-                text: `Error displaying image: ${error.message}`
-              }]
-            });
+              content: [
+                {
+                  type: 'text',
+                  text: `Error displaying image: ${error.message}`,
+                },
+              ],
+            })
           } else {
             resolve({
-              content: [{
-                type: "text",
-                text: `Displaying image: ${imagePath}`
-              }]
-            });
+              content: [
+                {
+                  type: 'text',
+                  text: `Displaying image: ${imagePath}`,
+                },
+              ],
+            })
           }
-        });
-      });
+        })
+      })
     } catch (error) {
       return {
         isError: true,
-        content: [{
-          type: "text",
-          text: `Error displaying image: ${error instanceof Error ? error.message : String(error)}`
-        }]
-      };
+        content: [
+          {
+            type: 'text',
+            text: `Error displaying image: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      }
     }
-  }
-};
+  },
+}
